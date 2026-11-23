@@ -620,6 +620,7 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
     rememberView();
     pollOnce();
     setInterval(pollOnce, 20000);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) pollOnce(); });
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
