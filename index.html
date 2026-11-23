@@ -40,7 +40,7 @@ input[type=number]{width:78px;text-align:center}
 textarea{resize:vertical;min-height:64px;width:100%;line-height:1.7}
 .scroll{overflow-x:auto}
 .shootscroll{height:calc(100vh - 250px);min-height:340px;max-height:calc(100vh - 250px);overflow:auto;border:1px solid #eef1f4;border-radius:10px;background:#fff}
-.shootscroll table.wk{border-collapse:separate;border-spacing:0;table-layout:fixed;width:auto;min-width:1180px}
+.shootscroll table.wk{border-collapse:separate;border-spacing:0;table-layout:fixed;width:100%;min-width:880px}
 .shootscroll td input,.shootscroll td textarea{width:100%;box-sizing:border-box}
 .shootscroll thead th{position:sticky;top:0;z-index:20;background:#f7f9fc;padding:9px 8px;text-align:center;font-size:12px;color:#4b5563;font-weight:600;white-space:nowrap;box-shadow:inset 0 -1px 0 #dfe4ec,0 2px 5px rgba(16,24,40,.06)}
 table{width:100%;border-collapse:collapse;font-size:13px}
@@ -114,8 +114,10 @@ td,th{word-break:break-word;overflow-wrap:break-word}
 /* 每日计划表格里的款号格子（宽度受限，单独收窄） */
 .shootscroll td .codewrap{grid-template-columns:1fr;gap:3px}
 .shootscroll td .codewrap .cc{background:#f8fafc;border:1px solid #e5e9ef;border-radius:6px;padding:2px 3px}
-.shootscroll td .codewrap .cc input.cin{width:auto;font-size:12px;padding:3px 5px;min-width:0}
-.shootscroll td .codewrap .cc input.cqn{width:40px;font-size:12px;padding:3px 2px}
+.shootscroll td .codewrap .cc input.cin{width:52px;flex:0 0 52px;font-size:12px;padding:3px 4px;min-width:0!important}
+.shootscroll td .codewrap .cc input.cqn{width:30px;flex:0 0 30px;font-size:12px;padding:3px 1px}
+.shootscroll td .codewrap .cc{padding:2px 2px;gap:2px}
+.shootscroll td .codewrap .codel{width:14px;height:14px;font-size:10px}
 .codel{background:#fee2e2;color:#b91c1c;border:none;border-radius:4px;width:16px;height:16px;line-height:1;font-size:11px;cursor:pointer;padding:0;flex:0 0 auto}
 .wkdist{margin-top:8px;font-size:12px;color:#4b5563;line-height:1.9;background:#f8fafc;border:1px solid #eef1f4;border-radius:8px;padding:8px 12px}
 .wkdist b{color:#1d4ed8}
@@ -1094,8 +1096,8 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
     </div>
     <div class="scroll shootscroll">
       <table class="wk">
-        <colgroup><col style="width:66px"><col style="width:100px"><col style="width:112px"><col><col style="width:84px"><col style="width:84px"><col style="width:168px"><col style="width:168px"><col style="width:236px"></colgroup>
-        <thead><tr><th>星期</th><th>日期</th><th>场地</th><th>拍摄明细</th><th>当日拍摄</th><th>当日剪辑</th><th>当日剪辑任务</th><th>A剪辑任务</th><th>拍摄款号（款号 × 条数）</th></tr></thead>
+        <colgroup><col style="width:58px"><col style="width:94px"><col style="width:100px"><col><col style="width:72px"><col style="width:72px"><col style="width:120px"><col style="width:120px"><col style="width:140px"></colgroup>
+        <thead><tr><th>星期</th><th>日期</th><th>场地</th><th>拍摄明细</th><th>当日拍摄</th><th>当日剪辑</th><th>当日剪辑任务</th><th>A剪辑任务</th><th title="款号 × 条数，可点「＋ 加款号」加多个">拍摄款号</th></tr></thead>
         <tbody id="shootBody"></tbody>
       </table>
     </div>
