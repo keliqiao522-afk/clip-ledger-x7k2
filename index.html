@@ -1,0 +1,4139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>剪辑素材登记 · 周计划</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#f4f6f9;color:#1f2937;padding:18px;max-width:1180px;margin:0 auto}
+h1{font-size:20px;letter-spacing:.5px}
+h2{font-size:14px;font-weight:600}
+.sub{color:#6b7280;font-size:12px;margin:6px 0 14px}
+.tabs{display:flex;gap:8px;margin-bottom:14px;background:#fff;padding:6px;border-radius:10px;box-shadow:0 1px 3px rgba(16,24,40,.07);width:fit-content;position:sticky;top:0;z-index:30}
+.tab{border:none;background:transparent;font-family:inherit;font-size:14px;color:#6b7280;padding:9px 18px;border-radius:8px;cursor:pointer}
+.tab.on{background:#eff6ff;color:#2563eb;font-weight:600}
+.box{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(16,24,40,.07);margin-bottom:14px}
+.period{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.period.stickybar{position:sticky;top:62px;z-index:20;background:#fff;padding:8px 0;margin-bottom:10px;border-bottom:1px solid #eef1f6}
+.seg{display:inline-flex;background:#f1f3f6;border-radius:9px;padding:3px}
+.seg button{border:none;background:transparent;font-size:13px;color:#6b7280;padding:7px 14px;border-radius:7px;cursor:pointer}
+.seg button.on{background:#fff;color:#2563eb;font-weight:600;box-shadow:0 1px 2px rgba(16,24,40,.08)}
+.nav{display:flex;align-items:center;gap:8px;font-size:13px}
+.nav button{border:1px solid #e5e8ec;background:#fff;color:#4b5563;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px}
+.nav b{font-size:13px;color:#111827}
+.stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.card{flex:1;min-width:170px;background:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 1px 3px rgba(16,24,40,.07)}
+.card .k{font-size:12px;color:#6b7280}
+.card .v{font-size:24px;font-weight:700;margin-top:4px;line-height:1.2}
+.card .v small{font-size:12px;font-weight:400;color:#9ca3af;margin-left:4px}
+.bar{height:6px;background:#f1f3f6;border-radius:4px;margin-top:9px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:4px;background:#2563eb;transition:width .3s}
+.bar i.g{background:#059669}
+.flds{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.fld{display:flex;flex-direction:column;gap:5px}
+.fld label{font-size:12px;color:#6b7280}
+.fld.grow{flex:1;min-width:220px}
+input,select,textarea{font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid #dfe3e8;border-radius:8px;outline:none;color:#1f2937;background:#fff}
+input:focus,select:focus,textarea:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+input[type=number]{width:78px;text-align:center}
+textarea{resize:vertical;min-height:64px;width:100%;line-height:1.7}
+.scroll{overflow-x:auto}
+.shootscroll{height:calc(100vh - 250px);min-height:340px;max-height:calc(100vh - 250px);overflow:auto;border:1px solid #eef1f4;border-radius:10px;background:#fff}
+.shootscroll table.wk{border-collapse:separate;border-spacing:0;table-layout:fixed;width:100%}
+.shootscroll td input,.shootscroll td textarea{width:100%;box-sizing:border-box}
+.shootscroll thead th{position:sticky;top:0;z-index:20;background:#f7f9fc;padding:9px 8px;text-align:center;font-size:12px;color:#4b5563;font-weight:600;white-space:nowrap;box-shadow:inset 0 -1px 0 #dfe4ec,0 2px 5px rgba(16,24,40,.06)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+.entry th{font-size:12px;color:#6b7280;font-weight:600;padding:8px 6px;border-bottom:1px solid #eef1f4;text-align:center;white-space:nowrap}
+.entry th:first-child{text-align:left}
+.entry td{padding:5px 6px;border-bottom:1px solid #f5f7f9;text-align:center}
+.entry td:first-child{text-align:left;font-weight:600;white-space:nowrap}
+.entry td:last-child input{width:100%;min-width:200px;text-align:left}
+.entry .st{color:#2563eb;font-weight:600}
+.entry tr.sum td{background:#f9fafb;font-weight:700;border-bottom:none}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;align-items:center}
+.add{background:#2563eb;color:#fff;border:none;border-radius:9px;padding:11px 18px;font-size:14px;cursor:pointer}
+.green{background:#059669;color:#fff;border:none;border-radius:9px;padding:11px 18px;font-size:14px;cursor:pointer}
+.ghost{background:#f1f3f6;color:#4b5563;border:none;border-radius:9px;padding:11px 18px;font-size:14px;cursor:pointer}
+button:active{transform:scale(.98)}
+.sum th{font-size:12px;color:#6b7280;font-weight:600;padding:9px 8px;background:#fbfcfd;border-bottom:1px solid #eef1f4;text-align:center;white-space:nowrap}
+.sum th:first-child{text-align:left}
+.sum td{padding:9px 8px;border-bottom:1px solid #f5f7f9;text-align:center}
+.sum td:first-child{text-align:left;font-weight:600;white-space:nowrap}
+.sum .tgt{color:#9ca3af;font-size:12px}
+.sum .hit{color:#059669;font-weight:700}
+.sum tr.tot td{background:#f9fafb;font-weight:700;border-bottom:none}
+.listhead{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.listhead input{min-width:200px}
+.rec th{font-size:12px;color:#6b7280;font-weight:600;padding:9px 6px;background:#fbfcfd;border-bottom:1px solid #eef1f4;text-align:center;white-space:nowrap}
+.rec th:first-child{text-align:left}
+.rec td{padding:9px 6px;border-bottom:1px solid #f5f7f9;text-align:center;vertical-align:middle}
+.rec td:first-child{text-align:left;font-weight:600}
+.rec td.note{text-align:left;white-space:normal;max-width:150px;color:#6b7280;font-size:12px}
+.pair{font-size:12px}
+.pair b{color:#059669}
+.pair span{color:#2563eb}
+.zero{color:#d1d5db}
+td,th{word-break:break-word;overflow-wrap:break-word}
+.wd{color:#9ca3af;font-size:12px;margin-left:5px;white-space:nowrap}
+.wd.on{color:#2563eb;font-weight:600}
+.ops{display:flex;gap:5px;justify-content:flex-start}
+.mini{background:#f1f3f6;color:#4b5563;border:none;border-radius:6px;padding:5px 9px;font-size:12px;cursor:pointer}
+.mini.red{background:#fef2f2;color:#dc2626}
+.mini.blue{background:#eff6ff;color:#2563eb}
+.mini.green{background:#ecfdf3;color:#059669}
+.wkcard{border:1px solid #e8ecf0;border-radius:10px;padding:12px;margin-bottom:12px;background:#fbfcfd}
+.wkfoot{margin-top:10px;padding:9px 12px;border-radius:8px;background:#eef4ff;border:1px solid #dbe6ff;font-size:12.5px;color:#1d4ed8;line-height:1.7}
+.wkfoot b{color:#b91c1c}
+.wk th{font-size:12px;color:#6b7280;font-weight:600;padding:8px 6px;background:#fbfcfd;border-bottom:1px solid #eef1f4;text-align:center;white-space:nowrap}
+.wk td{padding:5px 6px;border-bottom:1px solid #f5f7f9;text-align:center;vertical-align:middle}
+.wk td:first-child{text-align:left;font-weight:600;white-space:nowrap}
+.wk td input[type=number]{width:66px}
+.wk td input[type=text]{width:100%;min-width:96px;text-align:left}
+.wk tr.tot td{background:#f9fafb;font-weight:700}
+.wk .sumcell{font-weight:700;color:#2563eb}
+.wkweek td{background:#eff6ff;font-weight:700;color:#1d4ed8;text-align:left;padding:8px 12px;border-top:2px solid #dbeafe}
+.wkweek .wkrow{display:flex;justify-content:space-between;align-items:center;gap:10px;font-weight:700;color:#1d4ed8}
+.wkweek .wkrow button{border:1px solid #bfdbfe;background:#fff;color:#1d4ed8;border-radius:7px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.wkweek .wkrow button:hover{background:#dbeafe}
+.wk textarea{min-height:44px}
+.wk tr.selday td{background:#fff8e1}
+.wk tr.selday td:first-child{box-shadow:inset 4px 0 0 #f0b429}
+.wk td.who{font-size:12px;color:#374151;text-align:center;white-space:nowrap}
+.wk td.who.sub{color:#1d4ed8;font-weight:600}
+.wk tr.rowsub td{background:#fafbff}
+.wk tr.rowsub td.who{background:#eef4ff}
+.wk tr.rowsub input,.wk tr.rowsub textarea{background:#fcfdff}
+.codewrap{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.codewrap .cc{display:flex;align-items:center;gap:3px}
+.codewrap .cc input.cin{flex:1;min-width:0;padding:5px 6px;font-size:12px;text-align:left;min-width:0!important}
+.codewrap .cc input.cqn{width:46px;padding:5px 2px;font-size:12px;text-align:center}
+.codewrap .cc i{font-size:11px;color:#9ca3af;font-style:normal}
+.wkdist{margin-top:8px;font-size:12px;color:#4b5563;line-height:1.9;background:#f8fafc;border:1px solid #eef1f4;border-radius:8px;padding:8px 12px}
+.wkdist b{color:#1d4ed8}
+.wkcard .wk td:nth-child(5){padding:6px 8px}
+.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(17,24,39,.45);display:none;z-index:99;padding:20px;overflow:auto}
+.modal .mbox{max-width:760px;margin:60px auto;background:#fff;border-radius:12px;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,.18)}
+.modal h3{font-size:15px;margin-bottom:6px}
+.modal p{font-size:12px;color:#6b7280;line-height:1.8;margin-bottom:10px}
+.modal textarea{min-height:220px;width:100%}
+.modal .mbtns{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;padding:10px 14px;line-height:1.9;white-space:normal}
+.legend{font-size:12px;color:#9ca3af;margin-top:8px}
+.empty{text-align:center;color:#9ca3af;padding:26px 0;font-size:13px}
+.hint{font-size:12px;color:#d97706;margin-left:8px;display:none}
+.tgtpanel{border:1px solid #e5e8ec;background:#fbfcfd;border-radius:10px;padding:14px}
+.thumb{width:46px;height:46px;object-fit:cover;border-radius:6px;border:1px solid #eef1f4;background:#f7f8fa;cursor:zoom-in}
+.thumb.s{width:36px;height:36px}
+#imgView{position:fixed;inset:0;background:rgba(17,24,39,.86);display:none;z-index:120;padding:28px;text-align:center;cursor:zoom-out}
+#imgView img{max-width:92vw;max-height:86vh;border-radius:8px;box-shadow:0 12px 40px rgba(0,0,0,.5);background:#fff}
+#imgView .vbar{position:fixed;top:14px;right:20px;display:flex;gap:10px;align-items:center}
+#imgView .vbar button{border:none;background:rgba(255,255,255,.16);color:#fff;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;font-family:inherit}
+#imgView .vbar a{color:#fff;font-size:13px;text-decoration:underline}
+.itemblock{border:1px solid #e8ecf0;background:#fbfcfd;border-radius:10px;padding:12px;margin-bottom:10px}
+.itemblock .ih{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+.itemblock .ih b{font-size:12px;color:#2563eb}
+.script{width:100%;border-collapse:collapse;margin-top:10px;background:#fff;border:1px solid #eef1f4;border-radius:8px;overflow:hidden}
+.script th{font-size:12px;color:#6b7280;background:#f7f9fb;padding:7px 8px;border-bottom:1px solid #eef1f4;text-align:left;font-weight:600;white-space:nowrap}
+.script td{padding:4px 5px;border-bottom:1px solid #f2f5f8;vertical-align:top}
+.script td textarea{width:100%;min-height:36px;border:1px solid transparent;background:transparent;padding:6px 8px;border-radius:6px;line-height:1.65;font-size:13px;resize:vertical;overflow:hidden;white-space:pre-wrap;word-break:break-word}
+.script td textarea:focus{border-color:#2563eb;background:#fff;overflow:auto}
+.script td.line textarea{background:#fff8e1;font-weight:600;color:#92400e}
+.script td.line.plain textarea{background:#fff;font-weight:400;color:#374151}
+.script td.dur textarea{text-align:center;min-height:34px}
+.script td.idx{width:34px;text-align:center;color:#9ca3af;font-size:12px;padding-top:14px;white-space:nowrap}
+.script td.op{width:104px;text-align:center;padding-top:11px;white-space:nowrap}
+.script td.dur{width:78px}
+.script td.hlcell{width:50px;text-align:center;padding-top:14px}
+.script td.hlcell input{width:auto;cursor:pointer;accent-color:#2563eb}
+.script td.idx{width:34px;text-align:center;color:#9ca3af;font-size:12px;padding-top:12px;white-space:nowrap}
+.script td.op{width:46px;text-align:center;padding-top:9px;white-space:nowrap}
+.script td.dur{width:74px}
+.script td.dur input{text-align:center}
+.imgrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.imgwrap{position:relative;display:inline-block;line-height:0}
+.imgwrap .del{position:absolute;top:-7px;right:-7px;width:18px;height:18px;border-radius:50%;background:#dc2626;color:#fff;border:none;font-size:11px;line-height:18px;cursor:pointer;padding:0;z-index:2}
+.copycell{text-align:left;white-space:normal;max-width:260px;font-size:12px;color:#4b5563;line-height:1.6}
+.linkcell{font-size:12px;word-break:break-all;max-width:150px}
+.linkcell a{color:#2563eb;text-decoration:none}
+.badge{display:inline-block;font-size:12px;padding:2px 8px;border-radius:6px;background:#f1f3f6;color:#4b5563}
+.badge.g{background:#ecfdf3;color:#059669}
+.badge.b{background:#eff6ff;color:#2563eb}
+.badge.o{background:#fffaeb;color:#b45309}
+.badge.r{background:#fef2f2;color:#dc2626}
+@media(max-width:640px){body{padding:12px}.card{min-width:100%}.period{align-items:flex-start}.tabs{width:100%}}
+</style>
+<style>
+#cloudChip{position:fixed;left:14px;bottom:14px;z-index:99999;background:#374151;color:#fff;
+  font-size:12px;line-height:1;padding:8px 13px;border-radius:20px;cursor:pointer;opacity:.9;
+  font-family:-apple-system,"Microsoft YaHei",sans-serif;user-select:none;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+#cloudChip.ok{background:#15734a}
+#cloudChip.doing{background:#1d4ed8}
+#cloudChip.fail{background:#b42318}
+</style>
+<script>
+/* ===== 云端同步层：数据存 Supabase，电脑和手机共用同一份 ===== */
+(function () {
+  var SB_URL = "https://pgcwhsirjmntwbqwzomu.supabase.co";
+  var SB_KEY = "sb_publishable_tbvdFyg9_xlmQ-wlF9bH-Q_40ASN_Kc";
+  var FULL   = SB_URL + "/rest/v1/app_state";
+  var HDR    = { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY, "Content-Type": "application/json" };
+  var LOCAL_ONLY = { "clipBackupV1": 1, "clipUndoV1": 1 };
+
+  function synced(k) { return !!k && k.indexOf("clip") === 0 && !LOCAL_ONLY[k]; }
+
+  var hydrating = true, pending = {}, timer = null, chip = null, pulledOK = false;
+
+  function setChip(text, cls) { if (chip) { chip.textContent = text; chip.className = "cloudChip " + (cls || ""); } }
+  function hm() { var d = new Date(); return ("0"+d.getHours()).slice(-2) + ":" + ("0"+d.getMinutes()).slice(-2); }
+
+  /* ---------- 1) 打开先拉云端 ---------- */
+  var forcePull = false;
+  try { forcePull = sessionStorage.getItem("clipCloudForcePull") === "1"; sessionStorage.removeItem("clipCloudForcePull"); } catch (e) {}
+
+  var rows = [];
+  try {
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", FULL + "?select=key,value&apikey=" + encodeURIComponent(SB_KEY), false);
+    xhr.send(null);
+    if (xhr.status >= 200 && xhr.status < 300) { rows = JSON.parse(xhr.responseText || "[]") || []; pulledOK = true; }
+  } catch (e) { pulledOK = false; }
+
+  var cloud = {};
+  for (var i = 0; i < rows.length; i++) if (synced(rows[i].key)) cloud[rows[i].key] = (rows[i].value == null ? "" : rows[i].value);
+
+  var isFirstUpload = (pulledOK && rows.length === 0);   /* 云端空：把本机数据先传上去 */
+  if (pulledOK && (forcePull || !isFirstUpload)) {
+    if (forcePull) {
+      var ks = [];
+      for (var a = 0; a < localStorage.length; a++) { var k0 = localStorage.key(a); if (synced(k0)) ks.push(k0); }
+      for (var b = 0; b < ks.length; b++) localStorage.removeItem(ks[b]);
+    } else {
+      var dels = [];
+      for (var c = 0; c < localStorage.length; c++) { var k1 = localStorage.key(c); if (synced(k1) && !(k1 in cloud)) dels.push(k1); }
+      for (var d = 0; d < dels.length; d++) localStorage.removeItem(dels[d]);
+    }
+    for (var key in cloud) { if (Object.prototype.hasOwnProperty.call(cloud, key)) localStorage.setItem(key, cloud[key]); }
+  }
+  hydrating = false;
+
+  /* ---------- 2) 之后的写入自动推云端 ---------- */
+  var origSet = Storage.prototype.setItem;
+  var origRemove = Storage.prototype.removeItem;
+
+  Storage.prototype.setItem = function (k, v) {
+    origSet.call(this, k, v);
+    if (this === localStorage && !hydrating && synced(k)) queue(k, v);
+  };
+  Storage.prototype.removeItem = function (k) {
+    origRemove.call(this, k);
+    if (this === localStorage && !hydrating && synced(k)) queue(k, "");
+  };
+
+  function queue(k, v) {
+    pending[k] = v;
+    setChip("☁ 同步中…", "doing");
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(flush, 700);
+  }
+
+  function flush() {
+    timer = null;
+    var keys = [], k;
+    for (k in pending) { if (Object.prototype.hasOwnProperty.call(pending, k)) keys.push(k); }
+    if (!keys.length) return;
+    var payload = [], sending = {};
+    for (var i = 0; i < keys.length; i++) { payload.push({ key: keys[i], value: pending[keys[i]] }); sending[keys[i]] = pending[keys[i]]; }
+    pending = {};
+    fetch(FULL + "?on_conflict=key", {
+      method: "POST",
+      headers: { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates" },
+      body: JSON.stringify(payload)
+    }).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      setChip("☁ 已同步 " + hm(), "ok");
+    }).catch(function () {
+      for (var kk in sending) { if (!(kk in pending)) pending[kk] = sending[kk]; }
+      setChip("⚠ 同步失败，点这里重试", "fail");
+    });
+  }
+
+  function uploadLocalAll() {
+    var up = [];
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (synced(k)) up.push({ key: k, value: localStorage.getItem(k) });
+    }
+    if (!up.length) { setChip("☁ 云端为空", "ok"); return; }
+    setChip("☁ 首次上传中…", "doing");
+    fetch(FULL + "?on_conflict=key", {
+      method: "POST",
+      headers: { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates" },
+      body: JSON.stringify(up)
+    }).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      setChip("☁ 已同步 " + hm(), "ok");
+    }).catch(function () { setChip("⚠ 首次上传失败，点这里重试", "fail"); });
+  }
+
+  function buildChip() {
+    chip = document.createElement("div");
+    chip.id = "cloudChip";
+    chip.className = "cloudChip";
+    chip.textContent = pulledOK ? (isFirstUpload ? "☁ 准备上传本机数据" : "☁ 已同步") : "⚠ 云端未连接";
+    chip.title = "点一下：重试未同步的数据；再从云端重新拉取会弹确认";
+    chip.onclick = function () {
+      if (!pulledOK || isFirstUpload) { uploadLocalAll(); isFirstUpload = false; return; }
+      var n = 0; for (var k in pending) n++;
+      if (n) { flush(); return; }
+      if (confirm("要从云端重新拉取吗？\n\n会用云端数据刷新这个浏览器里的缓存（云端为空则改为上传本机）。\n确定后页面自动重新加载。")) {
+        try { sessionStorage.setItem("clipCloudForcePull", "1"); } catch (e) {}
+        location.reload();
+      }
+    };
+    document.body.appendChild(chip);
+    if (pulledOK && isFirstUpload) uploadLocalAll();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", buildChip);
+  } else { buildChip(); }
+})();
+</script>
+</head>
+<body>
+
+<h1>剪辑素材登记</h1>
+<p class="sub">素材台账 · 周计划 · 执行结果，自动同步到云端</p>
+
+<div class="tabs">
+  <button class="tab on" data-pane="prog" onclick="switchTab('prog')">进度总览</button>
+  <button class="tab" data-pane="ledger" onclick="switchTab('ledger')">剪辑登记</button>
+  <button class="tab" data-pane="shoot" onclick="switchTab('shoot')">每日计划</button>
+  <button class="tab" data-pane="plan" onclick="switchTab('plan')">周计划</button>
+  <button class="tab" data-pane="sheet" onclick="switchTab('sheet')">周计划表</button>
+  <button class="tab" data-pane="result" onclick="switchTab('result')">执行结果</button>
+</div>
+
+<div class="btns" style="margin:-2px 0 14px">
+  <button class="mini" onclick="exportAllJson()">⬇ 导出全部数据备份</button>
+  <button class="mini green" onclick="exportPortableHtml()">📦 导出带数据的副本（可直接发人）</button>
+  <button class="mini" onclick="importAllJson()">⬆ 导入备份文件恢复</button>
+  <button class="mini blue" onclick="importAllJsonMerge()">⇆ 导入备份并合并（不覆盖本机）</button>
+  <button class="mini" onclick="autoBackup();alert('已生成一份自动备份（存本机浏览器）')">🛟 立即自动备份</button>
+  <button class="mini" onclick="restoreUndo()">↩ 撤销上次清空/删除</button>
+  <span class="legend" style="margin:0">数据已自动同步到云端，电脑和手机打开是同一份；建议仍定期点上面的“导出全部数据备份”留一份</span>
+</div>
+
+<input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="onImportFile(this)">
+<input type="file" id="multiPick" accept="image/*" multiple style="display:none" onchange="onMultiPick(this)">
+
+<!-- ================= 进度总览 ================= -->
+<div id="pane-prog" class="pane">
+  <div class="box">
+    <div class="period">
+      <div class="nav" style="gap:8px">
+        <button onclick="shiftProg(-1)">‹ 上一期</button>
+        <b id="progRange">—</b>
+        <button onclick="shiftProg(1)">下一期 ›</button>
+        <button class="mini" onclick="resetProg()">回到本期</button>
+      </div>
+      <div class="ops"><button class="mini" onclick="switchTab('ledger');toggleTargetPanel()">⚙ 修改目标（在剪辑登记里）</button></div>
+    </div>
+    <div class="stats">
+      <div class="card"><div class="k">本期目标（合计）</div><div class="v" id="pgAim">0<small>条</small></div></div>
+      <div class="card"><div class="k">本期已剪</div><div class="v" id="pgDone">0<small>条</small></div><div class="bar"><i class="g" id="pgBar" style="width:0"></i></div></div>
+      <div class="card"><div class="k">还差多少</div><div class="v" id="pgGap">0<small>条</small></div></div>
+      <div class="card"><div class="k">完成率</div><div class="v" id="pgRate">0<small>%</small></div></div>
+    </div>
+    <h2 style="margin:4px 0 10px">七类进度明细（目标 / 已排计划 / 实际已剪 / 还差）</h2>
+    <div class="scroll">
+      <table class="sum">
+        <thead><tr><th>内容类型</th><th>目标</th><th>已排计划</th><th>实际已剪</th><th>还差</th><th style="width:220px">完成进度</th></tr></thead>
+        <tbody id="progBody"></tbody>
+      </table>
+    </div>
+    <p class="legend">「已排计划」取周计划表里这一期各类型的挂链+不挂链；「实际已剪」取剪辑登记里这一期登记的条数。</p>
+
+    <h2 style="margin:18px 0 10px">拍摄量 / 剪辑量（整期总账）</h2>
+    <div class="scroll">
+      <table class="sum">
+        <thead><tr><th>项目</th><th>目标</th><th>已排（计划）</th><th>已完成（实际）</th><th>还差</th><th style="width:220px">完成进度</th></tr></thead>
+        <tbody id="progBody2"></tbody>
+      </table>
+    </div>
+    <p class="legend">拍摄：只算我拍的，已完成按执行结果里登记的已拍量。剪辑：按剪辑登记里「谁剪」分别算我剪 / 下属剪，目标在「⚙ 修改目标」里分别填。</p>
+  </div>
+
+  <div class="box">
+    <div class="listhead">
+      <h2>月度目标（按月单独设 · 可导出）</h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="month" id="mtMonth" onchange="renderMonthTgt()" style="padding:6px 8px;font-size:13px;border:1px solid #dfe3e8;border-radius:8px">
+        <button class="mini blue" onclick="exportMonthTgtImage()">导出月目标图片</button>
+        <button class="mini" onclick="exportMonthTgtCsv()">导出CSV</button>
+      </div>
+    </div>
+    <div class="stats" style="margin-bottom:10px">
+      <div class="card"><div class="k">本月拍摄目标</div><div class="v" id="mtShootVal">0<small>条</small></div></div>
+      <div class="card"><div class="k">本月我剪目标</div><div class="v" id="mtEditMeVal">0<small>条</small></div></div>
+      <div class="card"><div class="k">本月下属剪目标</div><div class="v" id="mtEditSubVal">0<small>条</small></div></div>
+      <div class="card"><div class="k">本月剪辑合计</div><div class="v" id="mtTotalVal">0<small>条</small></div></div>
+    </div>
+    <div class="scroll">
+      <table class="sum">
+        <thead><tr><th>内容类型</th><th style="width:118px">拍摄目标<br><span class="tgt" style="font-weight:400">（我拍）</span></th><th style="width:112px">挂链<br><span class="tgt" style="font-weight:400">（我剪）</span></th><th style="width:112px">不挂链<br><span class="tgt" style="font-weight:400">（我剪）</span></th><th style="width:100px">我剪小计</th><th style="width:118px">剪辑目标<br><span class="tgt" style="font-weight:400">（下属剪）</span></th></tr></thead>
+        <tbody id="mtBody"></tbody>
+        <tr class="tot"><td>合计</td><td id="mtShootT">0</td><td id="mtL">0</td><td id="mtN">0</td><td id="mtT">0</td><td id="mtSubT">0</td></tr>
+      </table>
+    </div>
+    <div class="btns" style="margin-top:10px">
+      <button class="add" onclick="saveMonthTgt()">保存本月目标</button>
+      <button class="ghost" onclick="copyMonthTgtFromPeriod()">用本期目标填本月</button>
+      <button class="ghost" onclick="copyMonthTgtPrev()">复制上月目标</button>
+    </div>
+    <p class="legend">一个月一套自己的目标，和上面「本期（15日～次月14日）」的目标互不影响；拍摄列只有真会拍的类型能填，切片 / 混剪属于剪辑形式，这里固定不参与拍摄。</p>
+  </div>
+</div>
+
+<!-- ================= 剪辑登记 ================= -->
+<div id="pane-ledger" class="pane" style="display:none">
+  <div class="box">
+    <div class="period">
+      <div class="seg">
+        <button id="segCycle" class="on" onclick="setMode('cycle')">本期（15日～次月14日）</button>
+        <button id="segMonth" onclick="setMode('month')">自然月（1日～月底）</button>
+      </div>
+      <div class="nav">
+        <button class="mini blue" onclick="toggleTargetPanel()" id="tgtBtn">⚙ 修改目标</button>
+        <button onclick="shift(-1)">‹ 上一期</button>
+        <b id="cycleRange">—</b>
+        <button onclick="shift(1)">下一期 ›</button>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="card"><div class="k">挂链条数</div><div class="v"><span id="vLink">0</span><small>/ <span id="gLink">60</span></small></div><div class="bar"><i id="bLink" style="width:0"></i></div></div>
+      <div class="card"><div class="k">不挂链条数</div><div class="v"><span id="vNoLink">0</span><small>/ <span id="gNoLink">52</span></small></div><div class="bar"><i id="bNoLink" class="g" style="width:0"></i></div></div>
+      <div class="card"><div class="k">合计条数</div><div class="v"><span id="vTotal">0</span><small>/ <span id="gTotal">112</span></small></div><div class="bar"><i id="bTotal" style="width:0"></i></div></div>
+      <div class="card"><div class="k">已登记天数</div><div class="v"><span id="vDays">0</span><small>天</small></div></div>
+    </div>
+
+    <h2 style="margin-bottom:10px">分类汇总（对比本期目标）</h2>
+    <div class="scroll">
+      <table class="sum">
+        <thead><tr><th>内容类型</th><th>挂链</th><th>挂链目标</th><th>不挂链</th><th>不挂链目标</th><th>小计</th></tr></thead>
+        <tbody id="sumBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="box">
+    <div class="listhead">
+      <h2>周完成剪辑量（周一 ~ 周日，可切换周）</h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="mini blue" onclick="exportWeekImage('done')">导出表格图片（图一格式）</button>
+        <button class="mini" onclick="exportWeekCsv('done')">导出CSV</button>
+      </div>
+    </div>
+    <div class="nav" style="gap:8px;margin-bottom:8px;display:flex;align-items:center;flex-wrap:wrap;font-size:13px">
+      <button class="mini" onclick="shiftWeekDone(-1)">‹ 上一周</button>
+      <input type="date" id="weekDonePick" onchange="setWeekDoneDay(this.value)">
+      <button class="mini" onclick="shiftWeekDone(1)">下一周 ›</button>
+      <button class="mini" onclick="resetWeekDone()">本周</button>
+      <span class="legend" style="margin:0">选任意一天，就显示那一天所在的那一周</span>
+    </div>
+    <div id="weekDoneHead" class="legend" style="margin:0 0 10px"></div>
+    <div class="scroll">
+      <table class="wk">
+        <thead><tr><th>产出形式</th><th>挂链（条）</th><th>不挂链（条）</th><th>小计（条）</th><th>拍摄款号</th></tr></thead>
+        <tbody id="weekDoneBody"></tbody>
+      </table>
+    </div>
+    <p class="legend">挂链/不挂链 是按台账里本周实际登记的数自动算的；款号空着就直接在这里补，会存下来。</p>
+  </div>
+
+  <div class="box">
+    <div class="listhead">
+      <h2>分类进度（可切换类型）</h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span class="legend" style="margin:0">选类型：</span>
+        <select id="voType" onchange="setVoType(this.value)" style="padding:6px 8px;font-size:13px;border:1px solid #dfe3e8;border-radius:8px"></select>
+        <span class="legend" style="margin:0">目标是「修改目标」里这一类的挂链+不挂链</span>
+      </div>
+    </div>
+    <div class="stats" style="margin-bottom:0">
+      <div class="card"><div class="k"><span id="voName">口播</span>目标</div><div class="v" id="voAim">0<small>条</small></div></div>
+      <div class="card"><div class="k">已排进计划</div><div class="v" id="voPlan">0<small>条</small></div></div>
+      <div class="card"><div class="k">台账实际已剪</div><div class="v" id="voDone">0<small>条</small></div></div>
+      <div class="card"><div class="k">还差</div><div class="v" id="voGap">0<small>条</small></div><div class="bar"><i id="voBar" class="g" style="width:0"></i></div></div>
+    </div>
+    <p class="legend" id="voHint" style="margin-bottom:0"></p>
+  </div>
+
+  <div class="box" id="targetPanel" style="display:none">
+    <div class="listhead"><h2>目标设置</h2><span class="legend">改完点保存，统计即刻按新目标计算</span></div>
+    <div class="flds" style="margin-bottom:12px">
+      <div class="fld"><label>拍摄目标合计（自动）</label><span class="legend" style="margin:0;font-size:15px;color:#111827"><b id="tgShootVal">0</b> 条/期</span></div>
+      <div class="fld"><label>我剪目标合计（自动）</label><span class="legend" style="margin:0;font-size:15px;color:#111827"><b id="tgEditMeVal">0</b> 条/期</span></div>
+      <div class="fld"><label>下属剪目标合计（自动）</label><span class="legend" style="margin:0;font-size:15px;color:#111827"><b id="tgEditSubVal">0</b> 条/期</span></div>
+      <div class="fld"><label>剪辑合计</label><span class="legend" style="margin:0" id="tgEditTotal">0 条</span></div>
+      <div class="fld grow"><label>说明</label><span class="legend" style="margin:0">三类目标都在下面按类型填，上面三个数字自动加总。拍摄只归我；剪辑按「我剪 / 下属剪」分开算。</span></div>
+    </div>
+    <div class="tgtpanel">
+      <div class="scroll">
+        <table class="sum">
+          <thead><tr><th>内容类型</th><th style="width:118px">拍摄目标<br><span class="tgt" style="font-weight:400">（我拍）</span></th><th style="width:112px">挂链目标<br><span class="tgt" style="font-weight:400">（我剪）</span></th><th style="width:112px">不挂链目标<br><span class="tgt" style="font-weight:400">（我剪）</span></th><th style="width:100px">我剪小计</th><th style="width:118px">剪辑目标<br><span class="tgt" style="font-weight:400">（下属剪）</span></th></tr></thead>
+          <tbody id="tgtBody"></tbody>
+          <tr class="tot"><td>合计</td><td id="tgShootT">0</td><td id="tgL">0</td><td id="tgN">0</td><td id="tgT">0</td><td id="tgSubT">0</td></tr>
+        </table>
+      </div>
+      <div class="btns">
+        <button class="add" onclick="saveTargets()">保存目标</button>
+        <button class="ghost" onclick="resetTargets()">恢复默认目标</button>
+        <button class="ghost" onclick="autoFillShootTargets()">按我剪比例分摊「拍摄」列</button>
+        <button class="ghost" onclick="autoFillSubTargets()">按我剪比例分摊「下属剪」列</button>
+      </div>
+    </div>
+    <div class="tgtpanel" style="margin-top:14px">
+      <div class="listhead" style="margin-bottom:10px">
+        <h2>按人 · 按周期定目标</h2>
+        <span class="legend">我负责拍+剪；下属固定一人只剪。日 / 周 / 月分别定，互不换算。</span>
+      </div>
+      <div class="flds">
+        <div class="fld"><label>人员</label>
+          <select id="ppWho" onchange="renderPersonTargets()"><option value="me">我</option><option value="sub">下属</option></select>
+        </div>
+        <div class="fld"><label>周期</label>
+          <select id="ppCycle" onchange="renderPersonTargets()"><option value="day">每天</option><option value="week">每周</option><option value="month">每月</option></select>
+        </div>
+        <div class="fld"><label>拍摄条数</label><input type="number" min="0" id="ppShoot" placeholder="0"></div>
+        <div class="fld"><label>剪辑条数（总量）</label><input type="number" min="0" id="ppEdit" placeholder="0"></div>
+        <div class="fld grow"><label>折算参考</label><span class="legend" style="margin:0" id="ppHint"></span></div>
+      </div>
+      <div class="scroll">
+        <table class="sum">
+          <thead><tr><th>内容类型</th><th>剪辑条数目标</th><th>占剪辑总量比例</th></tr></thead>
+          <tbody id="ppBody"></tbody>
+        </table>
+      </div>
+      <div class="btns">
+        <button class="add" onclick="savePersonTargets()">保存这一档目标</button>
+        <button class="ghost" onclick="autoSplitPersonTargets()">按剪辑总量自动分摊到各类型</button>
+        <span class="legend" style="margin:0">例：我 · 每周 → 拍摄 67 条、剪辑 100 条，再按各类型分下去</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="box">
+    <div class="flds">
+      <div class="fld"><label>日期</label><div><input type="date" id="logDate" onchange="checkDup()"><span class="wd on" id="dateWd"></span></div></div>
+      <div class="fld"><label>这批是谁剪的</label><select id="logOwner" style="padding:8px 10px;font-size:13px"><option value="">我</option><option value="sub">下属</option></select></div>
+      <div class="fld grow"><label>当天备注（选填）</label><input type="text" id="note" placeholder="例：上午棚拍，下午外景，模特小杨"></div>
+    </div>
+    <div class="scroll">
+      <table class="entry">
+        <thead><tr><th>内容类型</th><th>挂链（条）</th><th>不挂链（条）</th><th>小计</th><th>剪了哪些素材（选填）</th></tr></thead>
+        <tbody id="formBody"></tbody>
+        <tr class="sum"><td>合计</td><td id="sumLink">0</td><td id="sumNoLink">0</td><td id="sumAll">0</td><td></td></tr>
+      </table>
+    </div>
+    <div class="btns">
+      <button class="add" id="saveBtn" onclick="saveDay()">保存当天记录</button>
+      <button class="ghost" onclick="resetForm(true)">清空重填</button>
+      <button class="green" onclick="exportCsv()">导出 CSV</button>
+      <span class="hint" id="dupHint">该日期已有记录，保存会覆盖</span>
+    </div>
+  </div>
+
+  <div class="box">
+    <div class="listhead"><h2>已登记记录</h2><input id="kw" placeholder="搜日期 / 备注 / 素材" oninput="renderRecords()"></div>
+    <div class="scroll"><table class="rec"><thead id="recHead"></thead><tbody id="recBody"></tbody></table></div>
+    <p class="legend">单元格为「挂链 / 不挂链」；点「明细」展开当天剪的具体素材。</p>
+  </div>
+</div>
+
+<!-- ================= 周计划 ================= -->
+<div id="pane-plan" class="pane" style="display:none">
+  <div class="box" style="padding:12px 16px">
+    <div class="nav" style="gap:8px;display:flex;align-items:center;flex-wrap:wrap;font-size:13px">
+      <button class="mini" onclick="shiftPlanWeek(-1)">‹ 上一周</button>
+      <input type="date" id="planWeekPick" onchange="setPlanWeek(this.value)">
+      <button class="mini" onclick="shiftPlanWeek(1)">下一周 ›</button>
+      <button class="mini" onclick="resetPlanWeek()">本周</button>
+      <button class="mini" id="planAllBtn" onclick="togglePlanAll()">显示全部</button>
+      <span class="legend" style="margin:0" id="planRangeText"></span>
+    </div>
+    <div class="nav" style="gap:8px;display:flex;align-items:center;flex-wrap:wrap;font-size:13px;margin-top:8px">
+      <span style="font-size:12px;color:#6b7280">按时间段统计</span>
+      <input type="date" id="planFromPick" onchange="setPlanRange('from',this.value)" style="padding:6px 8px;font-size:13px">
+      <span style="font-size:12px;color:#6b7280">~</span>
+      <input type="date" id="planToPick" onchange="setPlanRange('to',this.value)" style="padding:6px 8px;font-size:13px">
+      <button class="mini" onclick="setPlanThisPeriod()">本期（15日～次月14日）</button>
+      <button class="mini" onclick="setPlanThisMonth()">本月</button>
+      <button class="mini" onclick="clearPlanRange()">清除时间</button>
+      <span class="legend" style="margin:0" id="planStatText"></span>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="card"><div class="k" id="pCountK">本周计划项</div><div class="v" id="pCount">0<small>项</small></div></div>
+    <div class="card"><div class="k" id="pQtyK">本周计划总量</div><div class="v" id="pQty">0<small>条</small></div></div>
+    <div class="card"><div class="k" id="pDoneK">本周已产出</div><div class="v" id="pDone">0<small>条</small></div><div class="bar"><i class="g" id="pBar" style="width:0"></i></div></div>
+  </div>
+
+  <div class="box">
+    <div class="listhead"><h2>新增 / 编辑周计划</h2><span class="legend">一条计划里可以一条条加文案，每条文案可以配自己的链接和多张图</span></div>
+    <div class="flds">
+      <div class="fld"><label>计划日期</label><div><input type="date" id="pDate" onchange="autoWeek()"><span class="wd on" id="pWd"></span></div></div>
+      <div class="fld"><label>周次</label><input type="text" id="pWeek" placeholder="自动生成，可改"></div>
+      <div class="fld"><label>计划名称</label><input type="text" id="pName" placeholder="例：针织开衫通勤3套混剪"></div>
+      <div class="fld"><label>内容类型</label>
+        <select id="pType">
+          <option>口播</option><option>切片</option><option>混剪</option>
+          <option>产品展示</option><option>测评/开箱</option><option>随拍</option>
+        </select>
+      </div>
+      <div class="fld"><label>计划数量</label><input type="number" min="0" id="pQty" placeholder="0"></div>
+      <div class="fld"><label>状态</label>
+        <select id="pStatus"><option>未开始</option><option>进行中</option><option>已完成</option><option>延期</option></select>
+      </div>
+    </div>
+
+    <div class="ih" style="display:flex;justify-content:space-between;align-items:center;margin:4px 0 10px">
+      <h2>文案 / 参考图</h2>
+      <button class="mini blue" onclick="addItem('plan')">+ 添加一条文案</button>
+    </div>
+    <div id="pItems"></div>
+
+    <div class="btns">
+      <button class="add" id="pSaveBtn" onclick="savePlan()">保存周计划</button>
+      <button class="ghost" onclick="resetPlanForm(true)">清空重填</button>
+    </div>
+  </div>
+
+  <div class="box">
+    <div class="listhead"><h2>周计划列表</h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input id="pKw" placeholder="搜名称 / 文案 / 周次" oninput="renderPlans()">
+        <button class="mini blue" onclick="exportScripts()">批量导出全部文案</button>
+        <button class="mini green" onclick="exportScriptImage()">批量导出文案图片</button>
+      </div>
+    </div>
+    <div class="scroll">
+      <table class="rec">
+        <thead><tr><th>日期</th><th>周次</th><th>计划</th><th>类型</th><th>数量</th><th>状态</th><th>文案</th><th>图片</th><th>链接</th><th>产出</th><th>操作</th></tr></thead>
+        <tbody id="planBody"></tbody>
+      </table>
+    </div>
+    <p class="legend">「产出」为执行结果里挂在这条计划上的次数和条数。</p>
+  </div>
+</div>
+
+<!-- ================= 执行结果 ================= -->
+<div id="pane-result" class="pane" style="display:none">
+  <div class="box">
+    <div class="listhead"><h2>新增 / 编辑执行结果</h2><span class="legend">一条结果里可以一条条加成片，每条配链接和多张图</span></div>
+    <div class="flds">
+      <div class="fld"><label>关联周计划</label><select id="rPlan"></select></div>
+      <div class="fld"><label>执行日期</label><div><input type="date" id="rDate" onchange="showResWd()"><span class="wd on" id="rWd"></span></div></div>
+      <div class="fld"><label>实际数量</label><input type="number" min="0" id="rQty" placeholder="0"></div>
+    </div>
+
+    <div class="listhead" style="margin:6px 0 6px">
+      <h3 style="margin:0;font-size:13.5px;color:#374151">本次拍摄完成量（按类型填条数，自动同步到进度总览）</h3>
+      <span class="legend" style="margin:0" id="resShotTotal">已拍 0 条</span>
+    </div>
+    <div class="scroll" style="margin-bottom:8px">
+      <table class="sum">
+        <thead><tr id="rShotHead"></tr></thead>
+        <tbody><tr id="rShotRow"></tr></tbody>
+      </table>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:4px 0 10px">
+      <h2>成片 / 结果图</h2>
+      <button class="mini blue" onclick="addItem('result')">+ 添加一条成片</button>
+    </div>
+    <div id="rItems"></div>
+
+    <div class="flds" style="margin-top:12px">
+      <div class="fld grow"><label>整体复盘</label><textarea id="rReview" placeholder="哪条完播最高、哪个镜头要补、下次怎么改…"></textarea></div>
+    </div>
+
+    <div class="btns">
+      <button class="green" id="rSaveBtn" onclick="saveResult()">保存执行结果</button>
+      <button class="ghost" onclick="resetResultForm(true)">清空重填</button>
+    </div>
+  </div>
+
+  <div class="box">
+    <div class="listhead"><h2>执行结果列表</h2><input id="rKw" placeholder="搜计划 / 复盘" oninput="renderResults()"></div>
+    <div class="scroll">
+      <table class="rec">
+        <thead><tr><th>执行日期</th><th>关联计划</th><th>实际数量</th><th>成片链接</th><th>结果图</th><th>复盘</th><th>操作</th></tr></thead>
+        <tbody id="resBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 周计划表 ================= -->
+<div id="pane-sheet" class="pane" style="display:none">
+  <div class="box">
+    <div class="listhead">
+      <h2>周计划表（图二格式：含资金 / 模特 / 协助）</h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="mini blue" onclick="addWeekTable()">+ 新增一周</button>
+        <button class="mini" onclick="exportWeekCsv('plan')">导出全部CSV</button>
+      </div>
+    </div>
+    <p class="legend" style="margin:0 0 12px">每周一张表：周次、发布账号、周度目标、7 类产出形式（挂链 / 不挂链 / 款号），再填资金申请、模特、其他协助。</p>
+    <div id="sheetList"></div>
+  </div>
+</div>
+
+<!-- ================= 拍摄剪辑计划 ================= -->
+<div id="pane-shoot" class="pane" style="display:none">
+  <div class="box">
+    <div class="period stickybar">
+      <div class="nav" style="gap:10px">
+        <button onclick="shiftShoot(-1)">‹ 上个月</button>
+        <b id="shootMonth">—</b>
+        <button onclick="shiftShoot(1)">下个月 ›</button>
+        <span style="font-size:12px;color:#6b7280">选择月份</span>
+        <input type="month" id="shootMonthPick" onchange="setShootMonth(this.value)" style="padding:6px 8px;font-size:13px">
+        <span style="font-size:12px;color:#6b7280">选中天数范围</span>
+        <input type="date" id="shootFromPick" onchange="setShootRange('from',this.value)" style="padding:6px 8px;font-size:13px" title="开始日期">
+        <span style="font-size:12px;color:#6b7280">~</span>
+        <input type="date" id="shootToPick" onchange="setShootRange('to',this.value)" style="padding:6px 8px;font-size:13px" title="结束日期">
+        <button class="mini" onclick="selShootWeek()">选本周</button>
+        <button class="mini blue" onclick="selShootNextWeek()">排下周（下周一～周日）</button>
+        <button class="mini" onclick="clearShootDate()">取消选中</button>
+        <button class="mini" onclick="resetShootMonth()">回到本月</button>
+        <span class="legend" style="margin:0" id="shootSummary"></span>
+      </div>
+      <div class="ops" style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="mini blue" onclick="applyShootTemplate()">套用通用周模板</button>
+        <button class="mini blue" onclick="applyShootTemplateForce()">按模板重排整月</button>
+        <button class="mini blue" onclick="openShootOcr()">🖼 截图识别</button>
+        <button class="mini" onclick="copyPrevShootMonth()">复制上个月</button>
+        <button class="mini" onclick="openShootPaste()">📋 粘贴导入</button>
+        <button class="mini green" onclick="exportShootImage()">导出全部表格图片</button>
+        <button class="mini" onclick="exportShootCsv()">导出CSV</button>
+        <button class="mini red" onclick="clearShootMonth()">清空本月</button>
+      </div>
+      <div class="legend" style="flex-basis:100%;margin:2px 0 0;line-height:1.9">
+        填写示例（只在这里举例一次）：<b>场地</b> 公司室内 ｜ <b>拍摄明细</b> 测评 1 ✅自剪 + 口播 2 ✅自剪 ｜ <b>当日拍摄</b> 3 ｜ <b>当日剪辑</b> 2
+      </div>
+    </div>
+    <div class="scroll shootscroll">
+      <table class="wk">
+        <colgroup><col style="width:66px"><col style="width:100px"><col style="width:112px"><col><col style="width:84px"><col style="width:84px"><col style="width:168px"><col style="width:168px"></colgroup>
+        <thead><tr><th>星期</th><th>日期</th><th>场地</th><th>拍摄明细</th><th>当日拍摄</th><th>当日剪辑</th><th>当日剪辑任务</th><th>A剪辑任务</th></tr></thead>
+        <tbody id="shootBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="imgView" onclick="closeImgView(event)">
+  <div class="vbar" onclick="event.stopPropagation()"><a id="imgViewOpen" href="#" target="_blank">原图新窗口打开</a><button onclick="closeImgView()">关闭 ✕</button></div>
+  <img id="imgViewPic" src="" alt="预览">
+</div>
+
+<div class="modal" id="pasteModal">
+  <div class="mbox">
+    <h3>📋 粘贴导入台词</h3>
+    <p>把整段口播文案直接粘进来（不用手动换行），会自动按 <b>句号 。 / 问号 ？ / 感叹号 ！ / 分号 ；</b> 拆成一行一句台词，追加到当前这条文案的表格里，原有台词不会覆盖。</p>
+    <textarea id="pasteText" placeholder="例：你怎么又买件鸭鸭啊？现在反季买便宜，有多便宜啊？两折不到就拿下了。我一个人买了6件，这太夸张了吧。"></textarea>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#4b5563;margin-top:10px;cursor:pointer">
+      <input type="checkbox" id="splitComma" checked style="width:auto;margin:0"> 逗号「，」和顿号「、」也拆成一行（拆得更细）
+    </label>
+    <div class="mbtns">
+      <button class="add" onclick="doPaste()">✅ 确认导入</button>
+      <button class="ghost" onclick="closePaste()">取消</button>
+      <span class="legend" style="margin:0;align-self:center">提示：逗号 ， 不拆句；换行也按一句处理</span>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="shootPasteModal">
+  <div class="mbox">
+    <h3>📋 粘贴导入每日计划</h3>
+    <p>从飞书 / Excel / 表格里直接复制整张表粘进来，一行一天。列顺序照抄截图即可：<b>日期 → 星期 → 场地 → 拍摄明细 → 当日拍摄 → 当日剪辑任务</b>（只有"星期 → 日期"换个顺序也能认）。表头那行会自动跳过。</p>
+    <textarea id="shootPasteText" placeholder="11月16日	周一	公司室内	测评 1 + 口播 2	3	2&#10;11月17日	周二	公司室内	口播 3	3	2"></textarea>
+    <div class="mbtns">
+      <button class="add" onclick="doShootPaste()">✅ 导入到当前月份</button>
+      <button class="ghost" onclick="closeShootPaste()">取消</button>
+      <span class="legend" style="margin:0;align-self:center">只覆盖导入的那些天，其他日子原有内容保留</span>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="shootOcrModal">
+  <div class="mbox">
+    <h3>🖼 截图识别（OCR）</h3>
+    <p>把表格截图 <b>Ctrl+V</b> 贴到虚线框里（或点「选择图片」）。点「开始识别」后会把图里的文字识别出来，识别结果可以在下面直接改，改好点「导入到当前月份」。</p>
+    <div id="ocrDrop" style="border:2px dashed #c7d2fe;border-radius:10px;padding:22px;text-align:center;color:#6b7280;font-size:13px;cursor:pointer;background:#f8faff">
+      点这里选择图片，或直接在页面按 Ctrl+V 粘贴截图
+    </div>
+    <input type="file" id="ocrFile" accept="image/*" style="display:none">
+    <div style="margin:10px 0;font-size:12px;color:#6b7280" id="ocrStatus">第一次识别要联网下载识别引擎（约 15MB），之后会快很多；离线时请用「📋 粘贴导入」。</div>
+    <textarea id="ocrText" style="min-height:150px;font-family:Consolas,'Microsoft YaHei',monospace;font-size:13px" placeholder="识别结果会出现在这里，一行一天；可直接手动修，列之间用 Tab 或两个空格分隔"></textarea>
+    <div class="mbtns">
+      <button class="add" onclick="doShootOcr()">🔍 开始识别</button>
+      <button class="add" onclick="importFromOcr()">✅ 导入到当前月份</button>
+      <button class="ghost" onclick="closeShootOcr()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= 通用 ================= */
+var $ = function (id) { return document.getElementById(id); };
+var num = function (v) { var n = parseInt(v, 10); return (isNaN(n) || n < 0) ? 0 : n; };
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+    return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c];
+  });
+}
+function pad(n) { return (n < 10 ? "0" : "") + n; }
+function ymd(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+function today() { return ymd(new Date()); }
+var WDS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+function wd(dateStr) {
+  if (!dateStr) return "";
+  var d = new Date(dateStr + "T00:00:00");
+  if (isNaN(d.getTime())) return "";
+  return WDS[d.getDay()];
+}
+function wdHtml(dateStr) {
+  var w = wd(dateStr);
+  return w ? '<span class="wd">' + w + "</span>" : "";
+}
+function switchTab(name) {
+  ["prog", "ledger", "plan", "result", "sheet", "shoot"].forEach(function (k) {
+    var el = $("pane-" + k);
+    if (el) el.style.display = (k === name ? "" : "none");
+  });
+  var tabs = document.querySelectorAll(".tab");
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].className = "tab" + (tabs[i].getAttribute("data-pane") === name ? " on" : "");
+  }
+  if (name === "prog") { renderProg(); }
+  if (name === "plan") { renderPlans(); }
+  if (name === "result") { renderResults(); }
+  if (name === "sheet") { renderSheetList(); }
+  if (name === "shoot") { renderShootPlan(); }
+}
+
+/* ================= 素材台账 ================= */
+var DEFAULTS = [
+  { name: "口播",      tLink: 15, tNoLink: 25 },
+  { name: "切片",      tLink: 0,  tNoLink: 0  },
+  { name: "混剪",      tLink: 45, tNoLink: 0  },
+  { name: "产品展示",  tLink: 0,  tNoLink: 5  },
+  { name: "测评/开箱", tLink: 0,  tNoLink: 2  },
+  { name: "随拍",      tLink: 0,  tNoLink: 20 }
+];
+var TYPES = DEFAULTS.map(function (d) { return d.name; });
+/* 只有这些是"要拍"的；切片/混剪是剪出来的，不算拍摄形式 */
+var SHOOT_TYPES = TYPES.filter(function (t) { return t !== "切片" && t !== "混剪"; });
+var KEY_DATA = "clipDailyLogV1";
+var KEY_MONTH_TGT = "clipMonthTgtV1";
+var KEY_TGT = "clipTargetsV1";
+var KEY_SHOOT_TGT = "clipShootTgtV1";
+var data = JSON.parse(localStorage.getItem(KEY_DATA) || "[]");
+var targets = loadTargets();
+var shootTgt = loadShootTgt();
+var editingId = null;
+var mode = "cycle";
+var offset = 0;
+
+function loadTargets() {
+  var saved = null;
+  try { saved = JSON.parse(localStorage.getItem(KEY_TGT) || "null"); } catch (e) { saved = null; }
+  var obj = {};
+  DEFAULTS.forEach(function (d) {
+    var s = (saved && saved[d.name]) ? saved[d.name] : null;
+    obj[d.name] = {
+      tLink: (s && typeof s.tLink === "number") ? Math.max(0, s.tLink) : d.tLink,
+      tNoLink: (s && typeof s.tNoLink === "number") ? Math.max(0, s.tNoLink) : d.tNoLink,
+      tShoot: (s && typeof s.tShoot === "number") ? Math.max(0, s.tShoot) : 0,
+      tSub: (s && typeof s.tSub === "number") ? Math.max(0, s.tSub) : 0
+    };
+  });
+  return obj;
+}
+function loadShootTgt() {
+  var s = null;
+  try { s = JSON.parse(localStorage.getItem(KEY_SHOOT_TGT) || "null"); } catch (e) { s = null; }
+  var shoot = (s && typeof s.shoot === "number" && s.shoot > 0) ? s.shoot : 67;
+  var edit = (s && typeof s.edit === "number" && s.edit > 0) ? s.edit : 100;
+  var editMe = (s && typeof s.editMe === "number") ? s.editMe : edit;
+  var editSub = (s && typeof s.editSub === "number") ? s.editSub : 0;
+  if (editMe + editSub !== edit && !(s && s.editMe != null)) { editMe = edit; editSub = 0; }
+  return { shoot: shoot, edit: edit, editMe: editMe, editSub: editSub };
+}
+function goals() {
+  var l = 0, n = 0;
+  TYPES.forEach(function (t) { l += targets[t].tLink; n += targets[t].tNoLink; });
+  return { link: l, noLink: n, total: l + n };
+}
+function toggleTargetPanel() {
+  var p = $("targetPanel");
+  var open = p.style.display !== "none";
+  if (open) { p.style.display = "none"; $("tgtBtn").textContent = "⚙ 修改目标"; }
+  else { buildTargetForm(); p.style.display = ""; $("tgtBtn").textContent = "收起目标设置"; }
+}
+function buildTargetForm() {
+  var html = "";
+  for (var i = 0; i < TYPES.length; i++) {
+    var t = targets[TYPES[i]];
+    if (t.tShoot == null) t.tShoot = 0;
+    if (t.tSub == null) t.tSub = 0;
+    html += "<tr><td>" + TYPES[i] + "</td>"
+      + (SHOOT_TYPES.indexOf(TYPES[i]) === -1
+        ? '<td class="legend" style="text-align:center">— 不用拍</td>'
+        : '<td><input type="number" min="0" step="1" id="tgSh' + i + '" value="' + t.tShoot + '" oninput="calcTargets()"></td>')
+      + '<td><input type="number" min="0" step="1" id="tgL' + i + '" value="' + t.tLink + '" oninput="calcTargets()"></td>'
+      + '<td><input type="number" min="0" step="1" id="tgN' + i + '" value="' + t.tNoLink + '" oninput="calcTargets()"></td>'
+      + '<td id="tgS' + i + '">' + (t.tLink + t.tNoLink) + "</td>"
+      + '<td><input type="number" min="0" step="1" id="tgSub' + i + '" value="' + t.tSub + '" oninput="calcTargets()"></td></tr>';
+  }
+  $("tgtBody").innerHTML = html; calcTargets();
+  renderPersonTargets();
+}
+function calcTargets() {
+  var l = 0, n = 0, sh = 0, sb = 0;
+  for (var i = 0; i < TYPES.length; i++) {
+    var a = num($("tgL" + i).value), b = num($("tgN" + i).value);
+    var s1el = $("tgSh" + i);
+    var s1 = s1el ? num(s1el.value) : 0, s2 = num($("tgSub" + i).value);
+    $("tgS" + i).textContent = a + b; l += a; n += b; sh += s1; sb += s2;
+  }
+  $("tgL").textContent = l; $("tgN").textContent = n; $("tgT").textContent = l + n;
+  $("tgShootT").textContent = sh; $("tgSubT").textContent = sb;
+  if ($("tgShootVal")) $("tgShootVal").textContent = sh;
+  if ($("tgEditMeVal")) $("tgEditMeVal").textContent = l + n;
+  if ($("tgEditSubVal")) $("tgEditSubVal").textContent = sb;
+  if ($("tgEditTotal")) $("tgEditTotal").textContent = (l + n + sb) + " 条（我剪 " + (l + n) + " + 下属剪 " + sb + "）";
+}
+function autoFillShootTargets() {
+  var any = false;
+  for (var i = 0; i < TYPES.length; i++) if (num($("tgL" + i).value) + num($("tgN" + i).value)) any = true;
+  if (!any) { alert("先把「挂链 / 不挂链」目标填上，再按比例分摊拍摄。"); return; }
+  for (var j = 0; j < TYPES.length; j++) {
+    var el = $("tgSh" + j);
+    if (el) el.value = num($("tgL" + j).value) + num($("tgN" + j).value);
+  }
+  calcTargets();
+  alert("已按「这一类型我剪多少 = 拍多少」铺好拍摄列（切片/混剪不参与），可再手动改。");
+}
+function autoFillSubTargets() {
+  var tot = 0;
+  for (var i = 0; i < TYPES.length; i++) tot += num($("tgL" + i).value) + num($("tgN" + i).value);
+  if (!tot) { alert("先填「挂链 / 不挂链」目标，才能按比例给下属分摊。"); return; }
+  for (var j = 0; j < TYPES.length; j++) {
+    $("tgSub" + j).value = num($("tgL" + j).value) + num($("tgN" + j).value);
+  }
+  calcTargets();
+  alert("已按「我剪的类型比例」铺好下属剪辑目标，可再手动改。");
+}
+/* ---- 月度目标（独立一套，按月存，不影响本期目标） ---- */
+function monthTgtAll() {
+  try { return JSON.parse(localStorage.getItem(KEY_MONTH_TGT) || "{}") || {}; } catch (e) { return {}; }
+}
+function monthTgtCurKey() {
+  var v = $("mtMonth") ? $("mtMonth").value : "";
+  if (!v) { var n = new Date(); v = n.getFullYear() + "-" + (n.getMonth() + 1 < 10 ? "0" : "") + (n.getMonth() + 1); }
+  return v;
+}
+function monthTgtData(k) {
+  var all = monthTgtAll(), m = all[k], obj = {};
+  for (var i = 0; i < TYPES.length; i++) {
+    var t = TYPES[i], s = m && m.types && m.types[t], d = targets[t] || { tLink: 0, tNoLink: 0, tShoot: 0, tSub: 0 };
+    obj[t] = {
+      shoot: SHOOT_TYPES.indexOf(t) === -1 ? 0 : (s && typeof s.shoot === "number" ? s.shoot : num(d.tShoot)),
+      link: s && typeof s.link === "number" ? s.link : num(d.tLink),
+      nolink: s && typeof s.nolink === "number" ? s.nolink : num(d.tNoLink),
+      sub: s && typeof s.sub === "number" ? s.sub : num(d.tSub)
+    };
+  }
+  return obj;
+}
+function renderMonthTgt() {
+  if (!$("mtBody")) return;
+  if (!$("mtMonth").value) {
+    var n = new Date();
+    $("mtMonth").value = n.getFullYear() + "-" + (n.getMonth() + 1 < 10 ? "0" : "") + (n.getMonth() + 1);
+  }
+  var k = monthTgtCurKey(), d = monthTgtData(k), html = "";
+  for (var i = 0; i < TYPES.length; i++) {
+    var t = TYPES[i], r = d[t];
+    html += "<tr><td>" + t + "</td>"
+      + (SHOOT_TYPES.indexOf(t) === -1
+        ? '<td class="legend" style="text-align:center">— 不用拍</td>'
+        : '<td><input type="number" min="0" step="1" id="mtSh' + i + '" value="' + (r.shoot || "") + '" oninput="calcMonthTgt()"></td>')
+      + '<td><input type="number" min="0" step="1" id="mtL' + i + '" value="' + (r.link || "") + '" oninput="calcMonthTgt()"></td>'
+      + '<td><input type="number" min="0" step="1" id="mtN' + i + '" value="' + (r.nolink || "") + '" oninput="calcMonthTgt()"></td>'
+      + '<td id="mtS' + i + '">' + (r.link + r.nolink) + "</td>"
+      + '<td><input type="number" min="0" step="1" id="mtSub' + i + '" value="' + (r.sub || "") + '" oninput="calcMonthTgt()"></td></tr>';
+  }
+  $("mtBody").innerHTML = html;
+  calcMonthTgt();
+}
+function calcMonthTgt() {
+  var sh = 0, l = 0, n = 0, sb = 0;
+  for (var i = 0; i < TYPES.length; i++) {
+    var a = num($("mtL" + i).value), b = num($("mtN" + i).value);
+    var sel = $("mtSh" + i);
+    var s1 = sel ? num(sel.value) : 0, s2 = num($("mtSub" + i).value);
+    $("mtS" + i).textContent = a + b;
+    sh += s1; l += a; n += b; sb += s2;
+  }
+  $("mtShootT").textContent = sh; $("mtL").textContent = l; $("mtN").textContent = n;
+  $("mtT").textContent = l + n; $("mtSubT").textContent = sb;
+  if ($("mtShootVal")) $("mtShootVal").textContent = sh;
+  if ($("mtEditMeVal")) $("mtEditMeVal").textContent = l + n;
+  if ($("mtEditSubVal")) $("mtEditSubVal").textContent = sb;
+  if ($("mtTotalVal")) $("mtTotalVal").textContent = l + n + sb;
+}
+function readMonthTgtForm() {
+  var obj = {};
+  for (var i = 0; i < TYPES.length; i++) {
+    var a = num($("mtL" + i).value), b = num($("mtN" + i).value);
+    var sel = $("mtSh" + i);
+    obj[TYPES[i]] = { shoot: sel ? num(sel.value) : 0, link: a, nolink: b, sub: num($("mtSub" + i).value) };
+  }
+  return obj;
+}
+function saveMonthTgt() {
+  var k = monthTgtCurKey(), types = readMonthTgtForm();
+  var sh = 0, me = 0, sb = 0;
+  for (var i = 0; i < TYPES.length; i++) {
+    var t = TYPES[i]; sh += types[t].shoot; me += types[t].link + types[t].nolink; sb += types[t].sub;
+  }
+  var all = monthTgtAll();
+  all[k] = { types: types, shoot: sh, editMe: me, editSub: sb, edit: me + sb, savedAt: new Date().toISOString() };
+  localStorage.setItem(KEY_MONTH_TGT, JSON.stringify(all));
+  autoBackup();
+  alert("已保存 " + k + " 的月度目标：\n拍摄（我）" + sh + " 条 ｜ 我剪 " + me + " 条 ｜ 下属剪 " + sb + " 条\n合计剪辑 " + (me + sb) + " 条");
+  renderMonthTgt();
+}
+function copyMonthTgtFromPeriod() {
+  if (!$("mtBody")) return;
+  for (var i = 0; i < TYPES.length; i++) {
+    var t = targets[TYPES[i]] || { tLink: 0, tNoLink: 0, tShoot: 0, tSub: 0 };
+    var sel = $("mtSh" + i);
+    if (sel) sel.value = t.tShoot || "";
+    $("mtL" + i).value = t.tLink || "";
+    $("mtN" + i).value = t.tNoLink || "";
+    $("mtSub" + i).value = t.tSub || "";
+  }
+  calcMonthTgt();
+  alert("已用「本期目标」填好本月，检查后点「保存本月目标」才会存下来。");
+}
+function copyMonthTgtPrev() {
+  var k = monthTgtCurKey(), y = num(k.slice(0, 4)), mm = num(k.slice(5, 7));
+  var py = y, pm2 = mm - 1;
+  if (pm2 < 1) { pm2 = 12; py = y - 1; }
+  var pk = py + "-" + (pm2 < 10 ? "0" : "") + pm2;
+  var all = monthTgtAll();
+  if (!all[pk]) { alert("没有 " + pk + " 的月度目标，先用「用本期目标填本月」或手动填。"); return; }
+  var d = monthTgtData(pk);
+  for (var i = 0; i < TYPES.length; i++) {
+    var t = TYPES[i], r = d[t], sel = $("mtSh" + i);
+    if (sel) sel.value = SHOOT_TYPES.indexOf(t) === -1 ? "" : (r.shoot || "");
+    $("mtL" + i).value = r.link || "";
+    $("mtN" + i).value = r.nolink || "";
+    $("mtSub" + i).value = r.sub || "";
+  }
+  calcMonthTgt();
+  alert("已把 " + pk + " 的目标填进来，检查后点保存。");
+}
+function exportMonthTgtCsv() {
+  var k = monthTgtCurKey(), d = monthTgtData(k);
+  var rows = [["月份", "内容类型", "拍摄目标（我拍）", "挂链（我剪）", "不挂链（我剪）", "我剪小计", "下属剪", "合计"]];
+  var sh = 0, l = 0, n = 0, sb = 0;
+  TYPES.forEach(function (t) {
+    var r = d[t], sub = r.link + r.nolink + r.sub;
+    sh += r.shoot; l += r.link; n += r.nolink; sb += r.sub;
+    rows.push([k, t, r.shoot, r.link, r.nolink, r.link + r.nolink, r.sub, sub]);
+  });
+  rows.push([k, "合计", sh, l, n, l + n, sb, l + n + sb]);
+  csvDownload(rows, "月度目标_" + k + ".csv");
+}
+function exportMonthTgtImage() {
+  var k = monthTgtCurKey(), d = monthTgtData(k);
+  var FONT = "'Microsoft YaHei','PingFang SC','Hiragino Sans GB',sans-serif";
+  var W = 1000, S = 2, HDR = 74, RH = 48, TOP = 54;
+  var cols = [200, 122, 118, 118, 108, 118, 122];
+  var rows = [], sh = 0, l = 0, n = 0, sb = 0;
+  TYPES.forEach(function (t) {
+    var r = d[t], sub = r.link + r.nolink + r.sub;
+    sh += r.shoot; l += r.link; n += r.nolink; sb += r.sub;
+    rows.push([t, SHOOT_TYPES.indexOf(t) === -1 ? "—" : String(r.shoot), String(r.link), String(r.nolink), String(r.link + r.nolink), String(r.sub), String(sub)]);
+  });
+  rows.push(["合计", String(sh), String(l), String(n), String(l + n), String(sb), String(l + n + sb)]);
+  var H = TOP + HDR + RH * rows.length + 16;
+  var cv = document.createElement("canvas");
+  cv.width = W * S; cv.height = H * S;
+  var ctx = cv.getContext("2d");
+  ctx.scale(S, S);
+  ctx.textBaseline = "middle"; ctx.textAlign = "center";
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "#111827"; ctx.font = "bold 26px " + FONT; ctx.textAlign = "left";
+  ctx.fillText("月度目标 · " + k.slice(0, 4) + "年" + k.slice(5, 7) + "月", 14, TOP / 2);
+  var y = TOP, xs = [], acc = 0;
+  cols.forEach(function (c) { xs.push(acc); acc += c; });
+  ctx.fillStyle = "#111827"; ctx.fillRect(0, y, W, HDR);
+  ctx.fillStyle = "#ffffff"; ctx.font = "bold 20px " + FONT; ctx.textAlign = "center";
+  ["内容类型（拍摄/剪辑形式）", "拍摄目标（我拍）", "挂链（我剪）", "不挂链（我剪）", "我剪小计", "剪辑（下属剪）", "合计"].forEach(function (t, i) {
+    ctx.fillText(t, xs[i] + cols[i] / 2, y + HDR / 2);
+  });
+  y += HDR;
+  rows.forEach(function (row, ri) {
+    var last = ri === rows.length - 1;
+    ctx.fillStyle = last ? "#f1f5f9" : (ri % 2 ? "#fafafa" : "#ffffff");
+    ctx.fillRect(0, y, W, RH);
+    ctx.fillStyle = "#111827"; ctx.font = (last ? "bold " : (ri === 0 ? "bold " : "")) + "20px " + FONT;
+    ctx.textAlign = "left"; ctx.fillText(row[0], xs[0] + 12, y + RH / 2);
+    ctx.textAlign = "center"; ctx.font = (last ? "bold " : "") + "20px " + FONT;
+    for (var i = 1; i < row.length; i++) {
+      if (i === 5) { ctx.fillStyle = "#1d4ed8"; } else { ctx.fillStyle = "#111827"; }
+      ctx.fillText(row[i], xs[i] + cols[i] / 2, y + RH / 2);
+    }
+    ctx.strokeStyle = "#e5e7eb"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, y + RH); ctx.lineTo(W, y + RH); ctx.stroke();
+    y += RH;
+  });
+  ctx.strokeStyle = "#e5e7eb";
+  xs.concat([W]).forEach(function (x) { ctx.beginPath(); ctx.moveTo(x, TOP); ctx.lineTo(x, TOP + HDR + RH * rows.length); ctx.stroke(); });
+  ctx.strokeStyle = "#111827";
+  ctx.beginPath(); ctx.moveTo(0, TOP + HDR); ctx.lineTo(W, TOP + HDR); ctx.stroke();
+  var a = document.createElement("a");
+  a.href = cv.toDataURL("image/png");
+  a.download = "月度目标_" + k + "_" + today() + ".png";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+/* ---- 按人 / 按周期目标（我·下属 × 日·周·月 × 6 类） ---- */
+var KEY_PTGT = "clipPersonTgtV1";
+var personTgt = JSON.parse(localStorage.getItem(KEY_PTGT) || "{}") || {};
+var WHO_NAME = { me: "我", sub: "下属" };
+var CYC_NAME = { day: "每天", week: "每周", month: "每月" };
+function pSlot(who, cyc) {
+  if (!personTgt[who] || typeof personTgt[who] !== "object") personTgt[who] = {};
+  if (!personTgt[who][cyc] || typeof personTgt[who][cyc] !== "object") personTgt[who][cyc] = {};
+  var o = personTgt[who][cyc];
+  if (!o.types || typeof o.types !== "object") o.types = {};
+  if (o.shoot == null) o.shoot = 0;
+  if (o.edit == null) o.edit = 0;
+  TYPES.forEach(function (t) { if (o.types[t] == null) o.types[t] = 0; });
+  return o;
+}
+function renderPersonTargets() {
+  if (!$("ppBody")) return;
+  var who = $("ppWho").value, cyc = $("ppCycle").value;
+  var o = pSlot(who, cyc), html = "";
+  TYPES.forEach(function (t, i) {
+    html += "<tr><td>" + t + "</td>"
+      + '<td><input type="number" min="0" id="ppT' + i + '" value="' + num(o.types[t]) + '" oninput="calcPPShare()"></td>'
+      + '<td id="ppP' + i + '">—</td></tr>';
+  });
+  $("ppBody").innerHTML = html;
+  $("ppShoot").value = num(o.shoot) || "";
+  $("ppEdit").value = num(o.edit) || "";
+  calcPPShare();
+  ppHint();
+}
+function calcPPShare() {
+  var total = 0, vals = [];
+  for (var i = 0; i < TYPES.length; i++) { var v = num($("ppT" + i).value); vals.push(v); total += v; }
+  for (var j = 0; j < TYPES.length; j++) {
+    var c = $("ppP" + j);
+    if (!c) continue;
+    c.textContent = total > 0 ? Math.round(vals[j] / total * 100) + "%" : "—";
+  }
+  var t2 = $("ppTypesTotal");
+  if (t2) t2.textContent = total;
+}
+function ppHint() {
+  var who = $("ppWho").value, cyc = $("ppCycle").value;
+  var s = num($("ppShoot").value), e = num($("ppEdit").value);
+  var txt = WHO_NAME[who] + " · " + CYC_NAME[cyc] + "：拍摄 " + s + " 条、剪辑 " + e + " 条";
+  if (cyc === "day") txt += "　→ 折周 ≈ " + (s * 7) + " 拍 / " + (e * 7) + " 剪，折月 ≈ " + (s * 30) + " 拍 / " + (e * 30) + " 剪";
+  else if (cyc === "week") txt += "　→ 折月 ≈ " + (s * 4) + " 拍 / " + (e * 4) + " 剪，折日 ≈ " + Math.round(s / 7) + " 拍 / " + Math.round(e / 7) + " 剪";
+  else txt += "　→ 折周 ≈ " + Math.round(s / 4) + " 拍 / " + Math.round(e / 4) + " 剪，折日 ≈ " + Math.round(s / 30) + " 拍 / " + Math.round(e / 30) + " 剪";
+  $("ppHint").textContent = txt;
+}
+function savePersonTargets() {
+  var who = $("ppWho").value, cyc = $("ppCycle").value, o = pSlot(who, cyc);
+  o.shoot = num($("ppShoot").value);
+  o.edit = num($("ppEdit").value);
+  for (var i = 0; i < TYPES.length; i++) o.types[TYPES[i]] = num($("ppT" + i).value);
+  var sum = 0;
+  TYPES.forEach(function (t) { sum += o.types[t]; });
+  try { localStorage.setItem(KEY_PTGT, JSON.stringify(personTgt)); } catch (e) { alert("保存失败：本地空间不足"); return; }
+  renderPersonTargets();
+  alert("已保存：" + WHO_NAME[who] + " · " + CYC_NAME[cyc] + "\n拍摄 " + o.shoot + " 条、剪辑 " + o.edit + " 条"
+    + "\n各类型合计 " + sum + " 条" + (o.edit && sum !== o.edit ? "（和剪辑总量 " + o.edit + " 条不一致，检查一下）" : ""));
+}
+function autoSplitPersonTargets() {
+  var e = num($("ppEdit").value);
+  if (!e) { alert("先填「剪辑条数（总量）」，再让它自动分摊。"); return; }
+  var share = [];
+  TYPES.forEach(function (t) {
+    var g = targets[t] || { tLink: 0, tNoLink: 0 };
+    share.push(num(g.tLink) + num(g.tNoLink));
+  });
+  var sumShare = share.reduce(function (a, b) { return a + b; }, 0);
+  var left = e;
+  TYPES.forEach(function (t, i) {
+    var v = sumShare > 0 ? Math.round(e * share[i] / sumShare) : Math.round(e / TYPES.length);
+    $("ppT" + i).value = v;
+    left -= v;
+  });
+  if (left !== 0) {
+    var idx = 0, best = -1;
+    TYPES.forEach(function (t, i) { if (share[i] > best) { best = share[i]; idx = i; } });
+    $("ppT" + idx).value = num($("ppT" + idx).value) + left;
+  }
+  calcPPShare();
+  ppHint();
+}
+function saveTargets() {
+  var obj = {}, sh = 0, sb = 0, me = 0;
+  for (var i = 0; i < TYPES.length; i++) {
+    var a = num($("tgL" + i).value), b = num($("tgN" + i).value);
+    var shEl = $("tgSh" + i);
+    var s1 = shEl ? num(shEl.value) : 0, s2 = num($("tgSub" + i).value);
+    obj[TYPES[i]] = { tLink: a, tNoLink: b, tShoot: s1, tSub: s2 };
+    sh += s1; sb += s2; me += a + b;
+  }
+  targets = obj;
+  localStorage.setItem(KEY_TGT, JSON.stringify(obj));
+  shootTgt = { shoot: sh, edit: me + sb, editMe: me, editSub: sb };
+  localStorage.setItem(KEY_SHOOT_TGT, JSON.stringify(shootTgt));
+  autoBackup();
+  var g = goals();
+  alert("已保存分类目标：\n拍摄（我）" + sh + " 条 ｜ 剪辑我剪 " + me + " 条 ｜ 剪辑下属剪 " + sb + " 条"
+    + "\n合计剪辑 " + (me + sb) + " 条；挂链 " + g.link + " / 不挂链 " + g.noLink);
+  $("targetPanel").style.display = "none";
+  $("tgtBtn").textContent = "⚙ 修改目标";
+  render();
+  refreshProg();
+  if ($("sheetList")) renderSheetList();
+}
+function resetTargets() {
+  if (!confirm("恢复默认目标 60 / 52 / 112？")) return;
+  undoSnapshot("恢复默认目标");
+  localStorage.removeItem(KEY_TGT);
+  localStorage.removeItem(KEY_SHOOT_TGT);
+  targets = loadTargets(); shootTgt = loadShootTgt(); buildTargetForm(); render();
+}
+function currentRange() {
+  var now = new Date(), y = now.getFullYear(), m = now.getMonth(), day = now.getDate();
+  if (mode === "cycle") {
+    if (day < 15) { var d = new Date(y, m - 1, 1); y = d.getFullYear(); m = d.getMonth(); }
+    var s = new Date(y, m + offset, 15), e = new Date(y, m + offset + 1, 14);
+    return { start: ymd(s), end: ymd(e), label: (s.getFullYear() + "年" + (s.getMonth() + 1) + "月15日 — " + (e.getMonth() + 1) + "月14日") };
+  }
+  var s2 = new Date(y, m + offset, 1), e2 = new Date(y, m + offset + 1, 0);
+  return { start: ymd(s2), end: ymd(e2), label: (s2.getFullYear() + "年" + (s2.getMonth() + 1) + "月1日 — " + (e2.getMonth() + 1) + "月" + e2.getDate() + "日") };
+}
+function setMode(m) {
+  mode = m; offset = 0;
+  $("segCycle").className = m === "cycle" ? "on" : "";
+  $("segMonth").className = m === "month" ? "on" : "";
+  render();
+}
+function shift(d) { offset += d; render(); }
+function buildForm() {
+  var html = "";
+  for (var i = 0; i < TYPES.length; i++) {
+    html += "<tr><td>" + TYPES[i] + "</td>"
+      + '<td><input type="number" min="0" step="1" id="lnk' + i + '" placeholder="0" oninput="calc()"></td>'
+      + '<td><input type="number" min="0" step="1" id="nol' + i + '" placeholder="0" oninput="calc()"></td>'
+      + '<td class="st" id="sub' + i + '">0</td>'
+      + '<td><input type="text" id="det' + i + '" placeholder="例：针织开衫外景01、通勤口播03"></td></tr>';
+  }
+  $("formBody").innerHTML = html;
+}
+function calc() {
+  var sl = 0, sn = 0;
+  for (var i = 0; i < TYPES.length; i++) {
+    var l = num($("lnk" + i).value), n = num($("nol" + i).value);
+    $("sub" + i).textContent = l + n; sl += l; sn += n;
+  }
+  $("sumLink").textContent = sl; $("sumNoLink").textContent = sn; $("sumAll").textContent = sl + sn;
+}
+function checkDup() {
+  var d = $("logDate").value;
+  $("dateWd").textContent = wd(d);
+  var dup = data.some(function (r) { return r.date === d && r.id !== editingId; });
+  $("dupHint").style.display = dup ? "inline" : "none";
+}
+function resetForm(all) {
+  for (var i = 0; i < TYPES.length; i++) { $("lnk" + i).value = ""; $("nol" + i).value = ""; $("det" + i).value = ""; }
+  if (all) { $("note").value = ""; $("logDate").value = today(); if ($("logOwner")) $("logOwner").value = ""; }
+  editingId = null; $("saveBtn").textContent = "保存当天记录"; checkDup(); calc();
+}
+function saveDay() {
+  var date = $("logDate").value;
+  if (!date) { alert("请先选日期"); return; }
+  var items = {}, total = 0, hasDetail = false;
+  for (var i = 0; i < TYPES.length; i++) {
+    var l = num($("lnk" + i).value), n = num($("nol" + i).value), det = $("det" + i).value.trim();
+    if (l || n || det) { items[TYPES[i]] = { link: l, nolink: n, detail: det }; total += l + n; if (det) hasDetail = true; }
+  }
+  if (total === 0 && !hasDetail) { alert("至少填一个条数或素材名"); return; }
+  var note = $("note").value.trim();
+  var owner = $("logOwner") ? $("logOwner").value : "";
+  if (editingId) {
+    var rec = null;
+    for (var j = 0; j < data.length; j++) if (data[j].id === editingId) rec = data[j];
+    if (rec) { rec.date = date; rec.note = note; rec.items = items; rec.owner = owner; }
+  } else {
+    var dup = null;
+    for (var k = 0; k < data.length; k++) if (data[k].date === date) dup = data[k];
+    if (dup) {
+      if (!confirm(date + " 已有一条记录，覆盖为当前填写吗？")) return;
+      data = data.filter(function (r) { return r.id !== dup.id; });
+    }
+    data.push({ id: Date.now(), date: date, note: note, items: items, owner: owner });
+  }
+  localStorage.setItem(KEY_DATA, JSON.stringify(data));
+  autoBackup();
+  resetForm(false); render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function editRec(id) {
+  var rec = null;
+  for (var i = 0; i < data.length; i++) if (data[i].id === id) rec = data[i];
+  if (!rec) return;
+  $("logDate").value = rec.date; $("note").value = rec.note || "";
+  if ($("logOwner")) $("logOwner").value = rec.owner || "";
+  for (var t = 0; t < TYPES.length; t++) {
+    var it = rec.items[TYPES[t]] || {};
+    $("lnk" + t).value = it.link || ""; $("nol" + t).value = it.nolink || ""; $("det" + t).value = it.detail || "";
+  }
+  editingId = id; $("saveBtn").textContent = "更新这条记录"; checkDup(); calc();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function delRec(id) {
+  var rec = null;
+  for (var i = 0; i < data.length; i++) if (data[i].id === id) rec = data[i];
+  if (!rec) return;
+  if (!confirm("删除 " + rec.date + " 的整条记录？")) return;
+  undoSnapshot("删除台账记录");
+  data = data.filter(function (r) { return r.id !== id; });
+  localStorage.setItem(KEY_DATA, JSON.stringify(data));
+  if (editingId === id) resetForm(false);
+  render();
+}
+function toggleDetail(id) {
+  var tr = document.getElementById("d" + id);
+  if (tr) tr.style.display = (tr.style.display === "none") ? "" : "none";
+}
+function render() {
+  var rg = currentRange();
+  $("cycleRange").textContent = rg.label;
+  var g = goals();
+  $("gLink").textContent = g.link; $("gNoLink").textContent = g.noLink; $("gTotal").textContent = g.total;
+  var inRange = data.filter(function (r) { return r.date >= rg.start && r.date <= rg.end; });
+  var link = 0, noLink = 0, byType = {};
+  TYPES.forEach(function (t) { byType[t] = { link: 0, nolink: 0 }; });
+  inRange.forEach(function (r) {
+    for (var name in r.items) {
+      if (!r.items.hasOwnProperty(name)) continue;
+      var it = r.items[name];
+      if (!byType[name]) byType[name] = { link: 0, nolink: 0 };
+      byType[name].link += it.link || 0; byType[name].nolink += it.nolink || 0;
+      link += it.link || 0; noLink += it.nolink || 0;
+    }
+  });
+  var total = link + noLink;
+  $("vLink").textContent = link; $("vNoLink").textContent = noLink;
+  $("vTotal").textContent = total; $("vDays").textContent = inRange.length;
+  var pl = g.link > 0 ? Math.min(100, Math.round(link / g.link * 100)) : (link > 0 ? 100 : 0);
+  var pn = g.noLink > 0 ? Math.min(100, Math.round(noLink / g.noLink * 100)) : (noLink > 0 ? 100 : 0);
+  var pt = g.total > 0 ? Math.min(100, Math.round(total / g.total * 100)) : (total > 0 ? 100 : 0);
+  $("bLink").style.width = pl + "%"; $("bNoLink").style.width = pn + "%"; $("bTotal").style.width = pt + "%";
+  var sHtml = "";
+  TYPES.forEach(function (t) {
+    var s = byType[t] || { link: 0, nolink: 0 };
+    var tl = targets[t].tLink, tn = targets[t].tNoLink;
+    var hitL = tl > 0 && s.link >= tl, hitN = tn > 0 && s.nolink >= tn;
+    sHtml += "<tr><td>" + t + "</td>"
+      + '<td class="' + (hitL ? "hit" : "") + '">' + s.link + ' <span class="tgt">/ ' + (tl > 0 ? tl : "—") + "</span></td>"
+      + '<td class="tgt">' + (tl > 0 ? tl : "—") + "</td>"
+      + '<td class="' + (hitN ? "hit" : "") + '">' + s.nolink + ' <span class="tgt">/ ' + (tn > 0 ? tn : "—") + "</span></td>"
+      + '<td class="tgt">' + (tn > 0 ? tn : "—") + "</td>"
+      + "<td><b>" + (s.link + s.nolink) + "</b></td></tr>";
+  });
+  sHtml += '<tr class="tot"><td>合计</td><td>' + link + '</td><td class="tgt">' + g.link + "</td><td>" + noLink + '</td><td class="tgt">' + g.noLink + "</td><td>" + total + "</td></tr>";
+  $("sumBody").innerHTML = sHtml;
+  renderRecords();
+  renderWeekDone();
+  refreshProg();
+}
+function refreshProg() {
+  if ($("progBody") && $("progRange")) renderProg();
+  if ($("pQty")) updatePlanCards();
+  for (var i = 0; i < weekTables.length; i++) {
+    var el = document.getElementById("wf" + i);
+    if (el) el.innerHTML = weekFootText(weekTables[i].ws);
+  }
+}
+function renderRecords() {
+  $("recHead").innerHTML = "<tr><th>日期</th><th>谁剪</th>" + TYPES.map(function (t) { return "<th>" + t + "</th>"; }).join("") + "<th>当日合计</th><th>备注</th><th>操作</th></tr>";
+  var kw = $("kw").value.trim().toLowerCase();
+  var list = data.filter(function (r) {
+    if (!kw) return true;
+    var hay = r.date + " " + (r.note || "");
+    for (var n in r.items) if (r.items.hasOwnProperty(n)) hay += " " + n + " " + (r.items[n].detail || "");
+    return hay.toLowerCase().indexOf(kw) > -1;
+  }).sort(function (a, b) { return b.date.localeCompare(a.date); });
+  if (!list.length) { $("recBody").innerHTML = '<tr><td colspan="' + (TYPES.length + 5) + '"><div class="empty">还没有记录，先在上面填一天的数据吧</div></td></tr>'; return; }
+  $("recBody").innerHTML = list.map(function (r) {
+    var sum = 0, hasDetail = false, dets = [];
+    TYPES.forEach(function (t) {
+      var it = r.items[t];
+      if (it) { sum += (it.link || 0) + (it.nolink || 0); if (it.detail) { hasDetail = true; dets.push("<b>" + t + "</b>：" + esc(it.detail)); } }
+    });
+    var cells = TYPES.map(function (t) {
+      var it = r.items[t];
+      if (!it || (!it.link && !it.nolink)) return '<td><span class="zero">—</span></td>';
+      return '<td><span class="pair"><b>' + (it.link || 0) + "</b> / <span>" + (it.nolink || 0) + "</span></span></td>";
+    }).join("");
+    return "<tr><td>" + r.date + wdHtml(r.date) + "</td><td>" + (r.owner === "sub" ? "下属" : "我") + "</td>" + cells + "<td><b>" + sum + '</b></td><td class="note">' + (esc(r.note) || "—") + "</td>"
+      + '<td><div class="ops">' + (hasDetail ? '<button class="mini blue" onclick="toggleDetail(' + r.id + ')">明细</button>' : "")
+      + '<button class="mini" onclick="editRec(' + r.id + ')">编辑</button>'
+      + '<button class="mini red" onclick="delRec(' + r.id + ')">删除</button></div></td></tr>'
+      + '<tr class="detail" id="d' + r.id + '" style="display:none"><td colspan="' + (TYPES.length + 5) + '">' + (dets.join(" ｜ ") || "无素材备注") + "</td></tr>";
+  }).join("");
+}
+function exportCsv() {
+  if (!data.length) { alert("还没有记录可导出"); return; }
+  var head = ["日期", "星期", "谁剪"];
+  TYPES.forEach(function (t) { head.push(t + "-挂链", t + "-不挂链", t + "-素材"); });
+  head.push("挂链合计", "不挂链合计", "合计", "当天备注");
+  var rows = data.slice().sort(function (a, b) { return b.date.localeCompare(a.date); }).map(function (r) {
+    var row = [r.date, wd(r.date), r.owner === "sub" ? "下属" : "我"], l = 0, n = 0;
+    TYPES.forEach(function (t) {
+      var it = r.items[t] || { link: 0, nolink: 0, detail: "" };
+      row.push(it.link || 0, it.nolink || 0, it.detail || ""); l += it.link || 0; n += it.nolink || 0;
+    });
+    row.push(l, n, l + n, r.note || ""); return row;
+  });
+  function q(v) { return '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"'; }
+  var csv = "\ufeff" + [head].concat(rows).map(function (r) { return r.map(q).join(","); }).join("\r\n");
+  var blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = "剪辑素材记录_" + today() + ".csv";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 500);
+}
+
+/* ---- 数据备份 ---- */
+function snapshot() {
+  return {
+    data: data,
+    targets: targets,
+    plans: (typeof plans !== "undefined" ? plans : []),
+    results: (typeof results !== "undefined" ? results : []),
+    weekTables: (typeof weekTables !== "undefined" ? weekTables : []),
+    shootPlan: (typeof shootPlan !== "undefined" ? shootPlan : {}),
+    monthTgt: (typeof monthTgtAll === "function" ? monthTgtAll() : {})
+  };
+}
+function autoBackup() {
+  try { localStorage.setItem("clipBackupV1", JSON.stringify({ t: Date.now(), s: snapshot() })); } catch (e) { }
+}
+/* 任何会覆盖/清空数据的操作之前，先留一份“后悔药” */
+function undoSnapshot(tag) {
+  try {
+    localStorage.setItem("clipUndoV1", JSON.stringify({ t: Date.now(), tag: tag, shootTgt: shootTgt, s: snapshot() }));
+  } catch (e) { }
+}
+function restoreUndo() {
+  var raw = localStorage.getItem("clipUndoV1");
+  if (!raw) { alert("还没有可撤销的记录（只有清空/删除/覆盖时才会自动留一份）。"); return; }
+  var o;
+  try { o = JSON.parse(raw); } catch (e) { alert("撤销备份读不出来。"); return; }
+  var when = new Date(o.t).toLocaleString();
+  if (!confirm("撤销到 " + when + " 的状态（" + (o.tag || "上一次操作") + " 之前）？\n会用那份备份覆盖当前数据。")) return;
+  var s = o.s || {};
+  try {
+    localStorage.setItem(KEY_DATA, JSON.stringify(s.data || []));
+    if (s.targets) localStorage.setItem(KEY_TGT, JSON.stringify(s.targets));
+    if (s.plans) localStorage.setItem(KEY_PLAN, JSON.stringify(s.plans));
+    if (s.results) localStorage.setItem(KEY_RES, JSON.stringify(s.results));
+    if (s.weekTables) localStorage.setItem(KEY_WK, JSON.stringify(s.weekTables));
+    if (s.shootPlan) localStorage.setItem(KEY_SHOOT, JSON.stringify(s.shootPlan));
+    if (o.shootTgt) localStorage.setItem(KEY_SHOOT_TGT, JSON.stringify(o.shootTgt));
+  } catch (e) {
+    alert("恢复失败：本地空间不足？");
+    return;
+  }
+  alert("已恢复，页面会重新加载。");
+  location.reload();
+}
+/* 导出一个「自带数据」的 HTML：发给别的电脑双击打开，数据自动装进去 */
+function exportPortableHtml() {
+  try {
+    var dump = {};
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k && k.indexOf("clip") === 0) dump[k] = localStorage.getItem(k);
+    }
+    var stat = "台账 " + ((typeof data !== "undefined" ? data : []).length) + " 天、周计划 " + ((typeof plans !== "undefined" ? plans : []).length)
+      + " 条、执行结果 " + ((typeof results !== "undefined" ? results : []).length) + " 条、周计划表 "
+      + ((typeof weekTables !== "undefined" ? weekTables : []).length) + " 周、每日计划 "
+      + Object.keys(typeof shootPlan !== "undefined" ? shootPlan : {}).length + " 天";
+    if (!confirm("导出「带数据的副本」：\n" + stat + "\n\n发给别的电脑双击打开后，数据会自动装进去；目标机器上已经有的记录不会被覆盖。\n继续导出？")) return;
+    var seed = JSON.stringify({ t: Date.now(), d: dump });
+    var html = "<!doctype html>\n" + document.documentElement.outerHTML;
+    var CT = "<" + "/script>";
+    var seedSafe = seed.replace(new RegExp("<" + "/script", "gi"), "<\\" + "/script");
+    var boot = '<script id="clipSeedData" type="application/json">' + seedSafe + CT
+      + "<script>(function(){try{var el=document.getElementById(\"clipSeedData\");if(!el)return;"
+      + "var o=JSON.parse(el.textContent),d=o.d||{},n=0;for(var k in d){if(!Object.prototype.hasOwnProperty.call(d,k))continue;"
+      + "if(!localStorage.getItem(k)){localStorage.setItem(k,d[k]);n++;}}"
+      + "}catch(e){}})();" + CT;
+    var headMatch = /<head[^>]*>/i.exec(html);
+    if (headMatch) {
+      var at = headMatch.index + headMatch[0].length;
+      html = html.slice(0, at) + "\n" + boot + "\n" + html.slice(at);
+    } else {
+      html = html.replace(/<html[^>]*>/i, function (m) { return m + "<head>" + boot + "</head>"; });
+    }
+    var blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "剪辑素材登记_带数据_" + today() + ".html";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 800);
+  } catch (e) {
+    alert("导出带数据的副本失败：" + e.message + "\n可以改用「导出全部数据备份」+「导入备份文件恢复」。");
+  }
+}
+function exportAllJson() {
+  autoBackup();
+  var s = snapshot();
+  s.exportedAt = new Date().toLocaleString();
+  var blob = new Blob([JSON.stringify(s)], { type: "application/json" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = "剪辑台账备份_" + today() + ".json";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 500);
+}
+var importMode = "overwrite";
+function importAllJson() { importMode = "overwrite"; $("importFile").click(); }
+function importAllJsonMerge() {
+  if (!confirm("合并导入：只把本机还没有的记录补进来，本机已有的记录一条都不动。\n适合「在另一台电脑记了新数据，再拿回这台」的情况。继续？")) return;
+  importMode = "merge";
+  $("importFile").click();
+}
+function mergeBackup(o) {
+  var add = { data: 0, plans: 0, results: 0, week: 0, shoot: 0, month: 0 };
+  if (o.data && o.data.length) {
+    var haveD = {};
+    data.forEach(function (r) { if (r && r.date) haveD[r.date] = 1; });
+    o.data.forEach(function (r) {
+      if (!r || !r.date || haveD[r.date]) return;
+      data.push(r); haveD[r.date] = 1; add.data++;
+    });
+    localStorage.setItem(KEY_DATA, JSON.stringify(data));
+  }
+  if (o.plans && o.plans.length) {
+    var haveP = {};
+    plans.forEach(function (p) { haveP[p.id] = 1; });
+    o.plans.forEach(function (p) {
+      if (!p || p.id == null || haveP[p.id]) return;
+      plans.push(p); haveP[p.id] = 1; add.plans++;
+    });
+    localStorage.setItem(KEY_PLAN, JSON.stringify(plans));
+  }
+  if (o.results && o.results.length) {
+    var haveR = {};
+    results.forEach(function (r) { haveR[r.id] = 1; });
+    o.results.forEach(function (r) {
+      if (!r || r.id == null || haveR[r.id]) return;
+      results.push(r); haveR[r.id] = 1; add.results++;
+    });
+    localStorage.setItem(KEY_RES, JSON.stringify(results));
+  }
+  if (o.weekTables && o.weekTables.length) {
+    var haveW = {};
+    weekTables.forEach(function (w) { haveW[w.ws] = 1; });
+    var wl = weekTables;
+    o.weekTables.forEach(function (w) {
+      if (!w || !w.ws || haveW[w.ws]) return;
+      wl.push(w); haveW[w.ws] = 1; add.week++;
+    });
+    localStorage.setItem("clipWeekTablesV1", JSON.stringify(wl));
+  }
+  if (o.shootPlan) {
+    var sp = shootPlan, changed = 0;
+    for (var ds in o.shootPlan) {
+      if (!Object.prototype.hasOwnProperty.call(o.shootPlan, ds)) continue;
+      if (sp[ds]) continue;
+      sp[ds] = o.shootPlan[ds]; changed++;
+    }
+    if (changed) { localStorage.setItem("clipShootPlanV1", JSON.stringify(sp)); add.shoot = changed; }
+  }
+  if (o["monthTgt"] || o.monthTgt) {
+    var mtIn = o.monthTgt || o["monthTgt"], mtNow = monthTgtAll(), added = 0;
+    for (var mk in mtIn) {
+      if (!Object.prototype.hasOwnProperty.call(mtIn, mk)) continue;
+      if (mtNow[mk]) continue;
+      mtNow[mk] = mtIn[mk]; added++;
+    }
+    if (added) { localStorage.setItem(KEY_MONTH_TGT, JSON.stringify(mtNow)); add.month = added; }
+  }
+  return add;
+}
+function onImportFile(input) {
+  var f = input.files && input.files[0];
+  input.value = "";
+  if (!f) return;
+  var mode = importMode;
+  importMode = "overwrite";
+  var fr = new FileReader();
+  fr.onload = function (e) {
+    var o = null;
+    try { o = JSON.parse(e.target.result); } catch (err) { alert("文件读不出来，确认选的是导出的 .json 备份"); return; }
+    if (mode === "merge") {
+      var add = {};
+      try { add = mergeBackup(o); } catch (err) { alert("合并失败：本地空间不足？"); return; }
+      alert("合并完成，本机原有记录没动，新增：台账 " + (add.data || 0) + " 天、周计划 " + (add.plans || 0)
+        + " 条、执行结果 " + (add.results || 0) + " 条、周计划表 " + (add.week || 0) + " 周、每日计划 " + (add.shoot || 0) + " 天、月度目标 " + (add.month || 0) + " 个月。\n页面将刷新。");
+      location.reload();
+      return;
+    }
+    var dn = (o.data || []).length, pn = (o.plans || []).length, rn = (o.results || []).length;
+    if (!confirm("导入会覆盖当前数据：\n台账 " + dn + " 天、周计划 " + pn + " 条、执行结果 " + rn + " 条\n确定继续？\n（只想补新数据、不想覆盖的话，请用「导入备份并合并」）")) return;
+    try {
+      if (o.data) localStorage.setItem(KEY_DATA, JSON.stringify(o.data));
+      if (o.targets) localStorage.setItem(KEY_TGT, JSON.stringify(o.targets));
+      if (o.plans) localStorage.setItem(KEY_PLAN, JSON.stringify(o.plans));
+      if (o.results) localStorage.setItem(KEY_RES, JSON.stringify(o.results));
+      if (o.weekTables) localStorage.setItem("clipWeekTablesV1", JSON.stringify(o.weekTables));
+      if (o.shootPlan) localStorage.setItem("clipShootPlanV1", JSON.stringify(o.shootPlan));
+      if (o.monthTgt) localStorage.setItem(KEY_MONTH_TGT, JSON.stringify(o.monthTgt));
+    } catch (err) { alert("导入失败：本地空间不足"); return; }
+    alert("导入成功，页面将刷新");
+    location.reload();
+  };
+  fr.readAsText(f, "utf-8");
+}
+
+/* ================= 周计划 / 执行结果 ================= */
+var KEY_PLAN = "clipPlansV1";
+var KEY_RES = "clipResultsV1";
+var plans = JSON.parse(localStorage.getItem(KEY_PLAN) || "[]");
+var results = JSON.parse(localStorage.getItem(KEY_RES) || "[]");
+var planEditingId = null, resEditingId = null;
+var MAX_IMGS = 9;
+
+/* 老数据兼容：单条字段 -> items */
+plans.forEach(function (p) {
+  if (!p.items || !p.items.length) {
+    p.items = [{ link: p.link || "", imgs: (p.img ? [p.img] : []), rows: [{ shot: "", line: p.copy || "", dur: "" }] }];
+  }
+  p.items.forEach(function (it) {
+    if (!it.rows || !it.rows.length) it.rows = [{ shot: "", line: it.copy || "", dur: "" }];
+  });
+});
+results.forEach(function (r) {
+  if (!r.items || !r.items.length) {
+    r.items = [{ link: r.link || "", note: "", imgs: (r.img ? [r.img] : []) }];
+  }
+});
+
+var planItems = [{ link: "", imgs: [], rows: [{ shot: "", line: "", dur: "" }] }];
+var resItems = [{ link: "", note: "", imgs: [] }];
+var pickTarget = null;
+
+function weekLabel(dateStr) {
+  if (!dateStr) return "";
+  var d = new Date(dateStr + "T00:00:00");
+  var t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  var day = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - day);
+  var y = t.getUTCFullYear();
+  var s = new Date(Date.UTC(y, 0, 1));
+  var wn = Math.ceil((((t - s) / 86400000) + 1) / 7);
+  return y + "-W" + (wn < 10 ? "0" : "") + wn;
+}
+function autoWeek() {
+  var d = $("pDate").value;
+  $("pWd").textContent = wd(d);
+  if (d) $("pWeek").value = weekLabel(d);
+}
+var KEY_PLAN_FROM = "clipPlanFrom";
+var KEY_PLAN_TO = "clipPlanTo";
+var planFrom = localStorage.getItem(KEY_PLAN_FROM) || "";
+var planTo = localStorage.getItem(KEY_PLAN_TO) || "";
+function setPlanRange(which, v) {
+  if (!v) return;
+  if (which === "from") {
+    planFrom = v;
+    if (!planTo || planTo < planFrom) planTo = planFrom;
+  } else {
+    planTo = v;
+    if (!planFrom || planFrom > planTo) planFrom = planTo;
+  }
+  localStorage.setItem(KEY_PLAN_FROM, planFrom);
+  localStorage.setItem(KEY_PLAN_TO, planTo);
+  renderPlans();
+}
+function clearPlanRange() {
+  planFrom = ""; planTo = "";
+  localStorage.removeItem(KEY_PLAN_FROM);
+  localStorage.removeItem(KEY_PLAN_TO);
+  renderPlans();
+}
+function setPlanThisMonth() {
+  var d = new Date(), y = d.getFullYear(), m = d.getMonth();
+  planFrom = ymd(new Date(y, m, 1));
+  planTo = ymd(new Date(y, m + 1, 0));
+  localStorage.setItem(KEY_PLAN_FROM, planFrom);
+  localStorage.setItem(KEY_PLAN_TO, planTo);
+  renderPlans();
+}
+function setPlanThisPeriod() {
+  var rg = cycleRangeToday();
+  planFrom = rg.start; planTo = rg.end;
+  localStorage.setItem(KEY_PLAN_FROM, planFrom);
+  localStorage.setItem(KEY_PLAN_TO, planTo);
+  renderPlans();
+}
+function weekRange() {
+  if (planFrom && planTo) {
+    return { start: planFrom, end: planTo, all: false, custom: true, days: Math.round((new Date(planTo + "T00:00:00") - new Date(planFrom + "T00:00:00")) / 86400000) + 1 };
+  }
+  if (planWeekMode === "all") return { start: "0000-00-00", end: "9999-99-99", all: true };
+  var mon = mondayOf(planWeekDay);
+  var d = new Date(mon + "T00:00:00");
+  d.setDate(d.getDate() + 6);
+  return { start: mon, end: ymd(d) };
+}
+var planWeekMode = localStorage.getItem("clipPlanWeekMode2") || "all";
+var planWeekDay = localStorage.getItem("clipPlanWeekDay") || today();
+function shiftPlanWeek(d) {
+  var base = new Date(mondayOf(planWeekDay) + "T00:00:00");
+  base.setDate(base.getDate() + 7 * d);
+  planWeekDay = ymd(base);
+  planWeekMode = "week";
+  localStorage.setItem("clipPlanWeekDay", planWeekDay);
+  localStorage.setItem("clipPlanWeekMode2", planWeekMode);
+  renderPlans();
+}
+function setPlanWeek(v) {
+  if (!v) return;
+  planWeekDay = v;
+  planWeekMode = "week";
+  localStorage.setItem("clipPlanWeekDay", planWeekDay);
+  localStorage.setItem("clipPlanWeekMode2", planWeekMode);
+  renderPlans();
+}
+function resetPlanWeek() {
+  planWeekDay = today();
+  planWeekMode = "all";
+  localStorage.setItem("clipPlanWeekDay", planWeekDay);
+  localStorage.setItem("clipPlanWeekMode2", planWeekMode);
+  renderPlans();
+}
+function togglePlanAll() {
+  planWeekMode = (planWeekMode === "all") ? "week" : "all";
+  localStorage.setItem("clipPlanWeekMode2", planWeekMode);
+  renderPlans();
+}
+function syncPlanWeekUI() {
+  var wr = weekRange();
+  if ($("planWeekPick")) $("planWeekPick").value = planWeekDay;
+  if ($("planFromPick")) $("planFromPick").value = planFrom || "";
+  if ($("planToPick")) $("planToPick").value = planTo || "";
+  if ($("planAllBtn")) $("planAllBtn").textContent = (planWeekMode === "all") ? "只看这一周" : "显示全部";
+  if ($("planRangeText")) {
+    $("planRangeText").textContent = wr.all ? "当前显示：全部时间"
+      : (wr.custom ? "当前显示：" + wr.start + " ~ " + wr.end + " 这 " + wr.days + " 天"
+        : "当前显示：" + wr.start + " ~ " + wr.end + " 这一周");
+  }
+  var word = wr.all ? "全部" : (wr.custom ? "所选时段" : "本周");
+  if ($("pCountK")) $("pCountK").textContent = word + "计划项";
+  if ($("pQtyK")) $("pQtyK").textContent = word + "已拍摄";
+  if ($("pDoneK")) $("pDoneK").textContent = word + "已产出";
+}
+function savePlans() {
+  try { localStorage.setItem(KEY_PLAN, JSON.stringify(plans)); autoBackup(); return true; }
+  catch (e) { alert("本地空间不足（图片太多）。点图片右上角 × 删掉几张，或把图片压小一点再存。"); return false; }
+}
+function saveResults() {
+  try { localStorage.setItem(KEY_RES, JSON.stringify(results)); autoBackup(); return true; }
+  catch (e) { alert("本地空间不足（图片太多）。点图片右上角 × 删掉几张，或把图片压小一点再存。"); return false; }
+}
+
+/* ---- 多条目表单 ---- */
+function blankItem() { return { link: "", imgs: [], rows: [{ shot: "", line: "", dur: "", hl: true }] }; }
+function blankRes() { return { link: "", note: "", imgs: [] }; }
+function itemsArr(kind) { var arr = (kind === "plan") ? planItems : resItems; return arr; }
+function itemsHost(kind) { return $(kind === "plan" ? "pItems" : "rItems"); }
+
+function syncItems(kind) {
+  var arr = itemsArr(kind), host = itemsHost(kind);
+  var blocks = host.querySelectorAll("[data-idx]");
+  for (var i = 0; i < blocks.length; i++) {
+    var b = blocks[i], idx = parseInt(b.getAttribute("data-idx"), 10);
+    if (!arr[idx]) continue;
+    var ta = b.querySelector("textarea");
+    var ln = b.querySelector("input.i-link");
+    var nt = b.querySelector("input.i-note");
+    if (ta) arr[idx].copy = ta.value;
+    if (ln) arr[idx].link = ln.value;
+    if (nt) arr[idx].note = nt.value;
+    var trs = b.querySelectorAll("tr[data-r]");
+    for (var r = 0; r < trs.length; r++) {
+      var ri = parseInt(trs[r].getAttribute("data-r"), 10);
+      var shot = trs[r].querySelector(".r-shot");
+      var line = trs[r].querySelector(".r-line");
+      var dur = trs[r].querySelector(".r-dur");
+      if (!arr[idx].rows) arr[idx].rows = [];
+      if (!arr[idx].rows[ri]) arr[idx].rows[ri] = { shot: "", line: "", dur: "" };
+      if (shot) arr[idx].rows[ri].shot = shot.value;
+      if (line) arr[idx].rows[ri].line = line.value;
+      if (dur) arr[idx].rows[ri].dur = dur.value;
+      var hl = trs[r].querySelector(".r-hl");
+      if (hl) arr[idx].rows[ri].hl = hl.checked;
+    }
+  }
+}
+function toggleHl(el) {
+  var tr = el.closest("tr");
+  var cell = tr ? tr.querySelector("td.line") : null;
+  if (cell) cell.className = "line" + (el.checked ? "" : " plain");
+}
+function addRow(i) {
+  syncItems("plan");
+  if (!planItems[i]) return;
+  if (!planItems[i].rows) planItems[i].rows = [];
+  planItems[i].rows.push({ shot: "", line: "", dur: "", hl: true });
+  renderItems("plan");
+}
+function removeRow(i, ri) {
+  syncItems("plan");
+  if (!planItems[i] || !planItems[i].rows) return;
+  planItems[i].rows.splice(ri, 1);
+  if (!planItems[i].rows.length) planItems[i].rows = [{ shot: "", line: "", dur: "", hl: true }];
+  renderItems("plan");
+}
+function moveRow(i, ri, dir) {
+  syncItems("plan");
+  var rows = planItems[i].rows, to = ri + dir;
+  if (!rows || to < 0 || to >= rows.length) return;
+  var t = rows[ri]; rows[ri] = rows[to]; rows[to] = t;
+  renderItems("plan");
+}
+function moveItem(kind, i, dir) {
+  syncItems(kind);
+  var arr = itemsArr(kind), to = i + dir;
+  if (to < 0 || to >= arr.length) return;
+  var t = arr[i]; arr[i] = arr[to]; arr[to] = t;
+  renderItems(kind);
+}
+function renderItems(kind) {
+  var arr = itemsArr(kind), host = itemsHost(kind);
+  if (!arr.length) arr.push(kind === "plan" ? blankItem() : blankRes());
+  var html = "";
+  arr.forEach(function (it, i) {
+    html += '<div class="itemblock" data-idx="' + i + '">'
+      + '<div class="ih"><b>第 ' + (i + 1) + ' 条</b><div>'
+      + '<button class="mini" onclick="moveItem(\'plan\',' + i + ',-1)" title="上移">↑</button> '
+      + '<button class="mini" onclick="moveItem(\'plan\',' + i + ',1)" title="下移">↓</button> '
+      + '<button class="mini blue" onclick="pickImg(\'' + kind + '\',' + i + ')">+ 加图片</button> '
+      + '<button class="mini red" onclick="removeItem(\'' + kind + '\',' + i + ')">删除这条</button>'
+      + "</div></div>";
+    if (kind === "plan") {
+      html += '<div class="flds" style="margin-bottom:0">'
+        + '<div class="fld grow"><label>这条的参考链接</label><input type="text" class="i-link" value="' + esc(it.link) + '" placeholder="https://…"></div>'
+        + "</div>";
+      html += '<table class="script"><thead><tr><th>#</th><th style="width:24%">镜头 / 画面</th><th>主播对镜说（台词）</th><th>时长</th><th>高亮</th><th></th></tr></thead><tbody>';
+      if (!it.rows || !it.rows.length) it.rows = [{ shot: "", line: "", dur: "", hl: true }];
+      for (var ri = 0; ri < it.rows.length; ri++) {
+        var r = it.rows[ri];
+        var hl = (r.hl === false) ? false : true;
+        html += '<tr data-r="' + ri + '"><td class="idx">' + (ri + 1) + "</td>"
+          + '<td><textarea class="r-shot" rows="2" placeholder="例：正面半身，手持开衫">' + esc(r.shot) + "</textarea></td>"
+          + '<td class="line' + (hl ? "" : " plain") + '"><textarea class="r-line" rows="2" placeholder="例：这件开衫上身挺括不软塌，通勤穿刚好">' + esc(r.line) + "</textarea></td>"
+          + '<td class="dur"><textarea class="r-dur" rows="1" placeholder="8s">' + esc(r.dur) + "</textarea></td>"
+          + '<td class="hlcell"><input type="checkbox" class="r-hl"' + (hl ? " checked" : "") + ' onchange="toggleHl(this)" title="勾上=高亮台词"></td>'
+          + '<td class="op"><button class="mini" onclick="moveRow(' + i + "," + ri + ',-1)" title="上移">↑</button>'
+          + '<button class="mini" onclick="moveRow(' + i + "," + ri + ',1)" title="下移">↓</button>'
+          + '<button class="mini red" onclick="removeRow(' + i + "," + ri + ')">×</button></td></tr>';
+      }
+      html += "</tbody></table>";
+      html += '<div class="btns" style="margin-top:8px">'
+        + '<button class="mini blue" onclick="addRow(' + i + ')">+ 加一句台词</button>'
+        + '<button class="mini green" onclick="openPaste(' + i + ')">📋 粘贴导入台词</button>'
+        + "<span class=\"wd\" style=\"align-self:center\">整段文案粘进去，自动按句号/问号/感叹号/分号拆成一条条台词</span>"
+        + "</div>";
+    } else {
+      html += '<div class="flds" style="margin-bottom:0">'
+        + '<div class="fld grow"><label>成片链接</label><input type="text" class="i-link" value="' + esc(it.link) + '" placeholder="https://…"></div>'
+        + '<div class="fld grow"><label>这条的说明</label><input type="text" class="i-note" value="' + esc(it.note) + '" placeholder="例：通勤look 完播18%"></div>'
+        + "</div>";
+    }
+    html += '<div class="imgrow">';
+    it.imgs.forEach(function (src, j) {
+      html += '<span class="imgwrap"><img class="thumb2 thumb" src="' + esc(src) + '" onclick="previewImg(this.src)" title="点这里放大看"><button class="del" onclick="removeImg(\'' + kind + '\',' + i + ',' + j + ')">×</button></span>';
+    });
+    html += '<span class="wd">' + (it.imgs.length ? "已加 " + it.imgs.length + " 张（最多 " + MAX_IMGS + " 张）" : "还没有图片，点「+ 加图片」可一次选多张") + "</span>";
+    html += "</div></div>";
+  });
+  host.innerHTML = html;
+  growBoxes(host);
+}
+function autoGrow(t) {
+  t.style.height = "auto";
+  t.style.height = (t.scrollHeight + 2) + "px";
+}
+function growBoxes(el) {
+  var tas = el.querySelectorAll("textarea");
+  for (var i = 0; i < tas.length; i++) {
+    if (!tas[i].getAttribute("data-grow")) {
+      tas[i].setAttribute("data-grow", "1");
+      tas[i].addEventListener("input", function () { autoGrow(this); });
+    }
+    autoGrow(tas[i]);
+  }
+}
+
+/* ---- 粘贴导入台词 ---- */
+var pasteIndex = -1;
+function openPaste(i) {
+  syncItems("plan");
+  pasteIndex = i;
+  $("pasteText").value = "";
+  $("pasteModal").style.display = "block";
+  setTimeout(function () { $("pasteText").focus(); }, 30);
+}
+function closePaste() {
+  $("pasteModal").style.display = "none";
+  pasteIndex = -1;
+}
+function splitSentences(txt, withComma) {
+  var out = [];
+  var re = withComma
+    ? /[^。！？；!?;\n\r，、,]+[。！？；!?;，、,]?/g
+    : /[^。！？；!?;\n\r]+[。！？；!?;]?/g;
+  var m;
+  while ((m = re.exec(txt)) !== null) {
+    var s = m[0].replace(/^[\s、，,]+/, "").replace(/[，、,]+$/, "").trim();
+    if (s && s.replace(/[。！？；!?;、，,]/g, "").trim()) out.push(s);
+  }
+  return out;
+}
+function doPaste() {
+  var txt = $("pasteText").value;
+  if (!txt || !txt.trim()) { alert("先把文案粘贴到框里再点确认"); return; }
+  var withComma = $("splitComma").checked;
+  var arr = splitSentences(txt, withComma);
+  if (!arr.length) { alert("没识别到完整句子，看看文案里有没有标点"); return; }
+  var it = planItems[pasteIndex];
+  if (!it) { alert("请重新打开这条计划再粘贴"); return; }
+  if (!it.rows) it.rows = [];
+  var onlyOne = (it.rows.length === 1 && !(it.rows[0].shot || "").trim() && !(it.rows[0].line || "").trim() && !(it.rows[0].dur || "").trim());
+  if (onlyOne) it.rows = [];
+  arr.forEach(function (s) { it.rows.push({ shot: "", line: s, dur: "", hl: true }); });
+  closePaste();
+  renderItems("plan");
+  alert("已导入 " + arr.length + " 句台词，可以逐行补镜头和时长");
+}
+function addItem(kind) {
+  syncItems(kind);
+  itemsArr(kind).push(kind === "plan" ? blankItem() : blankRes());
+  renderItems(kind);
+}
+function removeItem(kind, i) {
+  syncItems(kind);
+  var arr = itemsArr(kind);
+  arr.splice(i, 1);
+  if (!arr.length) arr.push(kind === "plan" ? blankItem() : blankRes());
+  renderItems(kind);
+}
+function removeImg(kind, i, j) {
+  syncItems(kind);
+  var arr = itemsArr(kind);
+  if (arr[i] && arr[i].imgs) arr[i].imgs.splice(j, 1);
+  renderItems(kind);
+}
+function pickImg(kind, i) {
+  pickTarget = { kind: kind, i: i };
+  $("multiPick").click();
+}
+function compressFile(file, cb) {
+  if (!/^image\//.test(file.type)) { cb(null); return; }
+  if (file.size > 12 * 1024 * 1024) { alert("「" + file.name + "」超过 12MB，已跳过"); cb(null); return; }
+  var fr = new FileReader();
+  fr.onload = function (e) {
+    var im = new Image();
+    im.onload = function () {
+      var max = 800, w = im.width, h = im.height;
+      if (w > max || h > max) { var k = Math.min(max / w, max / h); w = Math.round(w * k); h = Math.round(h * k); }
+      var c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      c.getContext("2d").drawImage(im, 0, 0, w, h);
+      cb(c.toDataURL("image/jpeg", 0.7));
+    };
+    im.onerror = function () { cb(null); };
+    im.src = e.target.result;
+  };
+  fr.readAsDataURL(file);
+}
+function onMultiPick(input) {
+  var t = pickTarget;
+  var files = Array.prototype.slice.call(input.files || []);
+  input.value = "";
+  if (!t || !files.length) return;
+  var item = itemsArr(t.kind)[t.i];
+  if (!item) return;
+  var room = MAX_IMGS - item.imgs.length;
+  if (room <= 0) { alert("这条已经有 " + MAX_IMGS + " 张了，先删掉几张再加"); return; }
+  if (files.length > room) { alert("每条最多 " + MAX_IMGS + " 张，多出的 " + (files.length - room) + " 张已跳过"); files = files.slice(0, room); }
+  var pending = files.length, latest = t;
+  files.forEach(function (f) {
+    compressFile(f, function (data) {
+      pending--;
+      var it = itemsArr(latest.kind)[latest.i];
+      if (data && it) it.imgs.push(data);
+      if (pending === 0) { syncItems(latest.kind); renderItems(latest.kind); }
+    });
+  });
+}
+
+/* ---- 周计划 ---- */
+function collectItems(kind, blank) {
+  syncItems(kind);
+  var arr = itemsArr(kind), out = [];
+  arr.forEach(function (it) {
+    var imgs = (it.imgs || []).slice();
+    var link = (it.link || "").trim();
+    if (kind === "plan") {
+      var rows = (it.rows || []).map(function (r) {
+        return { shot: (r.shot || "").trim(), line: (r.line || "").trim(), dur: (r.dur || "").trim(), hl: (r.hl === false ? false : true) };
+      }).filter(function (r) { return r.shot || r.line || r.dur; });
+      if (rows.length || link || imgs.length) out.push({ link: link, imgs: imgs, rows: rows });
+    } else {
+      var note = (it.note || "").trim();
+      if (link || note || imgs.length) out.push({ link: link, note: note, imgs: imgs });
+    }
+  });
+  if (!out.length) out.push(blank);
+  return out;
+}
+function savePlan() {
+  var date = $("pDate").value;
+  if (!date) { alert("请选计划日期"); return; }
+  var name = $("pName").value.trim();
+  if (!name) { alert("请填计划名称"); return; }
+  var items = collectItems("plan", blankItem());
+  var qty = num($("pQty").value);
+  if (!qty) qty = items.length;
+  var obj = {
+    id: planEditingId || Date.now(),
+    date: date,
+    week: $("pWeek").value.trim() || weekLabel(date),
+    name: name,
+    type: $("pType").value,
+    qty: qty,
+    status: $("pStatus").value,
+    items: items
+  };
+  if (planEditingId) {
+    for (var i = 0; i < plans.length; i++) if (plans[i].id === planEditingId) plans[i] = obj;
+  } else {
+    plans.push(obj);
+  }
+  if (!savePlans()) return;
+  resetPlanForm(false);
+  renderPlans();
+  alert("已保存：" + name + "（" + items.length + " 条内容）");
+}
+function resetPlanForm(all) {
+  $("pName").value = ""; $("pQty").value = "";
+  if (all) { $("pDate").value = today(); autoWeek(); $("pStatus").value = "未开始"; $("pType").value = "混剪"; }
+  planEditingId = null; planItems = [blankItem()];
+  renderItems("plan");
+  $("pSaveBtn").textContent = "保存周计划";
+}
+function editPlan(id) {
+  var p = null;
+  for (var i = 0; i < plans.length; i++) if (plans[i].id === id) p = plans[i];
+  if (!p) return;
+  $("pDate").value = p.date; $("pWeek").value = p.week; $("pName").value = p.name;
+  $("pWd").textContent = wd(p.date);
+  $("pType").value = p.type; $("pQty").value = p.qty; $("pStatus").value = p.status;
+  planItems = (p.items && p.items.length ? JSON.parse(JSON.stringify(p.items)) : [blankItem()]);
+  renderItems("plan");
+  planEditingId = id; $("pSaveBtn").textContent = "更新这条计划";
+  switchTab("plan");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function delPlan(id) {
+  var p = null;
+  for (var i = 0; i < plans.length; i++) if (plans[i].id === id) p = plans[i];
+  if (!p) return;
+  var linked = results.filter(function (r) { return r.planId === id; }).length;
+  if (!confirm("删除计划「" + p.name + "」？" + (linked ? "它下面还有 " + linked + " 条执行结果会被一起删掉。" : ""))) return;
+  undoSnapshot("删除周计划");
+  plans = plans.filter(function (x) { return x.id !== id; });
+  results = results.filter(function (r) { return r.planId !== id; });
+  savePlans(); saveResults();
+  if (planEditingId === id) resetPlanForm(false);
+  renderPlans(); renderResults();
+}
+function statusBadge(s) {
+  var cls = "badge";
+  if (s === "已完成") cls += " g";
+  else if (s === "进行中") cls += " b";
+  else if (s === "延期") cls += " r";
+  else cls += " o";
+  return '<span class="' + cls + '">' + esc(s) + "</span>";
+}
+function allImgs(items) {
+  var a = [];
+  (items || []).forEach(function (it) { (it.imgs || []).forEach(function (s) { a.push(s); }); });
+  return a;
+}
+function imgCell(items, n) {
+  var imgs = allImgs(items);
+  if (!imgs.length) return '<span class="zero">—</span>';
+  var html = '<div class="imgrow" style="margin:0;gap:3px">';
+  imgs.slice(0, n).forEach(function (s) { html += '<img class="thumb s" src="' + esc(s) + '" onclick="previewImg(this.src)" title="点这里放大看">'; });
+  if (imgs.length > n) html += '<span class="wd" onclick="previewImg(\'' + esc(imgs[0]) + '\')" style="cursor:zoom-in">+' + (imgs.length - n) + "</span>";
+  return html + "</div>";
+}
+function previewImg(src) {
+  if (!src) return;
+  var v = $("imgView"), p = $("imgViewPic"), o = $("imgViewOpen");
+  if (!v || !p) return;
+  p.src = src;
+  if (o) o.href = src;
+  v.style.display = "block";
+}
+function closeImgView() {
+  var v = $("imgView");
+  if (v) v.style.display = "none";
+  var p = $("imgViewPic");
+  if (p) p.src = "";
+}
+function linkCell(items) {
+  var ls = [];
+  (items || []).forEach(function (it) { if ((it.link || "").trim()) ls.push(it.link.trim()); });
+  if (!ls.length) return '<span class="zero">—</span>';
+  return '<div class="linkcell"><a href="' + esc(ls[0]) + '" target="_blank">打开</a>'
+    + (ls.length > 1 ? '<span class="wd">+' + (ls.length - 1) + "</span>" : "") + "</div>";
+}
+function updatePlanCards(wr) {
+  wr = wr || weekRange();
+  var weekPlans = plans.filter(function (p) {
+    if (wr.all) return true;
+    return p.date >= wr.start && p.date <= wr.end;
+  });
+  var shootQty = shotsInRange(wr);
+  var doneQty = 0;
+  weekPlans.forEach(function (p) {
+    results.forEach(function (r) { if (r.planId === p.id) doneQty += (r.qty || 0); });
+  });
+  if ($("pCount")) $("pCount").innerHTML = weekPlans.length + "<small>项</small>";
+  if ($("pQty")) $("pQty").innerHTML = shootQty + "<small>条</small>";
+  if ($("pDone")) $("pDone").innerHTML = doneQty + "<small>条</small>";
+  if ($("pBar")) $("pBar").style.width = (shootQty > 0 ? Math.min(100, Math.round(doneQty / shootQty * 100)) : 0) + "%";
+}
+function renderPlans() {
+  var wr = weekRange();
+  syncPlanWeekUI();
+  updatePlanCards(wr);
+
+  var kw = $("pKw").value.trim().toLowerCase();
+  var list = plans.filter(function (p) {
+    if (!wr.all && (p.date < wr.start || p.date > wr.end)) return false;
+    if (!kw) return true;
+    var hay = p.name + " " + p.week + " " + p.type;
+    (p.items || []).forEach(function (it) {
+      (it.rows || []).forEach(function (r) { hay += " " + (r.line || "") + " " + (r.shot || ""); });
+    });
+    return hay.toLowerCase().indexOf(kw) > -1;
+  }).sort(function (a, b) { return b.date.localeCompare(a.date); });
+
+  if (!list.length) {
+    $("planBody").innerHTML = '<tr><td colspan="11"><div class="empty">还没有周计划，先在上面加一条</div></td></tr>';
+    if ($("planStatText")) $("planStatText").textContent = "该时间段没有计划";
+    return;
+  }
+  /* 按日期分组，每天先给一行小计 */
+  var groups = [], g = null;
+  list.forEach(function (p) {
+    if (!g || g.date !== p.date) { g = { date: p.date, items: [] }; groups.push(g); }
+    g.items.push(p);
+  });
+  var statPlans = 0, statQty = 0, statDone = 0, html = [];
+  groups.forEach(function (gr) {
+    var gq = 0, gdone = 0;
+    gr.items.forEach(function (p) {
+      gq += num(p.qty);
+      results.forEach(function (r) { if (r.planId === p.id) gdone += (r.qty || 0); });
+    });
+    statPlans += gr.items.length; statQty += gq; statDone += gdone;
+    html.push('<tr class="wkweek"><td colspan="11">' + gr.date + " " + wd(gr.date)
+      + " · " + gr.items.length + " 项 · 计划 " + gq + " 条 · 已产出 " + gdone + " 条</td></tr>");
+    gr.items.forEach(function (p) {
+      var rs = results.filter(function (r) { return r.planId === p.id; });
+      var rq = rs.reduce(function (a, b) { return a + (b.qty || 0); }, 0);
+      var lines = [];
+      (p.items || []).forEach(function (it) {
+        (it.rows || []).forEach(function (r) { if ((r.line || "").trim()) lines.push(r.line.trim()); });
+      });
+      var copyCell = lines.length
+        ? '<div class="copycell">' + esc(lines[0].slice(0, 32)) + (lines[0].length > 32 ? "…" : "") + "</div>"
+          + '<span class="wd">共 ' + lines.length + " 句台词</span>"
+        : '<span class="zero">—</span>';
+      html.push("<tr><td>" + p.date + wdHtml(p.date) + "</td>"
+        + "<td>" + esc(p.week) + "</td>"
+        + "<td>" + esc(p.name) + "</td>"
+        + "<td>" + esc(p.type) + "</td>"
+        + "<td>" + (p.qty || 0) + "</td>"
+        + "<td>" + statusBadge(p.status) + "</td>"
+        + "<td>" + copyCell + "</td>"
+        + "<td>" + imgCell(p.items, 3) + "</td>"
+        + "<td>" + linkCell(p.items) + "</td>"
+        + "<td>" + (rs.length ? rs.length + " 次 · " + rq + " 条" : '<span class="zero">—</span>') + "</td>"
+        + '<td><div class="ops"><button class="mini blue" onclick="exportScripts(' + p.id + ')">导文案</button>'
+        + '<button class="mini green" onclick="exportScriptImage(' + p.id + ')">导图</button>'
+        + '<button class="mini" onclick="editPlan(' + p.id + ')">编辑</button>'
+        + '<button class="mini red" onclick="delPlan(' + p.id + ')">删除</button></div></td></tr>');
+    });
+  });
+  $("planBody").innerHTML = html.join("");
+  if ($("planStatText")) {
+    $("planStatText").textContent = "共 " + statPlans + " 项，分布在 " + groups.length + " 天（日均 "
+      + (statPlans / groups.length).toFixed(1) + " 项）｜ 计划 " + statQty + " 条 ｜ 已产出 " + statDone + " 条";
+  }
+}
+
+/* ---- 导出台词表 ---- */
+function csvDownload(rows, filename) {
+  function q(v) { return '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"'; }
+  var csv = "\ufeff" + rows.map(function (r) { return r.map(q).join(","); }).join("\r\n");
+  var blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 500);
+}
+function exportScripts(planId) {
+  var all = !planId;
+  var target = all ? plans.slice() : plans.filter(function (p) { return p.id === planId; });
+  if (!target.length) { alert("还没有周计划文案可导出"); return; }
+  var rows = [["计划日期", "星期", "周次", "计划名称", "内容类型", "第几条", "序号", "镜头/画面", "台词", "时长", "是否高亮"]];
+  target.sort(function (a, b) { return a.date.localeCompare(b.date); }).forEach(function (p) {
+    var its = (p.items && p.items.length) ? p.items : [{ rows: [] }];
+    its.forEach(function (it, ii) {
+      var rs = (it.rows && it.rows.length) ? it.rows : [{ shot: "", line: "", dur: "" }];
+      rs.forEach(function (r, ri) {
+        rows.push([p.date, wd(p.date), p.week || "", p.name, p.type, ii + 1, ri + 1, r.shot || "", r.line || "", r.dur || "", (r.hl === false ? "否" : "是")]);
+      });
+    });
+  });
+  csvDownload(rows, all ? ("全部文案_" + today() + ".csv") : ("文案_" + target[0].name + "_" + today() + ".csv"));
+}
+
+/* ---- 导出台词图片 ---- */
+function exportScriptImage(planId) {
+  var FONT = "'Microsoft YaHei','PingFang SC','Hiragino Sans GB',sans-serif";
+  function f(size, bold) { return (bold ? "bold " : "") + size + "px " + FONT; }
+  var W = 1080, PAD = 44, S = 2;
+  var noW = 54, shotW = 236, durW = 92;
+  var lineX = PAD + noW + shotW;
+  var lineW = W - PAD * 2 - noW - shotW - durW;
+
+  var groups = [];
+  var src = (planId ? plans.filter(function (p) { return p.id === planId; }) : plans.slice());
+  src.sort(function (a, b) { return a.date.localeCompare(b.date); }).forEach(function (p) {
+    var rows = [];
+    (p.items || []).forEach(function (it) {
+      (it.rows || []).forEach(function (r) {
+        if (((r.line || "").trim()) || ((r.shot || "").trim())) {
+          rows.push({ shot: (r.shot || "").trim(), line: (r.line || "").trim(), dur: (r.dur || "").trim(), hl: r.hl !== false });
+        }
+      });
+    });
+    if (rows.length) groups.push({ p: p, rows: rows });
+  });
+  if (!groups.length) { alert("还没有台词内容，先写几条再导图"); return; }
+
+  var mc = document.createElement("canvas").getContext("2d");
+  function wrap(text, font, maxW) {
+    mc.font = font;
+    var out = [], cur = "", s = String(text || "");
+    for (var i = 0; i < s.length; i++) {
+      var t = cur + s.charAt(i);
+      if (mc.measureText(t).width > maxW && cur) { out.push(cur); cur = s.charAt(i); }
+      else cur = t;
+    }
+    out.push(cur);
+    return out;
+  }
+
+  var blocks = [], total = PAD + 104;
+  groups.forEach(function (g) {
+    blocks.push({ type: "sec", y: total, g: g });
+    total += 72;
+    g.rows.forEach(function (r, i) {
+      var shotL = wrap(r.shot || "—", f(20, false), shotW - 22);
+      var lineL = wrap(r.line, f(25, r.hl), lineW - 24);
+      var h = Math.max(Math.max(shotL.length, lineL.length) * 34 + 22, 60);
+      blocks.push({ type: "row", y: total, h: h, no: i + 1, r: r, shotL: shotL, lineL: lineL });
+      total += h;
+    });
+    total += 20;
+  });
+  var H = total + PAD;
+
+  var cv = document.createElement("canvas");
+  cv.width = W * S; cv.height = H * S;
+  var ctx = cv.getContext("2d");
+  ctx.scale(S, S);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, W, H);
+  ctx.textBaseline = "top";
+
+  /* 标题 */
+  ctx.fillStyle = "#111827";
+  ctx.font = f(33, true);
+  ctx.fillText("剪辑台词脚本", PAD, PAD - 4);
+  var cnt = 0;
+  groups.forEach(function (g) { cnt += g.rows.length; });
+  ctx.fillStyle = "#6b7280";
+  ctx.font = f(19, false);
+  ctx.fillText("共 " + groups.length + " 条计划 · " + cnt + " 句台词 · 导出 " + new Date().toLocaleString(), PAD, PAD + 44);
+
+  blocks.forEach(function (b) {
+    if (b.type === "sec") {
+      var p = b.g.p;
+      ctx.fillStyle = "#eff6ff";
+      ctx.fillRect(PAD - 18, b.y, W - PAD * 2 + 36, 52);
+      ctx.fillStyle = "#1d4ed8";
+      ctx.fillRect(PAD - 18, b.y, 5, 52);
+      ctx.fillStyle = "#1d4ed8";
+      ctx.font = f(24, true);
+      var head = p.date + " " + wd(p.date) + " · " + (p.week || "") + " · " + p.name + "（" + p.type + "）";
+      var hl2 = wrap(head, f(24, true), W - PAD * 2 - 10);
+      ctx.fillText(hl2[0] + (hl2.length > 1 ? "…" : ""), PAD + 4, b.y + 13);
+      return;
+    }
+
+    var r = b.r, y = b.y;
+    /* 行底 */
+    if (r.hl) {
+      ctx.fillStyle = "#fff8e1";
+      ctx.fillRect(PAD - 18, y, W - PAD * 2 + 36, b.h);
+      ctx.fillStyle = "#f0b429";
+      ctx.fillRect(PAD - 18, y, 5, b.h);
+    } else {
+      ctx.fillStyle = "#fbfdff";
+      ctx.fillRect(PAD - 18, y, W - PAD * 2 + 36, b.h);
+    }
+    ctx.strokeStyle = "#eef1f4";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(PAD - 18, y + b.h);
+    ctx.lineTo(W - PAD + 18, y + b.h);
+    ctx.stroke();
+
+    /* 序号 */
+    ctx.fillStyle = "#9ca3af";
+    ctx.font = f(19, false);
+    ctx.fillText(String(b.no), PAD + 4, y + 18);
+
+    /* 镜头 */
+    ctx.fillStyle = "#6b7280";
+    ctx.font = f(20, false);
+    b.shotL.forEach(function (ln, i) { ctx.fillText(ln, PAD + noW, y + 16 + i * 34); });
+
+    /* 台词 */
+    ctx.fillStyle = r.hl ? "#92400e" : "#374151";
+    ctx.font = f(25, r.hl);
+    b.lineL.forEach(function (ln, i) { ctx.fillText(ln, lineX, y + 14 + i * 34); });
+
+    /* 时长 */
+    ctx.fillStyle = "#9ca3af";
+    ctx.font = f(19, false);
+    ctx.fillText(r.dur || "", W - PAD - durW + 10, y + 18);
+  });
+
+  var a = document.createElement("a");
+  a.href = cv.toDataURL("image/png");
+  a.download = planId ? ("台词脚本_" + groups[0].p.name + "_" + today() + ".png") : ("全部台词脚本_" + today() + ".png");
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+/* ---- 执行结果 ---- */
+var resShotBase = {};
+function buildResShotForm() {
+  if (!$("rShotHead")) return;
+  $("rShotHead").innerHTML = "<th>拍摄类型</th>" + SHOOT_TYPES.map(function (t) { return "<th>" + t + "</th>"; }).join("");
+  $("rShotRow").innerHTML = "<td><b>已拍完成（条）</b></td>"
+    + SHOOT_TYPES.map(function (t, i) {
+      return '<td><input type="number" min="0" id="rsN' + i + '" placeholder="0" oninput="calcResShot()"></td>';
+    }).join("");
+  calcResShot();
+}
+function calcResShot() {
+  var total = 0;
+  SHOOT_TYPES.forEach(function (t, i) {
+    var el = $("rsN" + i);
+    if (el) total += num(el.value);
+  });
+  TYPES.forEach(function (t) {
+    if (SHOOT_TYPES.indexOf(t) === -1) total += num(resShotBase[t]);
+  });
+  if ($("resShotTotal")) $("resShotTotal").textContent = "已拍 " + total + " 条";
+}
+function readResShots() {
+  var obj = {}, any = false;
+  SHOOT_TYPES.forEach(function (t, i) {
+    var el = $("rsN" + i);
+    var v = el ? num(el.value) : 0;
+    if (v) { obj[t] = v; any = true; }
+  });
+  /* 切片/混剪不是拍摄形式，之前填过的数原样保留，不清空 */
+  TYPES.forEach(function (t) {
+    if (SHOOT_TYPES.indexOf(t) === -1 && num(resShotBase[t])) { obj[t] = num(resShotBase[t]); any = true; }
+  });
+  return any ? obj : {};
+}
+function fillResShots(shots) {
+  shots = shots || {};
+  resShotBase = shots;
+  SHOOT_TYPES.forEach(function (t, i) {
+    var el = $("rsN" + i);
+    if (el) el.value = shots[t] ? shots[t] : "";
+  });
+  calcResShot();
+}
+function planName(id) {
+  for (var i = 0; i < plans.length; i++) if (plans[i].id === id) return plans[i].name;
+  return "（计划已删除）";
+}
+function showResWd() {
+  $("rWd").textContent = wd($("rDate").value);
+}
+function fillPlanSelect() {
+  var sel = $("rPlan");
+  if (!plans.length) { sel.innerHTML = '<option value="">先建一条周计划</option>'; return; }
+  var sorted = plans.slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
+  sel.innerHTML = sorted.map(function (p) {
+    return '<option value="' + p.id + '">' + esc(p.date + " " + wd(p.date) + " · " + p.name) + "</option>";
+  }).join("");
+}
+function saveResult() {
+  var planId = parseInt($("rPlan").value, 10);
+  if (!planId) { alert("请先选关联的周计划"); return; }
+  var date = $("rDate").value;
+  if (!date) { alert("请选执行日期"); return; }
+  var items = collectItems("result", blankRes());
+  var qty = num($("rQty").value);
+  if (!qty) qty = items.filter(function (it) { return (it.link || "").trim() || (it.imgs || []).length || (it.note || "").trim(); }).length;
+  var obj = {
+    id: resEditingId || Date.now(),
+    planId: planId,
+    date: date,
+    qty: qty,
+    review: $("rReview").value.trim(),
+    items: items,
+    shots: readResShots()
+  };
+  if (resEditingId) {
+    for (var i = 0; i < results.length; i++) if (results[i].id === resEditingId) results[i] = obj;
+  } else {
+    results.push(obj);
+  }
+  if (!saveResults()) return;
+  resetResultForm(false);
+  fillPlanSelect();
+  renderResults(); renderPlans();
+  alert("已保存执行结果（" + items.length + " 条成片）");
+}
+function resetResultForm(all) {
+  $("rQty").value = ""; $("rReview").value = "";
+  fillResShots({});
+  if (all) { $("rDate").value = today(); }
+  showResWd();
+  resEditingId = null; resItems = [blankRes()];
+  renderItems("result");
+  $("rSaveBtn").textContent = "保存执行结果";
+}
+function editResult(id) {
+  var r = null;
+  for (var i = 0; i < results.length; i++) if (results[i].id === id) r = results[i];
+  if (!r) return;
+  fillPlanSelect();
+  $("rPlan").value = String(r.planId);
+  $("rDate").value = r.date; $("rQty").value = r.qty;
+  showResWd();
+  $("rReview").value = r.review || "";
+  fillResShots(r.shots || {});
+  resItems = (r.items && r.items.length ? JSON.parse(JSON.stringify(r.items)) : [blankRes()]);
+  renderItems("result");
+  resEditingId = id; $("rSaveBtn").textContent = "更新这条结果";
+  switchTab("result");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function delResult(id) {
+  if (!confirm("删除这条执行结果？")) return;
+  undoSnapshot("删除执行结果");
+  results = results.filter(function (r) { return r.id !== id; });
+  saveResults();
+  if (resEditingId === id) resetResultForm(false);
+  renderResults(); renderPlans();
+}
+function renderResults() {
+  var kw = $("rKw").value.trim().toLowerCase();
+  var list = results.filter(function (r) {
+    if (!kw) return true;
+    var hay = planName(r.planId) + " " + (r.review || "");
+    (r.items || []).forEach(function (it) { hay += " " + (it.note || ""); });
+    return hay.toLowerCase().indexOf(kw) > -1;
+  }).sort(function (a, b) { return b.date.localeCompare(a.date); });
+  if (!list.length) {
+    $("resBody").innerHTML = '<tr><td colspan="7"><div class="empty">还没有执行结果，先在上面记一条</div></td></tr>';
+    return;
+  }
+  $("resBody").innerHTML = list.map(function (r) {
+    var cnt = (r.items || []).length;
+    return "<tr><td>" + r.date + wdHtml(r.date) + "</td>"
+      + "<td>" + esc(planName(r.planId)) + "</td>"
+      + "<td><b>" + (r.qty || 0) + "</b>" + (cnt > 1 ? '<div class="wd">' + cnt + " 条成片</div>" : "") + "</td>"
+      + "<td>" + linkCell(r.items) + "</td>"
+      + "<td>" + imgCell(r.items, 3) + "</td>"
+      + '<td class="copycell">' + (esc(r.review) || "—") + "</td>"
+      + '<td><div class="ops"><button class="mini" onclick="editResult(' + r.id + ')">编辑</button>'
+      + '<button class="mini red" onclick="delResult(' + r.id + ')">删除</button></div></td></tr>';
+  }).join("");
+}
+
+/* ================= 周计划表 / 本周完成量 ================= */
+var KEY_WK = "clipWeekTablesV1";
+var weekTables = JSON.parse(localStorage.getItem(KEY_WK) || "[]");
+var KEY_WEEK_SEL = "clipWeekDoneSel";
+var weekDoneDay = localStorage.getItem(KEY_WEEK_SEL) || today();
+var wkTimer = null;
+
+function saveWeekTables(now) {
+  clearTimeout(wkTimer);
+  refreshProg();
+  if (now) {
+    try { localStorage.setItem(KEY_WK, JSON.stringify(weekTables)); } catch (e) { }
+    return true;
+  }
+  wkTimer = setTimeout(function () {
+    try { localStorage.setItem(KEY_WK, JSON.stringify(weekTables)); autoBackup(); } catch (e) { }
+  }, 350);
+  return true;
+}
+function weekEndOf(ws) {
+  var d = new Date(ws + "T00:00:00");
+  d.setDate(d.getDate() + 6);
+  return ymd(d);
+}
+function mondayOf(dateStr) {
+  var d = new Date((dateStr || today()) + "T00:00:00");
+  var day = d.getDay() || 7;
+  d.setDate(d.getDate() - day + 1);
+  return ymd(d);
+}
+function findWeekTable(ws) {
+  for (var i = 0; i < weekTables.length; i++) if (weekTables[i].ws === ws) return weekTables[i];
+  return null;
+}
+function ensureWeekTable(ws) {
+  var r = findWeekTable(ws);
+  if (!r) {
+    r = { id: Date.now(), ws: ws, name: "", account: "", goal: "", rows: {}, fund: "", model: "", assist: "" };
+    TYPES.forEach(function (t) { r.rows[t] = { l: 0, n: 0, style: "", codes: [] }; });
+    weekTables.push(r);
+    saveWeekTables(true);
+  } else {
+    if (!r.rows) r.rows = {};
+    TYPES.forEach(function (t) { if (!r.rows[t]) r.rows[t] = { l: 0, n: 0, style: "", codes: [] }; normCodes(r.rows[t]); });
+  }
+  return r;
+}
+/* 每行固定 4 个「款号 + 条数」格子；老数据里只有一个款号字符串的，塞到第一格 */
+function normCodes(r) {
+  if (!r) return [];
+  if (!r.codes || !r.codes.length) {
+    r.codes = [];
+    var old = String(r.style || "").trim();
+    if (old) {
+      old.split(/[+＋、,，\/ ]+/).filter(function (x) { return x; }).slice(0, 4).forEach(function (c) {
+        r.codes.push({ c: c, q: 0 });
+      });
+    }
+  }
+  while (r.codes.length < 4) r.codes.push({ c: "", q: 0 });
+  return r.codes;
+}
+function rowCodeText(r) {
+  var cs = normCodes(r), out = [];
+  cs.forEach(function (x) {
+    var c = String(x.c || "").trim();
+    if (!c) return;
+    out.push(c + (num(x.q) ? "×" + num(x.q) : ""));
+  });
+  return out.join(" ");
+}
+function styleCount(rec) {
+  var set = {};
+  TYPES.forEach(function (t) {
+    normCodes(rec.rows[t]).forEach(function (x) {
+      var c = String(x.c || "").trim();
+      if (c) set[c] = 1;
+    });
+    var s = ((rec.rows[t] || {}).style || "").trim();
+    if (s && !(rec.rows[t].codes || []).length) set[s] = 1;
+  });
+  return Object.keys(set).length;
+}
+/* 全周按款号汇总：每个款号的条数 + 已分配/合计的差额 */
+function codeSummary(rec) {
+  var per = {}, order = [], assigned = 0, total = 0;
+  TYPES.forEach(function (t) {
+    var r = rec.rows[t] || {};
+    total += num(r.l) + num(r.n);
+    normCodes(r).forEach(function (x) {
+      var c = String(x.c || "").trim();
+      if (!c) return;
+      var q = num(x.q);
+      if (!(c in per)) { per[c] = 0; order.push(c); }
+      per[c] += q;
+      assigned += q;
+    });
+  });
+  return { per: per, order: order, assigned: assigned, total: total };
+}
+function distText(rec) {
+  var s = codeSummary(rec);
+  if (!s.order.length) return "拍摄款号：还没填。每行最多 4 个款号，填上每个款号对应的条数，会自动汇总。";
+  var parts = s.order.map(function (c) { return c + " <b>" + s.per[c] + "</b> 条"; });
+  var tail;
+  if (s.assigned === s.total) tail = "　✅ 已分配完（合计 " + s.total + " 条）";
+  else if (s.assigned < s.total) tail = "　还差 <b>" + (s.total - s.assigned) + "</b> 条没分到款号（合计 " + s.total + " 条）";
+  else tail = "　⚠ 分配超出 <b>" + (s.assigned - s.total) + "</b> 条（合计 " + s.total + " 条）";
+  return "款号分配：" + parts.join(" · ") + "　｜ 已分配 <b>" + s.assigned + "</b> 条" + tail;
+}
+function refreshWeekSum(i) {
+  var rec = weekTables[i];
+  if (!rec) return;
+  var cell = document.getElementById("sc" + i);
+  if (cell) cell.textContent = "累计拍摄：" + styleCount(rec) + " 款";
+  var dist = document.getElementById("wd" + i);
+  if (dist) dist.innerHTML = distText(rec);
+}
+function setWeekCode(i, t, k, field, v) {
+  var rec = weekTables[i];
+  if (!rec || !rec.rows[t]) return;
+  var r = rec.rows[t];
+  normCodes(r);
+  if (!r.codes[k]) r.codes[k] = { c: "", q: 0 };
+  if (field === "q") r.codes[k].q = num(v);
+  else r.codes[k].c = v;
+  r.style = r.codes.map(function (x) { return String(x.c || "").trim(); }).filter(function (x) { return x; }).join("+");
+  refreshWeekSum(i);
+  saveWeekTables();
+}
+function weekCounts(ws, we) {
+  var c = {};
+  TYPES.forEach(function (t) { c[t] = { l: 0, n: 0 }; });
+  data.forEach(function (r) {
+    if (r.date >= ws && r.date <= we) {
+      TYPES.forEach(function (t) {
+        var it = r.items[t];
+        if (it) { c[t].l += (it.link || 0); c[t].n += (it.nolink || 0); }
+      });
+    }
+  });
+  return c;
+}
+
+/* 台账里的「本周完成剪辑量」 */
+function renderWeekDone() {
+  var base = weekDoneDay || today();
+  var ws = mondayOf(base), we = weekEndOf(ws);
+  if ($("weekDonePick")) $("weekDonePick").value = base;
+  var rec = findWeekTable(ws) || { ws: ws, name: "", account: "", goal: "", rows: {} };
+  TYPES.forEach(function (t) { if (!rec.rows[t]) rec.rows[t] = { l: 0, n: 0, style: "" }; });
+  $("weekDoneHead").innerHTML = "周次：<b>" + esc(rec.name || (ws + " ~ " + we + "（" + weekLabel(ws) + "）")) + "</b>"
+    + "　发布账号：" + (esc(rec.account) || "—") + "　周度目标：" + (esc(rec.goal) || "—");
+  var c = weekCounts(ws, we), tl = 0, tn = 0, html = "";
+  TYPES.forEach(function (t) {
+    tl += c[t].l; tn += c[t].n;
+    html += "<tr><td>" + t + "</td><td>" + c[t].l + "</td><td>" + c[t].n + "</td>"
+      + '<td class="sumcell">' + (c[t].l + c[t].n) + "</td>"
+      + '<td><input type="text" value="' + esc((rec.rows[t] || {}).style) + '" placeholder="填款号，例：7988" oninput="setStyle(\'' + ws + "','" + t + "',this.value)\"></td></tr>";
+  });
+  html += '<tr class="tot"><td>合计（本周）</td><td>' + tl + "</td><td>" + tn + '</td><td class="sumcell">' + (tl + tn) + '</td><td id="wdStyle">累计拍摄：' + styleCount(rec) + " 款</td></tr>";
+  $("weekDoneBody").innerHTML = html;
+  renderVoProgress();
+}
+function setStyle(ws, t, v) {
+  var rec = ensureWeekTable(ws);
+  rec.rows[t].style = v;
+  saveWeekTables();
+  if ($("wdStyle")) $("wdStyle").textContent = "累计拍摄：" + styleCount(rec) + " 款";
+}
+function shiftWeekDone(d) {
+  var b = new Date(mondayOf(weekDoneDay) + "T00:00:00");
+  b.setDate(b.getDate() + 7 * d);
+  weekDoneDay = ymd(b);
+  localStorage.setItem(KEY_WEEK_SEL, weekDoneDay);
+  renderWeekDone();
+}
+function setWeekDoneDay(v) {
+  if (!v) return;
+  weekDoneDay = v;
+  localStorage.setItem(KEY_WEEK_SEL, weekDoneDay);
+  renderWeekDone();
+}
+function resetWeekDone() {
+  weekDoneDay = today();
+  localStorage.setItem(KEY_WEEK_SEL, weekDoneDay);
+  renderWeekDone();
+}
+
+/* 分类进度（可切换 7 类） */
+var voTypeSel = localStorage.getItem("clipVoTypeSel") || "口播";
+function renderVoProgress() {
+  var sel = $("voType");
+  if (sel) {
+    if (!sel.options.length) {
+      sel.innerHTML = TYPES.map(function (t) { return '<option value="' + t + '">' + t + "</option>"; }).join("");
+    }
+    if (TYPES.indexOf(voTypeSel) < 0) voTypeSel = TYPES[0];
+    sel.value = voTypeSel;
+  }
+  var type = voTypeSel;
+  $("voName").textContent = type;
+  var g = targets[type] || { tLink: 0, tNoLink: 0 };
+  var aim = (g.tLink || 0) + (g.tNoLink || 0);
+  var rg = currentRange();
+  /* 已排 = 周计划表(图二)里这一类的挂链+不挂链 + 周计划(文案)里这一类的数量 */
+  var plannedTable = 0;
+  weekTables.forEach(function (r) {
+    var we = weekEndOf(r.ws);
+    if (we >= rg.start && r.ws <= rg.end) {
+      var x = r.rows[type] || { l: 0, n: 0 };
+      plannedTable += (x.l || 0) + (x.n || 0);
+    }
+  });
+  var plannedList = 0;
+  plans.forEach(function (p) {
+    var d = p.date || "";
+    if (!d) return;
+    if (d < rg.start || d > rg.end) return;
+    if ((p.type || "").indexOf(type) < 0 && type.indexOf(p.type || "×") < 0) return;
+    plannedList += (p.qty || 0);
+  });
+  var planned = plannedTable + plannedList;
+  var done = 0;
+  data.forEach(function (r) {
+    if (r.date >= rg.start && r.date <= rg.end && r.items[type]) {
+      done += (r.items[type].link || 0) + (r.items[type].nolink || 0);
+    }
+  });
+  var gap = Math.max(0, aim - planned);
+  var gapDone = Math.max(0, aim - done);
+  $("voAim").innerHTML = aim + "<small>条</small>";
+  $("voPlan").innerHTML = planned + "<small>条</small>";
+  $("voDone").innerHTML = done + "<small>条</small>";
+  $("voGap").innerHTML = gap + "<small>条</small>";
+  $("voBar").style.width = (aim > 0 ? Math.min(100, Math.round(done / aim * 100)) : 0) + "%";
+  $("voHint").textContent = "本期 " + rg.label + "：" + type + " 目标 " + aim + " 条（挂链 " + (g.tLink || 0) + " + 不挂链 " + (g.tNoLink || 0) + "）"
+    + "；已排进计划 " + planned + " 条（周计划表 " + plannedTable + " + 周计划文案 " + plannedList + "）"
+    + (gap > 0 ? "，还差 " + gap + " 条没排进计划" : "，计划量已排满")
+    + "；台账实际已剪 " + done + " 条" + (gapDone > 0 ? "，离目标还差 " + gapDone + " 条。" : "，已达成目标。");
+}
+function setVoType(v) {
+  voTypeSel = v;
+  localStorage.setItem("clipVoTypeSel", v);
+  renderVoProgress();
+}
+
+/* 周计划表列表 */
+function addWeekTable() {
+  var ws = mondayOf(today());
+  if (weekTables.length) {
+    var maxWs = "";
+    weekTables.forEach(function (r) { if (r.ws > maxWs) maxWs = r.ws; });
+    var d = new Date(maxWs + "T00:00:00");
+    d.setDate(d.getDate() + 7);
+    ws = ymd(d);
+  }
+  weekTables.push({ id: Date.now(), ws: ws, name: "", account: "", goal: "", rows: {}, fund: "", model: "", assist: "" });
+  var rec = weekTables[weekTables.length - 1];
+  TYPES.forEach(function (t) { rec.rows[t] = { l: 0, n: 0, style: "" }; });
+  saveWeekTables(true);
+  switchTab("sheet");
+  renderSheetList();
+}
+function delWeekTable(i) {
+  if (!confirm("删除这一周的周计划表？")) return;
+  undoSnapshot("删除周计划表");
+  weekTables.splice(i, 1);
+  saveWeekTables(true);
+  renderSheetList(); renderWeekDone();
+}
+function setWeekField(i, k, v) {
+  if (!weekTables[i]) return;
+  weekTables[i][k] = v;
+  saveWeekTables();
+  if (k === "name" || k === "account" || k === "goal") renderWeekDoneLight();
+}
+function renderWeekDoneLight() {
+  var ws = mondayOf(today()), rec = findWeekTable(ws);
+  if (!rec) return;
+  var we = weekEndOf(ws);
+  $("weekDoneHead").innerHTML = "周次：<b>" + esc(rec.name || (ws + " ~ " + we + "（" + weekLabel(ws) + "）")) + "</b>"
+    + "　发布账号：" + (esc(rec.account) || "—") + "　周度目标：" + (esc(rec.goal) || "—");
+}
+function setWeekDate(i, v) {
+  if (!weekTables[i] || !v) return;
+  weekTables[i].ws = mondayOf(v);
+  saveWeekTables(true);
+  renderSheetList(); renderWeekDone();
+}
+function setWeekNum(i, t, k, v) {
+  var rec = weekTables[i];
+  if (!rec || !rec.rows[t]) return;
+  rec.rows[t][k] = num(v);
+  var l = rec.rows[t].l || 0, n = rec.rows[t].n || 0;
+  var cell = document.getElementById("sk" + i + "_" + TYPES.indexOf(t));
+  if (cell) cell.textContent = l + n;
+  var tl = 0, tn = 0;
+  TYPES.forEach(function (x) { tl += rec.rows[x].l || 0; tn += rec.rows[x].n || 0; });
+  var f1 = document.getElementById("st" + i + "_l"), f2 = document.getElementById("st" + i + "_n"), f3 = document.getElementById("st" + i + "_s");
+  if (f1) f1.textContent = tl;
+  if (f2) f2.textContent = tn;
+  if (f3) f3.textContent = tl + tn;
+  var wf = document.getElementById("wf" + i);
+  if (wf) wf.innerHTML = weekFootText(rec.ws);
+  refreshWeekSum(i);
+  saveWeekTables();
+}
+function copyWeekFromDone(i) {
+  var rec = weekTables[i];
+  if (!rec) return;
+  var c = weekCounts(rec.ws, weekEndOf(rec.ws));
+  TYPES.forEach(function (t) {
+    rec.rows[t].l = c[t].l; rec.rows[t].n = c[t].n;
+  });
+  saveWeekTables(true);
+  renderSheetList();
+  alert("已按 " + rec.ws + " 那一周台账的实际剪辑量回填");
+}
+
+/* 今天所在的统计周期（15日～次月14日） */
+function cycleRangeToday() {
+  var now = new Date(), y = now.getFullYear(), m = now.getMonth(), day = now.getDate();
+  if (day < 15) { var d = new Date(y, m - 1, 1); y = d.getFullYear(); m = d.getMonth(); }
+  var s = new Date(y, m, 15), e = new Date(y, m + 1, 14);
+  return { start: ymd(s), end: ymd(e), label: (s.getFullYear() + "年" + (s.getMonth() + 1) + "月15日—" + (e.getMonth() + 1) + "月14日") };
+}
+function shootPlanInRange(rg) {
+  if (!rg || rg.all) {
+    var all = 0;
+    for (var k in shootPlan) { if (shootPlan.hasOwnProperty(k)) all += num(shootPlan[k].shot); }
+    return all;
+  }
+  var total = 0, d = new Date(rg.start + "T00:00:00"), end = new Date(rg.end + "T00:00:00");
+  while (d <= end) {
+    var rec = shootPlan[ymd(d)];
+    if (rec) total += num(rec.shot);
+    d.setDate(d.getDate() + 1);
+  }
+  return total;
+}
+/* 实际已拍完成量（执行结果里按类型填的） */
+function shotsInRange(rg) {
+  var total = 0;
+  results.forEach(function (r) {
+    if (rg && !rg.all && (r.date < rg.start || r.date > rg.end)) return;
+    if (!r.shots) return;
+    for (var t in r.shots) { if (r.shots.hasOwnProperty(t)) total += num(r.shots[t]); }
+  });
+  return total;
+}
+function editDoneInRange(rg) {  var total = 0;
+  data.forEach(function (r) {
+    if (r.date < rg.start || r.date > rg.end) return;
+    for (var n in r.items) {
+      if (!r.items.hasOwnProperty(n)) continue;
+      total += (r.items[n].link || 0) + (r.items[n].nolink || 0);
+    }
+  });
+  return total;
+}
+/* 周计划表卡片下面那行：剩余数量 + 后面每周最低 */
+function weekFootText(ws) {
+  var rg = cycleRangeToday();
+  var sPlan = shootPlanInRange(rg), eDone = editDoneInRange(rg);
+  var sAim = num(shootTgt.shoot), eAim = num(shootTgt.edit);
+  var sLeft = Math.max(0, sAim - sPlan), eLeft = Math.max(0, eAim - eDone);
+  /* 从「当前这张周计划表的这一周」算到本期结束；只数整周，不把零碎天数多算成一周 */
+  var endD = new Date(rg.end + "T00:00:00");
+  var stD = new Date(mondayOf(ws) + "T00:00:00");
+  var rgSt = new Date(rg.start + "T00:00:00");
+  if (stD < rgSt) stD = rgSt;
+  if (stD > endD) return "这一周在「" + rg.label + "」之外，本期剩余量不按这周计算";
+  var days = Math.round((endD - stD) / 86400000) + 1;
+  var weeks = Math.max(1, Math.round(days / 7));
+  var spw = Math.ceil(sLeft / weeks), epw = Math.ceil(eLeft / weeks);
+  return "本期（" + rg.label + "）剩余：拍摄还差 <b>" + sLeft + "</b> 条、剪辑还差 <b>" + eLeft + "</b> 条"
+    + " ｜ 从这一周算到本期结束还有 <b>" + weeks + "</b> 周（共 " + days + " 天），每周最低要 <b>拍 " + spw + " 条</b>、<b>剪 " + epw + " 条</b>";
+}
+
+function codeCells(i, t, r) {
+  var cs = normCodes(r), html = '<div class="codewrap">';
+  if (!cs[cs.length - 1] || String(cs[cs.length - 1].c || "").trim() || num(cs[cs.length - 1].q)) cs.push({ c: "", q: 0 });
+  for (var k = 0; k < cs.length; k++) {
+    var x = cs[k] || { c: "", q: 0 };
+    html += '<span class="cc"><input class="cin" value="' + esc(x.c) + '" placeholder="款号" oninput="setWeekCode(' + i + ",'" + t + "'," + k + ',\'c\',this.value)">'
+      + "<i>×</i>"
+      + '<input class="cqn" type="number" min="0" value="' + (num(x.q) ? num(x.q) : "") + '" placeholder="0" oninput="setWeekCode(' + i + ",'" + t + "'," + k + ',\'q\',this.value)"></span>';
+  }
+  html += '<span class="cc"><button class="mini blue" style="padding:3px 8px;font-size:12px" onclick="addWeekCode(' + i + ",'" + t + '\')" title="这一行还能加款号">＋</button></span>';
+  return html + "</div>";
+}
+function addWeekCode(i, t) {
+  var rec = weekTables[i];
+  if (!rec || !rec.rows[t]) return;
+  var r = rec.rows[t];
+  normCodes(r);
+  r.codes.push({ c: "", q: 0 });
+  r.style = r.codes.map(function (x) { return String(x.c || "").trim(); }).filter(function (x) { return x; }).join("+");
+  saveWeekTables(true);
+  renderSheetList();
+}
+function renderSheetList() {
+  var wrap = $("sheetList");
+  if (!weekTables.length) { wrap.innerHTML = '<div class="empty">还没有周计划表，点右上角「+ 新增一周」</div>'; return; }
+  var html = "";
+  weekTables.forEach(function (rec, i) {
+    var tl = 0, tn = 0;
+    var rows = "";
+    TYPES.forEach(function (t, ti) {
+      var r = rec.rows[t] || { l: 0, n: 0, style: "" };
+      tl += r.l || 0; tn += r.n || 0;
+      rows += "<tr><td>" + t + "</td>"
+        + '<td><input type="number" min="0" value="' + (r.l || 0) + '" oninput="setWeekNum(' + i + ",'" + t + "','l',this.value)\"></td>"
+        + '<td><input type="number" min="0" value="' + (r.n || 0) + '" oninput="setWeekNum(' + i + ",'" + t + "','n',this.value)\"></td>"
+        + '<td class="sumcell" id="sk' + i + "_" + ti + '">' + ((r.l || 0) + (r.n || 0)) + "</td>"
+        + "<td>" + codeCells(i, t, r) + "</td></tr>";
+    });
+    html += '<div class="wkcard">'
+      + '<div class="listhead">'
+      + '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;font-size:12px;color:#6b7280">'
+      + '<div class="fld"><label>周次名称</label><input type="text" style="width:200px" value="' + esc(rec.name) + '" placeholder="例：2026年11月第一周" oninput="setWeekField(' + i + ',\'name\',this.value)"></div>'
+      + '<div class="fld"><label>周一起</label><input type="date" value="' + rec.ws + '" onchange="setWeekDate(' + i + ',this.value)"></div>'
+      + '<div class="fld"><label>发布账号</label><input type="text" style="width:180px" value="' + esc(rec.account) + '" placeholder="例：GZX ZEROTOX" oninput="setWeekField(' + i + ',\'account\',this.value)"></div>'
+      + "</div>"
+      + '<div class="ops">'
+      + '<button class="mini blue" onclick="exportWeekImage(\'plan\',' + i + ')">导出表格图片</button>'
+      + '<button class="mini" onclick="copyWeekFromDone(' + i + ')">按台账回填</button>'
+      + '<button class="mini red" onclick="delWeekTable(' + i + ')">删除</button>'
+      + "</div></div>"
+      + '<div class="flds" style="margin-bottom:10px"><div class="fld grow" style="flex:1;min-width:260px"><label>周度目标</label><textarea style="min-height:56px" oninput="setWeekField(' + i + ',\'goal\',this.value)" placeholder="例：稳定成交素材供给，验证3个可复用选题方向">' + esc(rec.goal) + '</textarea></div></div>'
+      + '<div class="scroll"><table class="wk"><thead><tr><th>产出形式</th><th>挂链（条）</th><th>不挂链（条）</th><th>小计（条）</th><th style="width:340px">拍摄款号（款号 × 条数）</th></tr></thead><tbody>'
+      + rows
+      + '<tr class="tot"><td>合计（本周）</td><td id="st' + i + '_l">' + tl + '</td><td id="st' + i + '_n">' + tn + '</td><td id="st' + i + '_s" class="sumcell">' + (tl + tn) + '</td><td id="sc' + i + '">累计拍摄：' + styleCount(rec) + " 款</td></tr>"
+      + "</tbody></table></div>"
+      + '<div class="wkdist" id="wd' + i + '">' + distText(rec) + "</div>"
+      + '<div class="wkfoot" id="wf' + i + '">' + weekFootText(rec.ws) + "</div>"
+      + '<div class="flds" style="margin-top:12px">'
+      + '<div class="fld grow"><label>是否需要资金申请</label><textarea style="min-height:52px" placeholder="如是，请写明预估金额及用途" oninput="setWeekField(' + i + ',\'fund\',this.value)">' + esc(rec.fund) + '</textarea></div>'
+      + '<div class="fld grow"><label>是否需要模特</label><textarea style="min-height:52px" placeholder="如是，写明人员性质、日期及时长" oninput="setWeekField(' + i + ',\'model\',this.value)">' + esc(rec.model) + '</textarea></div>'
+      + '<div class="fld grow"><label>是否需要其他协助</label><textarea style="min-height:52px" placeholder="场地配合、器材采购等" oninput="setWeekField(' + i + ',\'assist\',this.value)">' + esc(rec.assist) + '</textarea></div>'
+      + "</div></div>";
+  });
+  wrap.innerHTML = html;
+}
+function setWeekStyle(i, t, v) {
+  var rec = weekTables[i];
+  if (!rec || !rec.rows[t]) return;
+  rec.rows[t].style = v;
+  saveWeekTables();
+  var cell = document.getElementById("sc" + i);
+  if (cell) cell.textContent = "累计拍摄：" + styleCount(rec) + " 款";
+}
+
+/* 导出表格图片（图一 / 图二同款） */
+function exportWeekImage(mode, idx) {
+  var FONT = "'Microsoft YaHei','PingFang SC','Hiragino Sans GB',sans-serif";
+  var rec, c, hdr = {};
+  if (mode === "done") {
+    var ws = mondayOf(weekDoneDay), we = weekEndOf(ws);
+    rec = ensureWeekTable(ws);
+    c = weekCounts(ws, we);
+    hdr = { week: rec.name || (ws + " ~ " + we + "（" + weekLabel(ws) + "）"), account: rec.account, goal: rec.goal };
+  } else {
+    rec = weekTables[idx];
+    if (!rec) { alert("这一周不见了，刷新一下再试"); return; }
+    c = {};
+    TYPES.forEach(function (t) {
+      var r = rec.rows[t] || { l: 0, n: 0 };
+      c[t] = { l: r.l || 0, n: r.n || 0 };
+    });
+    hdr = { week: rec.name || (rec.ws + " ~ " + weekEndOf(rec.ws) + "（" + weekLabel(rec.ws) + "）"), account: rec.account, goal: rec.goal };
+  }
+
+  var isPlan = (mode === "plan");
+  var cols = [
+    { k: "week", w: 165, t: "周次" }, { k: "acc", w: 185, t: "发布账号" }, { k: "goal", w: 360, t: "周度目标" },
+    { k: "type", w: 185, t: "产出形式" }, { k: "l", w: 140, t: "挂链（条）" }, { k: "n", w: 140, t: "不挂链（条）" },
+    { k: "sum", w: 135, t: "小计（条）" }, { k: "style", w: 145, t: "拍摄款号" }
+  ];
+  if (isPlan) {
+    cols.push({ k: "fund", w: 245, t: "是否需要资金申请" }, { k: "model", w: 255, t: "是否需要模特" }, { k: "assist", w: 200, t: "是否需要其他协助" });
+  }
+  var W = 0;
+  cols.forEach(function (x) { W += x.w; });
+  var HDR = 84, RH = 66, TOT = 70, H = HDR + RH * 7 + TOT;
+  var S = 2;
+
+  var cv = document.createElement("canvas");
+  cv.width = W * S; cv.height = H * S;
+  var ctx = cv.getContext("2d");
+  ctx.scale(S, S);
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
+  ctx.textBaseline = "middle"; ctx.textAlign = "center";
+
+  var mc = document.createElement("canvas").getContext("2d");
+  function wrap(text, size, bold, maxW) {
+    mc.font = (bold ? "bold " : "") + size + "px " + FONT;
+    var out = [], cur = "", s = String(text == null ? "" : text);
+    for (var i = 0; i < s.length; i++) {
+      var t = cur + s.charAt(i);
+      if (mc.measureText(t).width > maxW && cur) { out.push(cur); cur = s.charAt(i); }
+      else cur = t;
+    }
+    out.push(cur);
+    return out;
+  }
+  function cellText(text, x, w, y, h, size, bold, color, maxLines) {
+    ctx.font = (bold ? "bold " : "") + size + "px " + FONT;
+    ctx.fillStyle = color;
+    var lines = wrap(text, size, bold, w - 18);
+    if (maxLines && lines.length > maxLines) {
+      lines = lines.slice(0, maxLines);
+      lines[maxLines - 1] = lines[maxLines - 1].slice(0, -1) + "…";
+    }
+    var lh = size * 1.4;
+    var start = y + h / 2 - (lines.length - 1) * lh / 2;
+    lines.forEach(function (ln, i) { ctx.fillText(ln, x + w / 2, start + i * lh); });
+  }
+
+  /* 表头 */
+  ctx.fillStyle = "#111827";
+  ctx.fillRect(0, 0, W, HDR);
+  var x = 0;
+  cols.forEach(function (col) {
+    var lines = [col.t];
+    ctx.font = "bold 24px " + FONT;
+    ctx.fillStyle = "#ffffff";
+    var lh = 30, start = HDR / 2 - (lines.length - 1) * lh / 2;
+    lines.forEach(function (ln, i) { ctx.fillText(ln, x + col.w / 2, start + i * lh); });
+    x += col.w;
+  });
+
+  /* 表体 */
+  var styleEnd = 0;
+  var typeStart = 0;
+  var acc = 0;
+  cols.forEach(function (col) { if (col.k === "type") typeStart = acc; if (col.k === "style") styleEnd = acc + col.w; acc += col.w; });
+
+  for (var r = 0; r < 7; r++) {
+    var y = HDR + r * RH;
+    ctx.fillStyle = "#f3f4f6";
+    ctx.fillRect(typeStart, y, cols[3].w, RH);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(typeStart + cols[3].w, y, W - typeStart - cols[3].w, RH);
+  }
+
+  /* 横向分隔线（只在产出形式到款号之间） */
+  ctx.strokeStyle = "#222"; ctx.lineWidth = 1;
+  for (var i = 0; i <= 7; i++) {
+    var yy = HDR + i * RH;
+    ctx.beginPath(); ctx.moveTo(typeStart, yy); ctx.lineTo(styleEnd, yy); ctx.stroke();
+  }
+  /* 竖向分隔线 */
+  var bx = 0;
+  cols.forEach(function (col) {
+    ctx.beginPath(); ctx.moveTo(bx, 0); ctx.lineTo(bx, HDR + RH * 7); ctx.stroke();
+    bx += col.w;
+  });
+  ctx.beginPath(); ctx.moveTo(W - 0.5, 0); ctx.lineTo(W - 0.5, HDR + RH * 7); ctx.stroke();
+
+  /* 合并单元格：周次 / 账号 / 目标 */
+  var bodyH = RH * 7;
+  cellText(hdr.week, 0, cols[0].w, HDR, bodyH, 21, false, "#111827", 9);
+  cellText(hdr.account, cols[0].w, cols[1].w, HDR, bodyH, 21, false, "#111827", 9);
+  cellText(hdr.goal, cols[0].w + cols[1].w, cols[2].w, HDR, bodyH, 21, false, "#111827", 9);
+
+  /* 7 行数据 */
+  TYPES.forEach(function (t, ri) {
+    var y = HDR + ri * RH;
+    var cx = typeStart, x2 = typeStart;
+    cellText(t, typeStart, cols[3].w, y, RH, 22, false, "#111827", 1);
+    x2 = typeStart + cols[3].w;
+    ctx.font = "22px " + FONT; ctx.fillStyle = "#111827";
+    var lv = c[t].l || 0, nv = c[t].n || 0;
+    ctx.fillText(String(lv || ""), x2 + cols[4].w / 2, y + RH / 2);
+    x2 += cols[4].w;
+    ctx.fillText(String(nv || ""), x2 + cols[5].w / 2, y + RH / 2);
+    x2 += cols[5].w;
+    ctx.fillText(String((lv + nv) || ""), x2 + cols[6].w / 2, y + RH / 2);
+    x2 += cols[6].w;
+    cellText((rec.rows[t] || {}).style ? rowCodeText(rec.rows[t]) : "", x2, cols[7].w, y, RH, 21, false, "#111827", 2);
+  });
+
+  /* 右侧 3 列合并 */
+  if (isPlan) {
+    var sx = styleEnd;
+    cellText(rec.fund || "如是，请写明预估金额及用途", sx, cols[8].w, HDR, bodyH, 19, false, rec.fund ? "#111827" : "#9ca3af", 10);
+    sx += cols[8].w;
+    cellText(rec.model || "如是，写明人员性质、日期及时长", sx, cols[9].w, HDR, bodyH, 19, false, rec.model ? "#111827" : "#9ca3af", 10);
+    sx += cols[9].w;
+    cellText(rec.assist || "场地配合、器材采购等", sx, cols[10].w, HDR, bodyH, 19, false, rec.assist ? "#111827" : "#9ca3af", 10);
+  }
+
+  /* 合计行 */
+  var ty = HDR + bodyH;
+  ctx.fillStyle = "#111827";
+  ctx.fillRect(0, ty, W, TOT);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 24px " + FONT;
+  var tl = 0, tn = 0;
+  TYPES.forEach(function (t) { tl += c[t].l || 0; tn += c[t].n || 0; });
+  var first3 = cols[0].w + cols[1].w + cols[2].w;
+  ctx.fillText("合计（本周）", first3 / 2, ty + TOT / 2);
+  ctx.fillText(TYPES.length + " 类内容形式", typeStart + cols[3].w / 2, ty + TOT / 2);
+  ctx.fillText(String(tl), typeStart + cols[3].w + cols[4].w / 2, ty + TOT / 2);
+  ctx.fillText(String(tn), typeStart + cols[3].w + cols[4].w + cols[5].w / 2, ty + TOT / 2);
+  ctx.fillText(String(tl + tn), typeStart + cols[3].w + cols[4].w + cols[5].w + cols[6].w / 2, ty + TOT / 2);
+  ctx.fillText("累计拍摄：" + styleCount(rec) + " 款", styleEnd - cols[7].w / 2, ty + TOT / 2);
+
+  var a = document.createElement("a");
+  a.href = cv.toDataURL("image/png");
+  a.download = (isPlan ? "周计划表_" : "本周完成量_") + (rec.name || rec.ws) + "_" + today() + ".png";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+/* 导出 CSV */
+function exportWeekCsv(mode, idx) {
+  var list = [];
+  if (mode === "done") {
+    var ws = mondayOf(weekDoneDay), we = weekEndOf(ws);
+    var rec = ensureWeekTable(ws), c = weekCounts(ws, we);
+    list.push({ rec: rec, c: c, title: rec.name || (ws + " ~ " + we) });
+  } else {
+    weekTables.forEach(function (rec) {
+      var c = {};
+      TYPES.forEach(function (t) { var r = rec.rows[t] || { l: 0, n: 0 }; c[t] = { l: r.l || 0, n: r.n || 0 }; });
+      list.push({ rec: rec, c: c, title: rec.name || rec.ws });
+    });
+  }
+  if (!list.length) { alert("没有可导出的内容"); return; }
+  var rows = [["周次", "发布账号", "周度目标", "产出形式", "挂链（条）", "不挂链（条）", "小计（条）", "拍摄款号", "是否需要资金申请", "是否需要模特", "是否需要其他协助"]];
+  list.forEach(function (g) {
+    TYPES.forEach(function (t) {
+      rows.push([g.title, g.rec.account || "", g.rec.goal || "", t, g.c[t].l || 0, g.c[t].n || 0, (g.c[t].l || 0) + (g.c[t].n || 0), rowCodeText(g.rec.rows[t] || {}), g.rec.fund || "", g.rec.model || "", g.rec.assist || ""]);
+    });
+    var tl = 0, tn = 0;
+    TYPES.forEach(function (t) { tl += g.c[t].l || 0; tn += g.c[t].n || 0; });
+    rows.push([g.title, g.rec.account || "", g.rec.goal || "", "合计", tl, tn, tl + tn, "累计拍摄：" + styleCount(g.rec) + "款", g.rec.fund || "", g.rec.model || "", g.rec.assist || ""]);
+  });
+  csvDownload(rows, (mode === "done" ? "本周完成量_" : "周计划表_") + today() + ".csv");
+}
+
+/* ================= 拍摄 + 剪辑计划 ================= */
+var KEY_SHOOT = "clipShootPlanV1";
+var shootPlan = JSON.parse(localStorage.getItem(KEY_SHOOT) || "{}");
+var KEY_SHOOT_SEL = "clipShootMonthSel";
+var shootMonthStr = localStorage.getItem(KEY_SHOOT_SEL) || (function () { var d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1); })();
+var KEY_SHOOT_DAY = "clipShootDateSel";
+var KEY_SHOOT_FROM = "clipShootDateFrom";
+var KEY_SHOOT_TO = "clipShootDateTo";
+var shootFrom = localStorage.getItem(KEY_SHOOT_FROM) || localStorage.getItem(KEY_SHOOT_DAY) || "";
+var shootTo = localStorage.getItem(KEY_SHOOT_TO) || shootFrom;
+var shootTimer = null;
+var SHOOT_TPL = {
+  1: { place: "公司室内", detail: "测评 1 ✅ 自剪 + 口播 2 ✅ 自剪", shot: 3, edit: "2 条实拍剪辑", editN: 2 },
+  2: { place: "公司室内", detail: "口播 3 ✅ 自剪", shot: 3, edit: "2 条实拍剪辑", editN: 2 },
+  3: { place: "公司室内", detail: "口播 3 ✅ 自剪", shot: 3, edit: "2 条实拍剪辑", editN: 2 },
+  4: { place: "外景（可改期）", detail: "口播 2 ✅ 自剪 + 随拍 3 ○ 外包", shot: 5, edit: "1 条实拍剪辑", editN: 1 },
+  5: { place: "外景（可改期）", detail: "口播 2 ✅ 自剪 + 随拍 3 ○ 外包", shot: 5, edit: "1 条实拍剪辑", editN: 1 },
+  6: { place: "无拍摄", detail: "下周脚本计划、样品盘点", shot: 0, edit: "3 条混剪", editN: 3 },
+  0: { place: "休息", detail: "休息", shot: 0, edit: "0", editN: 0 }
+};
+
+/* 旧数据（只有 plan / note）迁移到新 6 列结构，不丢内容 */
+function guessPlace(plan) {
+  var s = String(plan || "");
+  if (/外景/.test(s)) return "外景（可改期）";
+  if (/室内/.test(s)) return "公司室内";
+  if (/休息/.test(s)) return "休息";
+  if (/无拍摄|复盘/.test(s)) return "无拍摄";
+  return "";
+}
+function guessEditN(txt) {
+  var mm = String(txt == null ? "" : txt).match(/\d+/);
+  return mm ? parseInt(mm[0], 10) : 0;
+}
+function migrateShoot() {
+  for (var k in shootPlan) {
+    if (!shootPlan.hasOwnProperty(k)) continue;
+    var r = shootPlan[k] || {};
+    if (r.place == null) r.place = guessPlace(r.plan);
+    if (r.detail == null) r.detail = (r.plan || "") + ((r.note || "") ? (r.plan ? "\n" : "") + r.note : "");
+    if (r.shot == null) r.shot = 0;
+    if (r.edit == null) r.edit = "";
+    if (r.editN == null) r.editN = guessEditN(r.edit);
+    shootPlan[k] = r;
+  }
+}
+migrateShoot();
+
+function saveShoot(now) {
+  clearTimeout(shootTimer);
+  refreshProg();
+  if (now) {
+    try { localStorage.setItem(KEY_SHOOT, JSON.stringify(shootPlan)); } catch (e) { }
+    return;
+  }
+  shootTimer = setTimeout(function () {
+    try { localStorage.setItem(KEY_SHOOT, JSON.stringify(shootPlan)); autoBackup(); } catch (e) { }
+  }, 350);
+}
+function shootSet(date, k, v) {
+  if (!shootPlan[date]) shootPlan[date] = { place: "", detail: "", shot: 0, edit: "", editN: 0 };
+  shootPlan[date][k] = v;
+  saveShoot();
+  if (k === "shot" || k === "editN") shootSummaryText();
+}
+function shiftShoot(d) {
+  var b = shootMonthBase();
+  var nb = new Date(b.getFullYear(), b.getMonth() + d, 1);
+  shootMonthStr = nb.getFullYear() + "-" + pad(nb.getMonth() + 1);
+  localStorage.setItem(KEY_SHOOT_SEL, shootMonthStr);
+  renderShootPlan();
+}
+function setShootMonth(v) {
+  if (!v) return;
+  shootMonthStr = v;
+  localStorage.setItem(KEY_SHOOT_SEL, shootMonthStr);
+  if (shootFrom && shootFrom.slice(0, 7) !== shootMonthStr) {
+    shootFrom = ""; shootTo = "";
+    localStorage.removeItem(KEY_SHOOT_FROM);
+    localStorage.removeItem(KEY_SHOOT_TO);
+    localStorage.removeItem(KEY_SHOOT_DAY);
+  }
+  renderShootPlan();
+}
+/* 选中一段日期范围（开始 ~ 结束），范围内所有天都高亮 */
+function setShootRange(which, v) {
+  if (!v) return;
+  if (which === "from") {
+    shootFrom = v;
+    if (!shootTo || shootTo < shootFrom) shootTo = shootFrom;
+  } else {
+    shootTo = v;
+    if (!shootFrom || shootFrom > shootTo) shootFrom = shootTo;
+  }
+  localStorage.setItem(KEY_SHOOT_FROM, shootFrom);
+  localStorage.setItem(KEY_SHOOT_TO, shootTo);
+  localStorage.removeItem(KEY_SHOOT_DAY);
+  shootMonthStr = shootFrom.slice(0, 7);
+  localStorage.setItem(KEY_SHOOT_SEL, shootMonthStr);
+  renderShootPlan();
+}
+function selShootWeek() {
+  var mon = mondayOf(today());
+  var d = new Date(mon + "T00:00:00");
+  d.setDate(d.getDate() + 6);
+  shootFrom = mon; shootTo = ymd(d);
+  localStorage.setItem(KEY_SHOOT_FROM, shootFrom);
+  localStorage.setItem(KEY_SHOOT_TO, shootTo);
+  localStorage.removeItem(KEY_SHOOT_DAY);
+  shootMonthStr = shootFrom.slice(0, 7);
+  localStorage.setItem(KEY_SHOOT_SEL, shootMonthStr);
+  renderShootPlan();
+}
+function selShootNextWeek() {
+  var mon = mondayOf(today());
+  var d = new Date(mon + "T00:00:00");
+  d.setDate(d.getDate() + 7);
+  shootFrom = ymd(d);
+  d.setDate(d.getDate() + 6);
+  shootTo = ymd(d);
+  localStorage.setItem(KEY_SHOOT_FROM, shootFrom);
+  localStorage.setItem(KEY_SHOOT_TO, shootTo);
+  localStorage.removeItem(KEY_SHOOT_DAY);
+  shootMonthStr = shootFrom.slice(0, 7);
+  localStorage.setItem(KEY_SHOOT_SEL, shootMonthStr);
+  renderShootPlan();
+}
+function clearShootDate() {
+  shootFrom = ""; shootTo = "";
+  localStorage.removeItem(KEY_SHOOT_FROM);
+  localStorage.removeItem(KEY_SHOOT_TO);
+  localStorage.removeItem(KEY_SHOOT_DAY);
+  renderShootPlan();
+}
+function resetShootMonth() {
+  var d = new Date();
+  shootMonthStr = d.getFullYear() + "-" + pad(d.getMonth() + 1);
+  localStorage.setItem(KEY_SHOOT_SEL, shootMonthStr);
+  renderShootPlan();
+}
+function shootMonthBase() {
+  var parts = String(shootMonthStr).split("-");
+  var y = parseInt(parts[0], 10), mm = parseInt(parts[1], 10) - 1;
+  return new Date(y, mm, 1);
+}
+/* 表格要显示的日期区间：选中了范围就只显示范围（可跨月），否则显示整月 */
+function shootSpan() {  if (shootFrom) {
+    var s = new Date(shootFrom + "T00:00:00");
+    var e = new Date((shootTo || shootFrom) + "T00:00:00");
+    if (e < s) e = s;
+    return { s: s, e: e, ranged: true };
+  }
+  var first = shootMonthBase(), y = first.getFullYear(), m = first.getMonth();
+  return { s: new Date(y, m, 1), e: new Date(y, m + 1, 0), ranged: false };
+}
+/* 导出用：当前显示范围里拆成一周一周，供下拉选择 */
+var KEY_SHOOT_EXP = "clipShootExpWeek";
+var shootExpWeek = localStorage.getItem(KEY_SHOOT_EXP) || "";
+function shootWeeks() {
+  var span = shootSpan(), out = [];
+  var cur = new Date(span.s), no = 1;
+  while (cur <= span.e) {
+    var e = new Date(cur);
+    e.setDate(e.getDate() + 6);
+    var ce = new Date(Math.min(e.getTime(), span.e.getTime()));
+    out.push({
+      no: no, start: ymd(cur), end: ymd(ce),
+      label: "第 " + no + " 周（" + (cur.getMonth() + 1) + "/" + cur.getDate() + " – " + (ce.getMonth() + 1) + "/" + ce.getDate() + "）"
+    });
+    cur.setDate(cur.getDate() + 7);
+    no++;
+  }
+  return out;
+}
+function fillShootExpWeek() {
+  var sel = $("shootExpWeek");
+  if (!sel) return;
+  var ws = shootWeeks(), html = "";
+  html = '<option value="">全部（' + (shootFrom ? "所选那 " + ws.length + " 周" : "整个月 " + ws.length + " 周") + '）</option>';
+  ws.forEach(function (w) { html += '<option value="' + w.start + '">' + w.label + "</option>"; });
+  sel.innerHTML = html;
+  var ok = ws.some(function (w) { return w.start === shootExpWeek; });
+  if (!ok) shootExpWeek = "";
+  sel.value = shootExpWeek;
+}
+function setShootExpWeek(v) {
+  shootExpWeek = v || "";
+  localStorage.setItem(KEY_SHOOT_EXP, shootExpWeek);
+}
+function renderShootPlan() {
+  var first = shootMonthBase(), y = first.getFullYear(), m = first.getMonth();
+  $("shootMonthPick").value = shootMonthStr;
+  $("shootMonth").textContent = y + "年" + (m + 1) + "月";
+  var span = shootSpan();
+  var start = new Date(span.s);
+  var wdd = start.getDay() || 7;
+  start.setDate(start.getDate() - wdd + 1);
+  var html = "", n = 0, filled = 0, weekNo = 1;
+  var cur = new Date(start);
+  while (cur <= span.e) {
+    var ws2 = new Date(cur), we2 = new Date(cur);
+    we2.setDate(we2.getDate() + 6);
+    var hs = new Date(Math.max(ws2.getTime(), span.s.getTime()));
+    var he = new Date(Math.min(we2.getTime(), span.e.getTime()));
+    var wkStart = ymd(ws2);
+    html += '<tr class="wkweek"><td colspan="8"><div class="wkrow"><span>第 ' + weekNo + ' 周（' + (hs.getMonth() + 1) + "/" + hs.getDate()
+      + " – " + (he.getMonth() + 1) + "/" + he.getDate() + "）"
+      + (weekNo === 1 && !span.ranged ? " · " + y + "年" + (m + 1) + "月" : "") + "</span>"
+      + '<button onclick="exportShootImage(\'' + wkStart + '\')" title="只导出这一周的表格图片">⬇ 导出这一周图片</button>'
+      + "</div></td></tr>";
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(ws2);
+      d.setDate(d.getDate() + i);
+      if (d < span.s || d > span.e) continue;
+      var ds = ymd(d);
+      var inSel = (shootFrom && ds >= shootFrom && ds <= (shootTo || shootFrom));
+      var selCls = inSel ? ' class="selday"' : "";
+      var rec = shootPlan[ds] || { place: "", detail: "", shot: 0, edit: "", editN: 0 };
+      var oldSub = shootPlan[ds + "#sub"] || {};
+      var subTxt = (rec.subEdit != null && rec.subEdit !== "") ? rec.subEdit : (oldSub.edit || "");
+      n++;
+      if ((rec.detail || "").trim() || (rec.place || "").trim() || (subTxt || "").trim()) filled++;
+      html += "<tr" + selCls + ' id="sd-' + ds + '">'
+        + "<td>" + WDS[d.getDay()] + "</td><td>" + ds + "</td>"
+        + '<td><input type="text" value="' + esc(rec.place) + '" oninput="shootSet(\'' + ds + '\',\'place\',this.value)"></td>'
+        + '<td><textarea style="min-height:40px" oninput="shootSet(\'' + ds + '\',\'detail\',this.value)">' + esc(rec.detail) + "</textarea></td>"
+        + '<td><input type="number" min="0" value="' + (num(rec.shot) ? rec.shot : "") + '" oninput="shootSet(\'' + ds + '\',\'shot\',this.value)"></td>'
+        + '<td><input type="number" min="0" value="' + (num(rec.editN) ? rec.editN : "") + '" oninput="shootSet(\'' + ds + '\',\'editN\',this.value)"></td>'
+        + '<td><textarea style="min-height:40px" oninput="shootSet(\'' + ds + '\',\'edit\',this.value)">' + esc(rec.edit) + "</textarea></td>"
+        + '<td><textarea style="min-height:40px" oninput="shootSet(\'' + ds + '\',\'subEdit\',this.value)">' + esc(subTxt) + "</textarea></td></tr>";
+    }
+    cur.setDate(cur.getDate() + 7);
+    weekNo++;
+  }
+  $("shootBody").innerHTML = html;
+  $("shootFromPick").value = shootFrom || "";
+  $("shootToPick").value = shootTo || "";
+  $("shootMonthPick").value = shootMonthStr;
+  var tas = $("shootBody").querySelectorAll("textarea");
+  for (var k = 0; k < tas.length; k++) {
+    autoGrow(tas[k]);
+    tas[k].addEventListener("input", function () { autoGrow(this); });
+  }
+  shootSummaryText();
+  fillShootExpWeek();
+  if (shootFrom) {
+    var row = document.getElementById("sd-" + shootFrom);
+    if (row && row.scrollIntoView) row.scrollIntoView({ block: "center" });
+  }
+}
+function shootSummaryText() {
+  var span = shootSpan(), n = 0, filled = 0, shot = 0, editN = 0;
+  var mShot = 0, mEdit = 0, sEdit = 0;
+  var cur = new Date(span.s);
+  while (cur <= span.e) {
+    var ds = ymd(cur);
+    n++;
+    var me = shootPlan[ds] || {};
+    var oldSub = shootPlan[ds + "#sub"] || {};
+    var subTxt = (me.subEdit != null && me.subEdit !== "") ? me.subEdit : (oldSub.edit || "");
+    if ((me.detail || "").trim() || (me.place || "").trim() || (subTxt || "").trim()) filled++;
+    shot += num(me.shot); editN += num(me.editN);
+    mShot += num(me.shot); mEdit += num(me.editN);
+    sEdit += subTxt ? guessEditN(subTxt) : num(oldSub.editN);
+    cur.setDate(cur.getDate() + 1);
+  }
+  editN += sEdit;
+  var byPerson = "　｜ 我：拍 " + mShot + " / 剪 " + mEdit + "　A（下属）：剪 " + sEdit;
+  var txt = "";
+  if (span.ranged) {
+    txt = "已选中 " + n + " 天（" + ymd(span.s) + " ~ " + ymd(span.e) + "），已填写 " + filled + " 格，拍摄 " + shot + " 条 / 剪辑 " + editN + " 条" + byPerson;
+  } else {
+    txt = span.s.getFullYear() + "年" + (span.s.getMonth() + 1) + "月共 " + n + " 天，已填写 " + filled + " 格，拍摄 " + shot + " 条 / 剪辑 " + editN + " 条" + byPerson;
+  }
+  $("shootSummary").textContent = txt;
+}
+function applyShootTemplate() {
+  if (!confirm("把本月还没填的日期套用通用周模板？已经写过的不覆盖。")) return;
+  var first = shootMonthBase(), y = first.getFullYear(), m = first.getMonth();
+  var last = new Date(y, m + 1, 0);
+  for (var dd = 1; dd <= last.getDate(); dd++) {
+    var dt = new Date(y, m, dd), ds = ymd(dt), tpl = SHOOT_TPL[dt.getDay()];
+    if (!tpl) continue;
+    if (!shootPlan[ds]) shootPlan[ds] = { place: "", detail: "", shot: 0, edit: "", editN: 0 };
+    var r = shootPlan[ds];
+    if (!(r.place || "").trim()) r.place = tpl.place;
+    if (!(r.detail || "").trim()) r.detail = tpl.detail;
+    if (!num(r.shot)) r.shot = tpl.shot;
+    if (!(r.edit || "").trim()) r.edit = tpl.edit;
+    if (!num(r.editN)) r.editN = tpl.editN || guessEditN(r.edit);
+  }
+  saveShoot(true);
+  renderShootPlan();
+}
+function applyShootTemplateForce() {
+  if (!confirm("按通用周模板重排整月？本月已经写过的内容会被覆盖。")) return;
+  undoSnapshot("覆盖整月计划");
+  var first = shootMonthBase(), y = first.getFullYear(), m = first.getMonth();
+  var last = new Date(y, m + 1, 0);
+  for (var dd = 1; dd <= last.getDate(); dd++) {
+    var dt = new Date(y, m, dd), ds = ymd(dt), tpl = SHOOT_TPL[dt.getDay()];
+    if (!tpl) continue;
+    shootPlan[ds] = { place: tpl.place, detail: tpl.detail, shot: tpl.shot, edit: tpl.edit, editN: tpl.editN };
+  }
+  saveShoot(true);
+  renderShootPlan();
+}
+function copyPrevShootMonth() {
+  var b = shootMonthBase(), prev = new Date(b.getFullYear(), b.getMonth() - 1, 1);
+  var py = prev.getFullYear(), pm = prev.getMonth();
+  var srcDays = new Date(py, pm + 1, 0).getDate(), days = new Date(b.getFullYear(), b.getMonth() + 1, 0).getDate();
+  if (!confirm("把 " + py + "年" + (pm + 1) + "月 的每日计划复制到本月？本月已写的内容会被覆盖。")) return;
+  for (var dd = 1; dd <= days; dd++) {
+    var srcDay = new Date(py, pm, Math.min(dd, srcDays)), dstDay = new Date(b.getFullYear(), b.getMonth(), dd);
+    var meSrc = shootPlan[ymd(srcDay)] || shootPlan[ymd(new Date(py, pm, 1))];
+    if (!meSrc) continue;
+    var oldSub = shootPlan[ymd(srcDay) + "#sub"] || {};
+    var subTxt = (meSrc.subEdit != null && meSrc.subEdit !== "") ? meSrc.subEdit : (oldSub.edit || "");
+    shootPlan[ymd(dstDay)] = {
+      place: meSrc.place || "", detail: meSrc.detail || "", shot: meSrc.shot || 0,
+      edit: meSrc.edit || "", editN: num(meSrc.editN) || guessEditN(meSrc.edit), subEdit: subTxt
+    };
+  }
+  saveShoot(true);
+  renderShootPlan();
+  alert("已按上月内容铺到本月，逐天可再改。");
+}
+function clearShootMonth() {
+  if (!confirm("清空这个月所有拍摄剪辑安排？")) return;
+  undoSnapshot("清空本月每日计划");
+  var first = shootMonthBase(), y = first.getFullYear(), m = first.getMonth();
+  var last = new Date(y, m + 1, 0);
+  for (var dd = 1; dd <= last.getDate(); dd++) {
+    var ds = ymd(new Date(y, m, dd));
+    delete shootPlan[ds];
+    delete shootPlan[ds + "#sub"];
+  }
+  saveShoot(true);
+  renderShootPlan();
+}
+function shootRows(wk) {
+  var first = shootMonthBase(), y = first.getFullYear(), m = first.getMonth();
+  var span = shootSpan();
+  var wkLabel = "";
+  if (wk) {
+    var wS = new Date(wk + "T00:00:00"), wE = new Date(wk + "T00:00:00");
+    wE.setDate(wE.getDate() + 6);
+    var s2 = new Date(Math.max(span.s.getTime(), wS.getTime()));
+    var e2 = new Date(Math.min(span.e.getTime(), wE.getTime()));
+    if (e2 < s2) return { rows: [], y: y, m: m, wkLabel: wkLabel };
+    span = { s: s2, e: e2, ranged: true };
+    wkLabel = "第" + ((shootWeeks().filter(function (w) { return w.start === wk; })[0] || { no: 1 }).no) + "周_" + ymd(wS) + "_" + ymd(wE);
+  }
+  var start = new Date(span.s);
+  var wdd = start.getDay() || 7;
+  start.setDate(start.getDate() - wdd + 1);
+  var out = [], weekNo = 1;
+  var cur = new Date(start);
+  while (cur <= span.e) {
+    var ws2 = new Date(cur), we2 = new Date(cur);
+    we2.setDate(we2.getDate() + 6);
+    var hs = new Date(Math.max(ws2.getTime(), span.s.getTime()));
+    var he = new Date(Math.min(we2.getTime(), span.e.getTime()));
+    out.push({ type: "week", text: (wk ? "" : "第 " + weekNo + " 周") + "（" + (hs.getMonth() + 1) + "/" + hs.getDate() + " – " + (he.getMonth() + 1) + "/" + he.getDate() + "）" });
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(ws2);
+      d.setDate(d.getDate() + i);
+      if (d < span.s || d > span.e) continue;
+      var ds = ymd(d), rec = shootPlan[ds] || { place: "", detail: "", shot: 0, edit: "", editN: 0 };
+      var oldSub = shootPlan[ds + "#sub"] || {};
+      var subTxt = (rec.subEdit != null && rec.subEdit !== "") ? rec.subEdit : (oldSub.edit || "");
+      out.push({
+        type: "day", wd: WDS[d.getDay()], date: ds,
+        place: rec.place || "", detail: rec.detail || "", shot: num(rec.shot),
+        editN: num(rec.editN), edit: rec.edit || "", subEdit: subTxt
+      });
+    }
+    cur.setDate(cur.getDate() + 7);
+    weekNo++;
+  }
+  return { rows: out, y: y, m: m };
+}
+
+function exportShootImage(wk) {
+  var FONT = "'Microsoft YaHei','PingFang SC','Hiragino Sans GB',sans-serif";
+  var data2 = shootRows(wk || "");
+  if (!data2.rows.length) { alert("没有内容"); return; }
+  var W = 1260, S = 2;
+  var c1 = 76, c2 = 104, c3 = 118, c5 = 86, c5b = 86, c6 = 178, cs = 178;
+  var c4 = W - c1 - c2 - c3 - c5 - c5b - c6 - cs;
+  var HDR = 78, WEEK = 46;
+
+  var mc = document.createElement("canvas").getContext("2d");
+  function wrap(text, size, bold, maxW) {
+    mc.font = (bold ? "bold " : "") + size + "px " + FONT;
+    var out = [], cur = "", s = String(text == null ? "" : text);
+    for (var i = 0; i < s.length; i++) {
+      var t = cur + s.charAt(i);
+      if (mc.measureText(t).width > maxW && cur) { out.push(cur); cur = s.charAt(i); }
+      else cur = t;
+    }
+    out.push(cur);
+    return out;
+  }
+  /* 计算行高 */
+  var blocks = [], total = HDR;
+  data2.rows.forEach(function (r) {
+    if (r.type === "week") { blocks.push({ r: r, h: WEEK }); total += WEEK; return; }
+    var pl = wrap(r.place || "—", 21, false, c3 - 20);
+    var dl = wrap(r.detail || "—", 22, false, c4 - 22);
+    var el = wrap(r.edit || "—", 21, false, c6 - 22);
+    var sl = wrap(r.subEdit || "—", 21, false, cs - 22);
+    var h = Math.max(Math.max(pl.length, dl.length, el.length, sl.length) * 31 + 26, 66);
+    blocks.push({ r: r, h: h, pl: pl, dl: dl, el: el, sl: sl });
+    total += h;
+  });
+  var H = total;
+
+  var cv = document.createElement("canvas");
+  cv.width = W * S; cv.height = H * S;
+  var ctx = cv.getContext("2d");
+  ctx.scale(S, S);
+  ctx.textBaseline = "middle"; ctx.textAlign = "center";
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
+
+  var x3 = c1 + c2, x4 = x3 + c3, x5 = x4 + c4, x6 = x5 + c5, x7 = x6 + c5b, x8 = x7 + c6;
+  /* 表头 */
+  ctx.fillStyle = "#111827"; ctx.fillRect(0, 0, W, HDR);
+  ctx.fillStyle = "#ffffff"; ctx.font = "bold 24px " + FONT;
+  var heads = [[c1 / 2, "星期"], [c1 + c2 / 2, "日期"], [x3 + c3 / 2, "场地"], [x4 + c4 / 2, "拍摄明细"], [x5 + c5 / 2, "当日拍摄"], [x6 + c5b / 2, "当日剪辑"], [x7 + c6 / 2, "当日剪辑任务"], [x8 + cs / 2, "A剪辑任务"]];
+  heads.forEach(function (h) { ctx.fillText(h[1], h[0], HDR / 2); });
+
+  var y = HDR;
+  blocks.forEach(function (b) {
+    if (b.r.type === "week") {
+      ctx.fillStyle = "#eff6ff"; ctx.fillRect(0, y, W, WEEK);
+      ctx.fillStyle = "#1d4ed8"; ctx.fillRect(0, y, 5, WEEK);
+      ctx.font = "bold 21px " + FONT; ctx.textAlign = "left";
+      ctx.fillText(b.r.text, 18, y + WEEK / 2);
+      ctx.textAlign = "center";
+      ctx.strokeStyle = "#c7d7f5"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0, y + WEEK); ctx.lineTo(W, y + WEEK); ctx.stroke();
+      y += WEEK;
+      return;
+    }
+    var r = b.r;
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, y, W, b.h);
+    ctx.fillStyle = "#111827"; ctx.font = "bold 22px " + FONT;
+    ctx.fillText(r.wd, c1 / 2, y + b.h / 2);
+    ctx.fillStyle = "#6b7280"; ctx.font = "19px " + FONT;
+    ctx.fillText(r.date, c1 + c2 / 2, y + b.h / 2);
+
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#4b5563"; ctx.font = "21px " + FONT;
+    b.pl.forEach(function (ln, i) { ctx.fillText(ln, x3 + 10, y + 22 + i * 31); });
+    ctx.fillStyle = "#111827"; ctx.font = "bold 22px " + FONT;
+    b.dl.forEach(function (ln, i) { ctx.fillText(ln, x4 + 11, y + 22 + i * 31); });
+    ctx.fillStyle = "#111827"; ctx.font = "bold 24px " + FONT;
+    ctx.fillText(String(r.shot), x5 + c5 / 2, y + b.h / 2);
+    ctx.fillText(String(r.editN), x6 + c5b / 2, y + b.h / 2);
+    ctx.fillStyle = "#4b5563"; ctx.font = "21px " + FONT;
+    b.el.forEach(function (ln, i) { ctx.fillText(ln, x7 + 11, y + 22 + i * 31); });
+    ctx.fillStyle = "#4b5563"; ctx.font = "21px " + FONT;
+    b.sl.forEach(function (ln, i) { ctx.fillText(ln, x8 + 11, y + 22 + i * 31); });
+    ctx.textAlign = "center";
+
+    ctx.strokeStyle = "#e5e7eb"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, y + b.h); ctx.lineTo(W, y + b.h); ctx.stroke();
+    y += b.h;
+  });
+
+  /* 竖线 */
+  ctx.strokeStyle = "#e5e7eb";
+  [0, c1, c1 + c2, x3, x4, x5, x6, x7, x8, W].forEach(function (x) {
+    ctx.beginPath(); ctx.moveTo(x, HDR); ctx.lineTo(x, H); ctx.stroke();
+  });
+  ctx.strokeStyle = "#111827";
+  ctx.beginPath(); ctx.moveTo(0, HDR); ctx.lineTo(W, HDR); ctx.stroke();
+
+  var a = document.createElement("a");
+  a.href = cv.toDataURL("image/png");
+  a.download = "拍摄剪辑计划_" + (data2.wkLabel ? data2.wkLabel + "_" : data2.y + "年" + (data2.m + 1) + "月_") + today() + ".png";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+function exportShootCsv(wk) {
+  var data2 = shootRows(wk || "");
+  if (!data2.rows.length) { alert("没有内容"); return; }
+  var rows = [["星期", "日期", "场地", "拍摄明细", "当日拍摄", "当日剪辑", "当日剪辑任务", "A剪辑任务"]];
+  data2.rows.forEach(function (r) {
+    if (r.type === "week") rows.push([r.text, "", "", "", "", "", "", ""]);
+    else rows.push([r.wd, r.date, r.place, r.detail, r.shot, r.editN, r.edit, r.subEdit]);
+  });
+  csvDownload(rows, "拍摄剪辑计划_" + (data2.wkLabel ? data2.wkLabel : data2.y + "年" + (data2.m + 1) + "月") + ".csv");
+}
+
+/* 粘贴导入每日计划 */
+function openShootPaste() {
+  $("shootPasteText").value = "";
+  $("shootPasteModal").style.display = "block";
+}
+function closeShootPaste() {
+  $("shootPasteModal").style.display = "none";
+}
+/* ---- 文字清洗：修掉 OCR 常见的单字空格、错字、列标题 ---- */
+var OCR_WORDS = ["剪辑", "自剪", "实拍", "公司室内", "公司", "室内", "外景", "内景", "口播", "测评", "随拍", "混剪", "样品", "脚本", "盘点", "休息", "外包", "明细", "任务", "场地", "星期", "日期", "计划", "模板", "表格"];
+function prepText(t) {
+  var s = String(t || "").replace(/\u00a0/g, " ").replace(/[ \t\u3000]+/g, " ");
+  s = s.replace(/蔓|葛|邯|秽/g, "剪")
+    .replace(/英\s*(?=辑|剪)/g, "剪")
+    .replace(/国/g, "✅")
+    .replace(/〇/g, "○")
+    .replace(/局\s*(?=[一二三四五六日天])/g, "周")
+    .replace(/雪\s*格/g, "表格");
+  s = s.replace(/[〈＜<（(]\s*可\s*改\s*期\s*[〉＞>）)]/g, "（可改期）");
+  s = s.replace(/无\s*拍摄/g, "无拍摄").replace(/自\s*(英|葛|秽|邯)/g, "自剪").replace(/工\s*(?=条)/g, "1");
+  OCR_WORDS.forEach(function (w) {
+    s = s.replace(new RegExp(w.split("").join("\\s*"), "g"), w);
+  });
+  s = s.replace(/(\d{1,2})\s*[\/／月\.\-]\s*(\d{1,2})\s*[日号]?/g, function (a, b, c) {
+    return (parseInt(b, 10)) + "/" + (parseInt(c, 10));
+  });
+  s = s.replace(/(\d+)\s*条/g, "$1条");
+  return s.trim();
+}
+var SHOOT_PLACE_RE = /^(公司室内|公司|室内|外景（可改期）|外景|内景|无拍摄|无|户外|休息)$/;
+function parseTabLine(line, m) {
+  var cells = line.split("\t").map(function (c) { return String(c).trim(); }).filter(function (c) { return c !== ""; });
+  if (cells.length < 2) return null;
+  var dateObj = null, dateIdx = -1, wdIdx = -1, weak = null, weakIdx = -1;
+  cells.forEach(function (c, i) {
+    if (dateObj) return;
+    var full = c.match(/(\d{4})\s*[-\/\.]\s*(\d{1,2})\s*[-\/\.]\s*(\d{1,2})/);
+    if (full) {
+      var fy = parseInt(full[1], 10), fm = parseInt(full[2], 10), fd = parseInt(full[3], 10);
+      if (fm >= 1 && fm <= 12 && fd >= 1 && fd <= 31) { dateObj = { m: fm, d: fd }; dateIdx = i; return; }
+    }
+    var mt = c.match(/(\d{1,2})\s*[月\/\-\.]\s*(\d{1,2})\s*[日号]?/);
+    if (mt) {
+      var mm = parseInt(mt[1], 10), dd = parseInt(mt[2], 10);
+      if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) { dateObj = { m: mm, d: dd }; dateIdx = i; return; }
+    }
+    if (weak === null && /^\d{1,2}$/.test(c) && i <= 1) {
+      var only = parseInt(c, 10);
+      if (only >= 1 && only <= 31) { weak = { m: m, d: only }; weakIdx = i; }
+    }
+  });
+  cells.forEach(function (c, i) { if (wdIdx < 0 && /^(周|星期)[一二三四五六日天]$/.test(c)) wdIdx = i; });
+  if (!dateObj && weak) { dateObj = weak; dateIdx = weakIdx; }
+  if (!dateObj) return null;
+  var rest = [];
+  cells.forEach(function (c, i) { if (i === wdIdx || i === dateIdx) return; rest.push(c); });
+  var editN = 0, edit = rest[3] || "";
+  if (rest.length >= 5) { editN = num(rest[3]); edit = rest[4] || ""; }
+  else editN = guessEditN(edit);
+  return { m: dateObj.m, d: dateObj.d, place: rest[0] || "", detail: rest[1] || "", shot: num(rest[2]), editN: editN, edit: edit };
+}
+/* OCR 出来的「单字带空格」行：按 星期 / 场地 / 明细 / 当日拍摄 / 剪辑任务 的顺序猜 */
+function parseOcrLine(line, y, m) {
+  /* 数字和中文贴在一起时先切开，避免「11/16周一」被当成一个词 */
+  line = line.replace(/(\d)(?=[\u4e00-\u9fa5])/g, "$1 ").replace(/([\u4e00-\u9fa5])(?=\d)/g, "$1 ");
+  var toks = line.split(" ").filter(function (x) { return x; })
+    .filter(function (t) { return !/^(周|X|x)$/.test(t) && !/^[一二三四五六日天]$/.test(t); });
+  var dateObj = null, dateIdx = -1, wdIdx = -1;
+  toks.forEach(function (t, i) {
+    if (dateIdx < 0) {
+      var mt = t.match(/^(\d{1,2})\/(\d{1,2})$/);
+      if (mt) {
+        var a = parseInt(mt[1], 10), b = parseInt(mt[2], 10);
+        if (a >= 1 && a <= 12 && b >= 1 && b <= 31) { dateObj = { m: a, d: b }; dateIdx = i; return; }
+      }
+      if (/^\d{1,2}$/.test(t) && i <= 2) {
+        var o = parseInt(t, 10);
+        if (o >= 1 && o <= 31) { dateObj = { m: m, d: o }; dateIdx = i; }
+      }
+    }
+    if (wdIdx < 0 && /^周[一二三四五六日天]$/.test(t)) wdIdx = i;
+  });
+  if (!dateObj) return null;
+  var body = [];
+  toks.forEach(function (t, i) { if (i !== dateIdx && i !== wdIdx) body.push(t); });
+  var place = "", pi = -1;
+  for (var i = 0; i < body.length; i++) {
+    if (SHOOT_PLACE_RE.test(body[i])) { place = body[i]; pi = i; } else break;
+  }
+  if (pi >= 0) body = body.slice(pi + 1);
+  var shotIdx = -1;
+  if (body.join("").indexOf("条") > -1) {
+    for (var j = body.length - 1; j >= 0; j--) {
+      if (!/^\d{1,3}$/.test(body[j])) continue;
+      var rest = body.slice(j + 1).join("");
+      if (rest.indexOf("条") > -1 && rest.charAt(0) !== "条") { shotIdx = j; break; }
+    }
+  } else {
+    for (var k = body.length - 1; k >= 0; k--) { if (/^\d{1,3}$/.test(body[k])) { shotIdx = k; break; } }
+  }
+  var detail = (shotIdx >= 0 ? body.slice(0, shotIdx) : body).join("");
+  var shot = shotIdx >= 0 ? num(body[shotIdx]) : 0;
+  var edit = shotIdx >= 0 ? body.slice(shotIdx + 1).join("") : "";
+  return { m: dateObj.m, d: dateObj.d, place: place, detail: detail, shot: shot, editN: guessEditN(edit), edit: edit };
+}
+function importShootText(txt) {
+  var monthD = shootMonthBase();
+  var y = monthD.getFullYear(), m = monthD.getMonth() + 1;
+  var ok = 0, skip = 0;
+  String(txt || "").split(/\r?\n/).forEach(function (raw) {
+    if (!raw.trim()) return;
+    var line = raw.indexOf("\t") > -1 ? raw.trim() : prepText(raw);
+    if (!line) return;
+    var row = line.indexOf("\t") > -1 ? parseTabLine(line, m) : parseOcrLine(line, y, m);
+    if (!row) { skip++; return; }
+    var dt = new Date(y, row.m - 1, row.d);
+    if (dt.getMonth() !== row.m - 1) { skip++; return; }
+    var ds = ymd(dt);
+    if (!shootPlan[ds]) shootPlan[ds] = { place: "", detail: "", shot: 0, edit: "", editN: 0 };
+    var r = shootPlan[ds];
+    r.place = row.place || "";
+    r.detail = row.detail || "";
+    r.shot = num(row.shot);
+    r.edit = row.edit || "";
+    r.editN = row.editN != null && row.editN !== "" ? num(row.editN) : guessEditN(r.edit);
+    ok++;
+  });
+  return { ok: ok, skip: skip };
+}
+function doShootPaste() {
+  var res = importShootText($("shootPasteText").value || "");
+  saveShoot(true);
+  renderShootPlan();
+  closeShootPaste();
+  alert("已导入 " + res.ok + " 天" + (res.skip ? "，跳过 " + res.skip + " 行（没认到日期）" : "") + "。表格里可以直接再改。");
+}
+
+/* ================= 截图 OCR ================= */
+var ocrBusy = false;
+function openShootOcr() {
+  $("ocrText").value = "";
+  $("ocrStatus").textContent = "第一次识别要联网下载识别引擎（约 15MB），之后会快很多；离线时请用「📋 粘贴导入」。";
+  $("shootOcrModal").style.display = "block";
+}
+function closeShootOcr() { $("shootOcrModal").style.display = "none"; }
+function loadTesseract(cb) {
+  if (window.Tesseract) { cb(true); return; }
+  var s = document.createElement("script");
+  s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+  s.onload = function () { cb(!!window.Tesseract); };
+  s.onerror = function () { cb(false); };
+  document.head.appendChild(s);
+}
+function ocrPickFile(file) {
+  if (!file) return;
+  var img = new Image();
+  var fr = new FileReader();
+  fr.onload = function () {
+    img.onload = function () {
+      $("ocrStatus").textContent = "已载入图片（" + img.width + "×" + img.height + "），点「开始识别」。";
+      img.setAttribute("data-ready", "1");
+      window.__ocrImage = img;
+    };
+    img.src = fr.result;
+  };
+  fr.readAsDataURL(file);
+}
+function doShootOcr() {
+  if (ocrBusy) return;
+  if (!window.__ocrImage) { alert("先贴一张截图进来（Ctrl+V）或点框选择图片。"); return; }
+  ocrBusy = true;
+  $("ocrStatus").textContent = "正在准备识别引擎…";
+  loadTesseract(function (ok) {
+    if (!ok) {
+      ocrBusy = false;
+      $("ocrStatus").textContent = "识别引擎加载失败（多半是没联网）。请改用「📋 粘贴导入」，或者直接把截图发我。";
+      return;
+    }
+    $("ocrStatus").textContent = "正在识别，中文表格大概需要 10~40 秒…";
+    var src = preprocessForOcr(window.__ocrImage);
+    Tesseract.recognize(src, "chi_sim", {
+      tessedit_pageseg_mode: "6",
+      logger: function (m) {
+        if (m.status === "recognizing text") {
+          $("ocrStatus").textContent = "正在识别… " + Math.round((m.progress || 0) * 100) + "%";
+        }
+      }
+    }).then(function (res) {
+      ocrBusy = false;
+      var txt = String(res.data.text || "").split(/\r?\n/).map(prepText).join("\n");
+      $("ocrText").value = txt.trim();
+      $("ocrStatus").textContent = "识别完成，已自动纠错（剪辑/自剪/公司室内等）。核对一下，没问题点「导入」。";
+    }).catch(function (e) {
+      ocrBusy = false;
+      $("ocrStatus").textContent = "识别失败：" + (e && e.message ? e.message : "未知错误") + "（可改用「📋 粘贴导入」）";
+    });
+  });
+}
+/* 识别前先放大 2 倍 + 灰度 + 增强对比，中文小字能明显准一些 */
+function preprocessForOcr(img) {
+  var MAXW = 2200, scale = Math.min(2, MAXW / Math.max(1, img.width));
+  if (scale < 1) scale = 1;
+  var cv = document.createElement("canvas");
+  cv.width = Math.round(img.width * scale);
+  cv.height = Math.round(img.height * scale);
+  var ctx = cv.getContext("2d");
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.drawImage(img, 0, 0, cv.width, cv.height);
+  try {
+    var id = ctx.getImageData(0, 0, cv.width, cv.height), d = id.data;
+    for (var i = 0; i < d.length; i += 4) {
+      var g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      g = (g - 128) * 1.35 + 128;
+      g = g < 0 ? 0 : (g > 255 ? 255 : g);
+      if (g > 200) g = 255;
+      if (g < 80) g = 0;
+      d[i] = d[i + 1] = d[i + 2] = g;
+    }
+    ctx.putImageData(id, 0, 0);
+  } catch (e) { }
+  return cv;
+}
+function importFromOcr() {
+  var res = importShootText($("ocrText").value || "");
+  if (!res.ok) {
+    alert("没有可导入的行（" + res.skip + " 行都缺日期）。截图里要有「日期」这一列，或者在文本框里每行前面补上日期，例如：11/16 周一 公司室内 口播3 3 2条实拍剪辑。");
+    return;
+  }
+  saveShoot(true);
+  renderShootPlan();
+  closeShootOcr();
+  alert("已导入 " + res.ok + " 天" + (res.skip ? "，跳过 " + res.skip + " 行" : "") + "。回表格里核对一下。");
+}
+document.addEventListener("paste", function (e) {
+  var tgt = e.target || {};
+  var inField = /^(INPUT|TEXTAREA)$/.test(tgt.tagName || "");
+  var items = (e.clipboardData || {}).items || [];
+  var ocrOpen = $("shootOcrModal").style.display === "block";
+  /* 截图识别弹窗里：贴图直接载入 */
+  if (ocrOpen) {
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].type && items[i].type.indexOf("image") > -1) {
+        ocrPickFile(items[i].getAsFile());
+        e.preventDefault();
+        return;
+      }
+    }
+  }
+  if (inField) return;
+  var shootVisible = $("pane-shoot") && $("pane-shoot").style.display !== "none";
+  if (!shootVisible) return;
+  /* 每日计划页任意位置按 Ctrl+V：图片→打开识别，表格文字→打开导入并填好 */
+  for (var j = 0; j < items.length; j++) {
+    if (items[j].type && items[j].type.indexOf("image") > -1) {
+      openShootOcr();
+      ocrPickFile(items[j].getAsFile());
+      e.preventDefault();
+      return;
+    }
+  }
+  var txt = "";
+  try { txt = (e.clipboardData || {}).getData("text/plain") || ""; } catch (err) { }
+  if (txt && txt.length > 8 && (txt.indexOf("\t") > -1 || /\n/.test(txt))) {
+    openShootPaste();
+    $("shootPasteText").value = txt;
+    e.preventDefault();
+  }
+});
+document.addEventListener("DOMContentLoaded", function () {
+  var drop = $("ocrDrop"), file = $("ocrFile");
+  if (!drop || !file) return;
+  drop.addEventListener("click", function () { file.click(); });
+  file.addEventListener("change", function () { if (file.files[0]) ocrPickFile(file.files[0]); });
+  drop.addEventListener("dragover", function (e) { e.preventDefault(); drop.style.background = "#eef2ff"; });
+  drop.addEventListener("dragleave", function () { drop.style.background = "#f8faff"; });
+  drop.addEventListener("drop", function (e) {
+    e.preventDefault(); drop.style.background = "#f8faff";
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) ocrPickFile(e.dataTransfer.files[0]);
+  });
+});
+
+/* ================= 进度总览 ================= */
+var progOffset = 0;
+function progRange() {
+  var now = new Date(), y = now.getFullYear(), m = now.getMonth(), day = now.getDate();
+  if (day < 15) { var d = new Date(y, m - 1, 1); y = d.getFullYear(); m = d.getMonth(); }
+  var s = new Date(y, m + progOffset, 15), e = new Date(y, m + progOffset + 1, 14);
+  return { start: ymd(s), end: ymd(e), label: (s.getFullYear() + "年" + (s.getMonth() + 1) + "月15日 — " + (e.getMonth() + 1) + "月14日") };
+}
+function shiftProg(d) { progOffset += d; renderProg(); }
+function resetProg() { progOffset = 0; renderProg(); }
+function renderProg() {
+  var rg = progRange();
+  $("progRange").textContent = rg.label;
+  var done = {}, planned = {};
+  TYPES.forEach(function (t) { done[t] = { l: 0, n: 0 }; planned[t] = { l: 0, n: 0 }; });
+  data.forEach(function (r) {
+    if (r.date >= rg.start && r.date <= rg.end) {
+      TYPES.forEach(function (t) {
+        var it = r.items[t];
+        if (it) { done[t].l += (it.link || 0); done[t].n += (it.nolink || 0); }
+      });
+    }
+  });
+  weekTables.forEach(function (rec) {
+    var we = weekEndOf(rec.ws);
+    if (we >= rg.start && rec.ws <= rg.end) {
+      TYPES.forEach(function (t) {
+        var x = rec.rows[t] || { l: 0, n: 0 };
+        planned[t].l += (x.l || 0); planned[t].n += (x.n || 0);
+      });
+    }
+  });
+  var aim = 0, dn = 0, pl = 0;
+  TYPES.forEach(function (t) {
+    aim += targets[t].tLink + targets[t].tNoLink;
+    dn += done[t].l + done[t].n;
+    pl += planned[t].l + planned[t].n;
+  });
+  var gap = Math.max(0, aim - dn);
+  var rate = aim > 0 ? Math.round(dn / aim * 100) : 0;
+  $("pgAim").innerHTML = aim + "<small>条</small>";
+  $("pgDone").innerHTML = dn + "<small>条</small>";
+  $("pgGap").innerHTML = gap + "<small>条</small>";
+  $("pgRate").innerHTML = rate + "<small>%</small>";
+  $("pgBar").style.width = Math.min(100, rate) + "%";
+  var html = "";
+  TYPES.forEach(function (t) {
+    var g = targets[t], tAim = g.tLink + g.tNoLink, d = done[t], p = planned[t];
+    var tGap = Math.max(0, tAim - (d.l + d.n));
+    var pct = tAim > 0 ? Math.min(100, Math.round((d.l + d.n) / tAim * 100)) : 0;
+    html += "<tr><td>" + t + "</td>"
+      + "<td><b>" + tAim + '</b><div class="wd">挂 ' + g.tLink + " / 不挂 " + g.tNoLink + "</div></td>"
+      + "<td>" + (p.l + p.n) + '<div class="wd">挂 ' + p.l + " / 不挂 " + p.n + "</div></td>"
+      + "<td>" + (d.l + d.n) + '<div class="wd">挂 ' + d.l + " / 不挂 " + d.n + "</div></td>"
+      + "<td><b>" + (tGap || "—") + "</b></td>"
+      + '<td><div class="bar" style="margin:0"><i class="' + (pct >= 100 ? "g" : "") + '" style="width:' + pct + '%"></i></div><div class="wd">' + pct + "%</div></td></tr>";
+  });
+  html += '<tr class="tot"><td>合计</td><td>' + aim + "</td><td>" + pl + "</td><td>" + dn + "</td><td>" + (gap || "—") + "</td><td>" + rate + "%</td></tr>";
+  $("progBody").innerHTML = html;
+
+  /* 拍摄量 / 剪辑量 整期总账（拍摄归我；剪辑拆我剪 / 下属剪） */
+  var shotPlanSum = 0;
+  var dcur = new Date(rg.start + "T00:00:00"), dend = new Date(rg.end + "T00:00:00");
+  while (dcur <= dend) {
+    var srec = shootPlan[ymd(dcur)];
+    if (srec) shotPlanSum += num(srec.shot);
+    dcur.setDate(dcur.getDate() + 1);
+  }
+  var meDone = 0, subDone = 0;
+  data.forEach(function (r) {
+    if (r.date < rg.start || r.date > rg.end) return;
+    var s = 0;
+    for (var n in r.items) { if (r.items.hasOwnProperty(n)) s += num(r.items[n].link) + num(r.items[n].nolink); }
+    if (r.owner === "sub") subDone += s; else meDone += s;
+  });
+  var sAim = num(shootTgt.shoot);
+  var meAim = num(shootTgt.editMe), subAim = num(shootTgt.editSub);
+  if (meAim + subAim !== num(shootTgt.edit)) { meAim = num(shootTgt.edit); subAim = 0; }
+  var shotDone = shotsInRange(rg);
+  function row(name, sub, aim, planned, done) {
+    var gap = Math.max(0, aim - done);
+    var pct = aim > 0 ? Math.min(100, Math.round(done / aim * 100)) : 0;
+    return "<tr><td><b>" + name + '</b><div class="wd">' + sub + "</div></td>"
+      + "<td><b>" + aim + '</b><div class="wd">条/期</div></td>'
+      + "<td>" + planned + '</td><td><b>' + done + "</b></td>"
+      + "<td><b>" + (gap || "—") + '</b></td>'
+      + '<td><div class="bar" style="margin:0"><i class="' + (pct >= 100 ? "g" : "") + '" style="width:' + pct + '%"></i></div><div class="wd">' + pct + "%</div></td></tr>";
+  }
+  $("progBody2").innerHTML =
+    row("拍摄量", "我拍，由上往下统计已拍", sAim, shotPlanSum, shotDone)
+    + row("剪辑 · 我剪", "剪辑登记里「谁剪=我」", meAim, pl, meDone)
+    + row("剪辑 · 下属剪", "剪辑登记里「谁剪=下属」", subAim, 0, subDone)
+    + '<tr class="tot"><td>合计</td><td>' + (sAim + meAim + subAim) + "</td><td>" + (shotPlanSum + pl) + "</td><td>"
+    + (shotDone + meDone + subDone) + "</td><td>" + (Math.max(0, sAim + meAim + subAim - shotDone - meDone - subDone) || "—") + "</td><td></td></tr>";
+}
+
+/* ================= 启动 ================= */
+buildForm();
+$("logDate").value = today();
+checkDup();
+calc();
+render();
+
+/* 去掉「剧情」类型：历史里剧情的数据全部并到「口播」，一条不丢（只执行一次） */
+function mergeJuqingIntoVo() {
+  if (localStorage.getItem("clipNoJuqingV2") === "1") return;
+  var J = "剧情", K = "口播";
+  try {
+    data.forEach(function (r) {
+      if (!r || !r.items || !r.items[J]) return;
+      var j = r.items[J];
+      if (!r.items[K]) r.items[K] = { link: 0, nolink: 0, detail: "" };
+      r.items[K].link = num(r.items[K].link) + num(j.link);
+      r.items[K].nolink = num(r.items[K].nolink) + num(j.nolink);
+      if (!(r.items[K].detail || "").trim() && (j.detail || "").trim()) r.items[K].detail = j.detail;
+      delete r.items[J];
+    });
+    localStorage.setItem(KEY_DATA, JSON.stringify(data));
+  } catch (e) { }
+  try {
+    if (targets && targets[J]) {
+      if (!targets[K]) targets[K] = { tLink: 0, tNoLink: 0 };
+      targets[K].tLink = num(targets[K].tLink) + num(targets[J].tLink);
+      targets[K].tNoLink = num(targets[K].tNoLink) + num(targets[J].tNoLink);
+      delete targets[J];
+      localStorage.setItem(KEY_TGT, JSON.stringify(targets));
+    }
+  } catch (e) { }
+  try {
+    weekTables.forEach(function (w) {
+      if (!w || !w.rows || !w.rows[J]) return;
+      var j = w.rows[J];
+      if (!w.rows[K]) w.rows[K] = { l: 0, n: 0, style: "", codes: [] };
+      w.rows[K].l = num(w.rows[K].l) + num(j.l);
+      w.rows[K].n = num(w.rows[K].n) + num(j.n);
+      var cs = normCodes(w.rows[K]);
+      normCodes(j).forEach(function (x) {
+        var c = String(x.c || "").trim();
+        if (!c || cs.length >= 4) return;
+        cs.push({ c: c, q: num(x.q) });
+      });
+      delete w.rows[J];
+    });
+    localStorage.setItem("clipWeekTablesV1", JSON.stringify(weekTables));
+  } catch (e) { }
+  try {
+    results.forEach(function (r) {
+      if (!r || !r.shots || r.shots[J] == null) return;
+      r.shots[K] = num(r.shots[K]) + num(r.shots[J]);
+      delete r.shots[J];
+    });
+    localStorage.setItem(KEY_RES, JSON.stringify(results));
+  } catch (e) { }
+  try {
+    plans.forEach(function (p) { if (p && p.type === J) p.type = K; });
+    localStorage.setItem(KEY_PLAN, JSON.stringify(plans));
+  } catch (e) { }
+  localStorage.setItem("clipNoJuqingV2", "1");
+}
+
+$("pDate").value = today();
+autoWeek();
+mergeJuqingIntoVo();
+renderItems("plan");
+$("pSaveBtn").textContent = "保存周计划";
+fillPlanSelect();
+$("rDate").value = today();
+showResWd();
+buildResShotForm();
+fillResShots({});
+renderItems("result");
+renderPlans();
+renderResults();
+renderSheetList();
+renderShootPlan();
+renderProg();
+renderMonthTgt();
+
+$("pasteText").addEventListener("keydown", function (e) {
+  if (e.key === "Escape") closePaste();
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); doPaste(); }
+});
+</script>
+</body>
+</html>
+
+
