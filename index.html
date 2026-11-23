@@ -68,7 +68,7 @@ button:active{transform:scale(.98)}
 .rec th{font-size:12px;color:#6b7280;font-weight:600;padding:9px 6px;background:#fbfcfd;border-bottom:1px solid #eef1f4;text-align:center;white-space:nowrap}
 .rec th:first-child{text-align:left}
 .rec td{padding:9px 6px;border-bottom:1px solid #f5f7f9;text-align:center;vertical-align:middle}
-#planBody td:nth-child(2),#planBody td:nth-child(3),#planBody td:nth-child(5),#planBody td:nth-child(6),#planBody td:nth-child(7),#planBody td:nth-child(12),#planBody td:nth-child(13){white-space:nowrap}
+#planBody td:nth-child(2),#planBody td:nth-child(3),#planBody td:nth-child(5),#planBody td:nth-child(6),#planBody td:nth-child(7),#planBody td:nth-child(8),#planBody td:nth-child(13),#planBody td:nth-child(14){white-space:nowrap}
 .prepcell{text-align:left;font-size:11px;color:#374151;line-height:1.5;max-width:170px;white-space:normal}
 .wkweek button{vertical-align:middle}
 .rec td:first-child{text-align:left;font-weight:600}
@@ -959,6 +959,7 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
         </select>
       </div>
       <div class="fld"><label>计划数量</label><input type="number" min="0" id="pQty" placeholder="0"></div>
+      <div class="fld"><label>A剪辑任务量</label><input type="number" min="0" id="pSubEdit" placeholder="0" title="交给 A（下属）剪辑的条数"></div>
       <div class="fld"><label>状态</label>
         <select id="pStatus"><option>未开始</option><option>进行中</option><option>已完成</option><option>延期</option></select>
       </div>
@@ -1023,8 +1024,8 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
       <span class="legend" style="margin:0" id="pSelHint">先在上面勾选要导出的计划</span>
     </div>
     <div class="scroll">
-      <table class="rec" style="min-width:1120px">
-        <thead><tr><th style="width:30px"><input type="checkbox" id="pAllChk" onchange="planSelAllChk(this.checked)"></th><th>日期</th><th>周次</th><th>计划</th><th>类型</th><th>数量</th><th>状态</th><th>文案</th><th>图片</th><th>链接</th><th>准备</th><th>产出</th><th>操作</th></tr></thead>
+      <table class="rec" style="min-width:1180px">
+        <thead><tr><th style="width:30px"><input type="checkbox" id="pAllChk" onchange="planSelAllChk(this.checked)"></th><th>日期</th><th>周次</th><th>计划</th><th>类型</th><th>数量</th><th>A剪辑</th><th>状态</th><th>文案</th><th>图片</th><th>链接</th><th>准备</th><th>产出</th><th>操作</th></tr></thead>
         <tbody id="planBody"></tbody>
       </table>
     </div>
@@ -2463,6 +2464,7 @@ function savePlan() {
     qty: qty,
     status: $("pStatus").value,
     prep: ($("pPrep") ? $("pPrep").value.trim() : ""),
+    subEdit: num($("pSubEdit") ? $("pSubEdit").value : 0),
     items: items
   };
   if (planEditingId) {
@@ -2478,6 +2480,7 @@ function savePlan() {
 function resetPlanForm(all) {
   $("pName").value = ""; $("pQty").value = "";
   if ($("pPrep")) $("pPrep").value = "";
+  if ($("pSubEdit")) $("pSubEdit").value = "";
   if (all) { $("pDate").value = today(); autoWeek(); $("pStatus").value = "未开始"; $("pType").value = "混剪"; }
   planEditingId = null; planItems = [blankItem()];
   renderItems("plan");
@@ -2491,6 +2494,7 @@ function editPlan(id) {
   $("pWd").textContent = wd(p.date);
   $("pType").value = p.type; $("pQty").value = p.qty; $("pStatus").value = p.status;
   if ($("pPrep")) $("pPrep").value = p.prep || "";
+  if ($("pSubEdit")) $("pSubEdit").value = (p.subEdit || "");
   planItems = (p.items && p.items.length ? JSON.parse(JSON.stringify(p.items)) : [blankItem()]);
   renderItems("plan");
   planEditingId = id; $("pSaveBtn").textContent = "更新这条计划";
@@ -2600,10 +2604,11 @@ function updatePlanCards(wr) {
 function updatePlanDoneLine(wr) {
   var el = $("planDoneLine"); if (!el) return;
   if (!wr) wr = weekRange();
-  var qty = 0, items = 0;
+  var qty = 0, items = 0, subTot = 0;
   plans.forEach(function (p) {
     if (!wr.all && (p.date < wr.start || p.date > wr.end)) return;
     qty += num(p.qty); items++;
+    subTot += num(p.subEdit);
   });
   var done = 0, dl = 0, dn = 0;
   data.forEach(function (r) {
@@ -2613,7 +2618,9 @@ function updatePlanDoneLine(wr) {
   done = dl + dn;
   var pct = qty > 0 ? Math.round(Math.min(100, done / qty * 100)) : 0;
   var scope = wr.all ? "全部时间" : (wr.start + " ~ " + wr.end);
-  el.innerHTML = "📌 " + scope + "：计划 <b>" + items + "</b> 项 / <b>" + qty + "</b> 条　｜　台账实际已剪 <b>" + done + "</b> 条（挂链 " + dl + " / 不挂链 " + dn + "）　完成 <b>" + pct + "%</b>"
+  el.innerHTML = "📌 " + scope + "：计划 <b>" + items + "</b> 项 / <b>" + qty + "</b> 条"
+    + (subTot ? "（其中 A 剪辑任务 <b>" + subTot + "</b> 条）" : "")
+    + "　｜　台账实际已剪 <b>" + done + "</b> 条（挂链 " + dl + " / 不挂链 " + dn + "）　完成 <b>" + pct + "%</b>"
     + (qty - done > 0 ? "　还差 <b>" + (qty - done) + "</b> 条" : "　（已完成）");
 }
 function renderPlans() {
@@ -2634,7 +2641,7 @@ function renderPlans() {
   }).sort(function (a, b) { return b.date.localeCompare(a.date); });
 
   if (!list.length) {
-    $("planBody").innerHTML = '<tr><td colspan="13"><div class="empty">还没有周计划，先在上面加一条</div></td></tr>';
+    $("planBody").innerHTML = '<tr><td colspan="14"><div class="empty">还没有周计划，先在上面加一条</div></td></tr>';
     if ($("planStatText")) $("planStatText").textContent = "该时间段没有计划";
     return;
   }
@@ -2652,7 +2659,7 @@ function renderPlans() {
       results.forEach(function (r) { if (r.planId === p.id) gdone += (r.qty || 0); });
     });
     statPlans += gr.items.length; statQty += gq; statDone += gdone;
-    html.push('<tr class="wkweek"><td colspan="13">' + gr.date + " " + wd(gr.date)
+    html.push('<tr class="wkweek"><td colspan="14">' + gr.date + " " + wd(gr.date)
       + " · " + gr.items.length + " 项 · 计划 " + gq + " 条 · 已产出 " + gdone + " 条"
       + ' <button class="mini" style="margin-left:8px" onclick="prepDayOnly(\'' + gr.date + '\')">准备清单</button>'
       + "</td></tr>");
@@ -2673,6 +2680,7 @@ function renderPlans() {
         + "<td>" + esc(p.name) + "</td>"
         + "<td>" + esc(p.type) + "</td>"
         + "<td>" + (p.qty || 0) + "</td>"
+        + "<td>" + (p.subEdit ? String(p.subEdit) : '<span class="zero">—</span>') + "</td>"
         + "<td>" + statusBadge(p.status) + "</td>"
         + "<td>" + copyCell + "</td>"
         + "<td>" + imgCell(p.items, 3) + "</td>"
@@ -2706,6 +2714,7 @@ function prepOneText(p) {
   lines.push("准备清单");
   lines.push("日期：" + p.date + " " + wd(p.date) + "（" + (p.week || "") + "）");
   lines.push("计划：" + p.name + "（" + p.type + " · " + (p.qty || 0) + " 条 · " + (p.status || "") + "）");
+  if (num(p.subEdit)) lines.push("A 剪辑任务量：" + num(p.subEdit) + " 条");
   lines.push("说明：" + (String(p.prep || "").trim() || "（还没填准备内容，去「新增 / 编辑周计划」里填）"));
   return lines.join("\n");
 }
@@ -2716,7 +2725,7 @@ function prepDayText(date) {
   lines.push("准备清单 · " + date + " " + wd(date) + "（共 " + ps.length + " 项）");
   lines.push("");
   ps.forEach(function (p, i) {
-    lines.push((i + 1) + ". " + p.name + "（" + p.type + " · " + (p.qty || 0) + " 条）");
+    lines.push((i + 1) + ". " + p.name + "（" + p.type + " · " + (p.qty || 0) + " 条" + (num(p.subEdit) ? " · A 剪辑 " + num(p.subEdit) + " 条" : "") + "）");
     var t = String(p.prep || "").trim();
     lines.push("   " + (t ? t.replace(/\s*\n+\s*/g, " / ") : "（还没填准备内容）"));
   });
@@ -2728,7 +2737,7 @@ function prepSelText() {
   if (!ps.length) return "";
   var lines = ["准备清单（选中 " + ps.length + " 项）", ""];
   ps.forEach(function (p, i) {
-    lines.push((i + 1) + ". " + p.date + " " + wd(p.date) + " · " + p.name + "（" + p.type + " · " + (p.qty || 0) + " 条）");
+    lines.push((i + 1) + ". " + p.date + " " + wd(p.date) + " · " + p.name + "（" + p.type + " · " + (p.qty || 0) + " 条" + (num(p.subEdit) ? " · A 剪辑 " + num(p.subEdit) + " 条" : "") + "）");
     var t = String(p.prep || "").trim();
     lines.push("   " + (t ? t.replace(/\s*\n+\s*/g, " / ") : "（还没填准备内容）"));
   });
