@@ -186,11 +186,33 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
 
   function synced(k) { return !!k && k.indexOf("clip") === 0 && !LOCAL_ONLY[k]; }
 
-  /* ---------- 登录态 ---------- */
+  /* ---------- 登录态（本地 + Cookie 双份，刷新/重开不掉登录） ---------- */
   var sess = null;
   try { sess = JSON.parse(localStorage.getItem(AUTHK) || "null"); } catch (e) { sess = null; }
-  function saveSess(s) { try { localStorage.setItem(AUTHK, JSON.stringify(s)); } catch (e) {} sess = s; }
-  function clearSess() { try { localStorage.removeItem(AUTHK); } catch (e) {} sess = null; }
+
+  function obf(s) { try { return btoa(unescape(encodeURIComponent(s || ""))); } catch (e) { return ""; } }
+  function deobf(s) { try { return decodeURIComponent(escape(atob(s || ""))); } catch (e) { return ""; } }
+  function setCookie(name, val, days) {
+    try {
+      var exp = "; max-age=" + (days * 86400);
+      document.cookie = name + "=" + encodeURIComponent(val) + "; path=/" + exp + "; SameSite=Lax" + (location.protocol === "https:" ? "; Secure" : "");
+    } catch (e) {}
+  }
+  function getCookie(name) {
+    try { var m = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)")); return m ? decodeURIComponent(m[1]) : ""; } catch (e) { return ""; }
+  }
+  function delCookie(name) { try { document.cookie = name + "=; path=/; max-age=0"; } catch (e) {} }
+
+  function saveSess(s) {
+    try { localStorage.setItem(AUTHK, JSON.stringify(s)); } catch (e) {}
+    sess = s;
+    setCookie("clipSess", JSON.stringify({ rt: s.refresh_token || "", em: s.email || "", pw: s.pw || "", at: s.access_token || "", ex: s.expires_at || 0 }), 120);
+  }
+  function clearSess() {
+    try { localStorage.removeItem(AUTHK); } catch (e) {}
+    delCookie("clipSess");
+    sess = null;
+  }
   function logged() { return !!(sess && sess.access_token && sess.email); }
 
   function ensureToken() {
@@ -203,7 +225,7 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
       body: JSON.stringify({ refresh_token: sess.refresh_token })
     }).then(function (r) { if (!r.ok) throw new Error("REFRESH_FAIL"); return r.json(); })
       .then(function (j) {
-        saveSess({ access_token: j.access_token, refresh_token: j.refresh_token, email: (sess && sess.email) || "", expires_at: Date.now() + ((j.expires_in || 3600) * 1000) });
+        saveSess({ access_token: j.access_token, refresh_token: j.refresh_token, email: (sess && sess.email) || "", pw: (sess && sess.pw) || "", expires_at: Date.now() + ((j.expires_in || 3600) * 1000) });
         return j.access_token;
       });
   }
@@ -333,12 +355,56 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
     }).then(function (r) {
       return r.json().then(function (j) { if (!r.ok) throw new Error(j.error_description || j.msg || ("HTTP " + r.status)); return j; });
     }).then(function (j) {
-      saveSess({ access_token: j.access_token, refresh_token: j.refresh_token, email: (j.user && j.user.email) || email, expires_at: Date.now() + ((j.expires_in || 3600) * 1000) });
+      saveSess({ access_token: j.access_token, refresh_token: j.refresh_token, email: (j.user && j.user.email) || email, pw: obf(pwd), expires_at: Date.now() + ((j.expires_in || 3600) * 1000) });
       try { localStorage.setItem(LASTEM, email); } catch (e) {}
       location.reload();
     }).catch(function (err) {
       if (msgEl) msgEl.textContent = "登录失败：" + (err.message || "检查账号密码");
     });
+  }
+
+  /* 静默用邮箱密码登录（刷新掉登录态时自动补回来，不用你手点） */
+  function pwdLogin(email, pwd, done) {
+    fetch(SB_URL + "/auth/v1/token?grant_type=password", {
+      method: "POST",
+      headers: { "apikey": SB_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email, password: pwd })
+    }).then(function (r) {
+      return r.json().then(function (j) { if (!r.ok) throw new Error(j.msg || "FAIL"); return j; });
+    }).then(function (j) {
+      saveSess({ access_token: j.access_token, refresh_token: j.refresh_token, email: (j.user && j.user.email) || email, pw: obf(pwd), expires_at: Date.now() + ((j.expires_in || 3600) * 1000) });
+      if (done) done(true);
+    }).catch(function () { if (done) done(false); });
+  }
+
+  /* 页面打开时：本地没有登录态，就用 Cookie 里的 refresh token / 邮箱密码补回来 */
+  function tryRestore() {
+    var ck = null;
+    try { ck = JSON.parse(getCookie("clipSess") || "null"); } catch (e) { ck = null; }
+    if (ck && ck.rt) {
+      fetch(SB_URL + "/auth/v1/token?grant_type=refresh_token", {
+        method: "POST",
+        headers: { "apikey": SB_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: ck.rt })
+      }).then(function (r) {
+        return r.json().then(function (j) { if (!r.ok) throw new Error("FAIL"); return j; });
+      }).then(function (j) {
+        saveSess({ access_token: j.access_token, refresh_token: j.refresh_token, email: ck.em || "", pw: ck.pw || "", expires_at: Date.now() + ((j.expires_in || 3600) * 1000) });
+        enableEditing();
+      }).catch(function () {
+        if (ck.em && ck.pw) pwdLogin(ck.em, deobf(ck.pw), function (ok) { if (ok) enableEditing(); });
+      });
+    } else if (ck && ck.em && ck.pw) {
+      pwdLogin(ck.em, deobf(ck.pw), function (ok) { if (ok) enableEditing(); });
+    }
+  }
+
+  function enableEditing() {
+    document.body.classList.remove("ro");
+    var old = document.getElementById("cloudAuthBar");
+    if (old) old.remove();
+    buildAuthBar();
+    if (chip && pulledOK) chip.textContent = "☁ 已同步";
   }
 
   function buildAuthBar() {
@@ -419,7 +485,7 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
   function boot() {
     buildAuthBar();
     buildChip();
-    if (!logged()) guardEdits();
+    if (!logged()) { guardEdits(); tryRestore(); }
     if (pulledOK && isFirstUpload && logged()) uploadLocalAll();
     if (!pulledOK) setChip("⚠ 云端未连接，点这里重试", "fail");
   }
