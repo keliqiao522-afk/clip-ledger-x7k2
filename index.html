@@ -1000,6 +1000,21 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
       <span>依次排开（每天 1 条）从</span>
       <input type="date" id="pbSeq" style="padding:4px 6px;font-size:12px">
       <button class="mini green" onclick="batchSeqDates()">开始排</button>
+      <span style="color:#cbd5e1">｜</span>
+      <span>改状态</span>
+      <select id="pbStatus" style="padding:4px 6px;font-size:12px"><option>未开始</option><option>进行中</option><option>已完成</option><option>延期</option></select>
+      <button class="mini" onclick="batchSetStatus()">应用</button>
+      <span>改类型</span>
+      <select id="pbType" style="padding:4px 6px;font-size:12px"><option>口播</option><option>切片</option><option>混剪</option><option>产品展示</option><option>测评/开箱</option><option>随拍</option></select>
+      <button class="mini" onclick="batchSetType()">应用</button>
+    </div>
+    <div class="pbtools" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 8px;padding:8px 10px;background:#fffdf5;border:1px solid #f3e8c8;border-radius:8px;font-size:12px;color:#4b5563">
+      <span style="font-weight:600;color:#92400e">导出 / 复制选中的</span>
+      <button class="mini blue" onclick="copySelLinks()">复制链接（纯链接）</button>
+      <button class="mini" onclick="copySelLinksNamed()">复制「日期+计划+链接」</button>
+      <button class="mini green" onclick="exportSelLinksCsv()">导出选中链接表 CSV</button>
+      <button class="mini green" onclick="exportSelScripts()">导出选中文案 CSV</button>
+      <span class="legend" style="margin:0" id="pSelHint">先在上面勾选要导出的计划</span>
     </div>
     <div class="scroll">
       <table class="rec" style="min-width:1000px">
@@ -2675,13 +2690,103 @@ function checkedPlanIds() {
   return out;
 }
 function updatePlanSelBar() {
-  if ($("pSelCount")) $("pSelCount").textContent = checkedPlanIds().length;
+  var ids = checkedPlanIds();
+  if ($("pSelCount")) $("pSelCount").textContent = ids.length;
+  if ($("pSelHint")) {
+    var n = 0;
+    if (ids.length) { selPlans().forEach(function (p) { n += planUrlsOf(p).length; }); }
+    $("pSelHint").textContent = ids.length ? ("已选 " + ids.length + " 条计划，其中 " + n + " 个链接可导出") : "先在上面勾选要导出的计划";
+  }
   var cs = document.querySelectorAll("#planBody .pchk");
   if ($("pAllChk")) {
     var all = cs.length > 0;
     for (var i = 0; i < cs.length; i++) if (!cs[i].checked) { all = false; break; }
     $("pAllChk").checked = all;
   }
+}
+function selPlans() {
+  var ids = checkedPlanIds();
+  return plans.filter(function (p) { return ids.indexOf(p.id) >= 0; })
+    .sort(function (a, b) { return a.date.localeCompare(b.date); });
+}
+function planUrlsOf(p) {
+  var out = [];
+  (p.items || []).forEach(function (it) {
+    var us = pullUrls(it.link || "");
+    for (var i = 0; i < us.length; i++) if (out.indexOf(us[i]) < 0) out.push(us[i]);
+  });
+  return out;
+}
+function copyTextToClipboard(txt, okMsg) {
+  function done() { try { toast(okMsg); } catch (e) { } }
+  function fallback() {
+    var ta = document.createElement("textarea");
+    ta.value = txt; ta.style.position = "fixed"; ta.style.left = "-9999px";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); done(); } catch (e) { alert("复制失败，请手动全选下面内容复制：\n\n" + txt); }
+    document.body.removeChild(ta);
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(done, fallback);
+  } else fallback();
+}
+function copySelLinks() {
+  var ps = selPlans();
+  if (!ps.length) { alert("先勾选要复制的计划（最左边的小方框）"); return; }
+  var lines = [];
+  ps.forEach(function (p) { planUrlsOf(p).forEach(function (u) { lines.push(u); }); });
+  if (!lines.length) { alert("选中的计划里没有链接（链接在「文案 / 参考图」里的那条链接框）"); return; }
+  copyTextToClipboard(lines.join("\n"), "已复制 " + lines.length + " 条链接");
+}
+function copySelLinksNamed() {
+  var ps = selPlans();
+  if (!ps.length) { alert("先勾选要复制的计划"); return; }
+  var lines = [];
+  ps.forEach(function (p) {
+    var us = planUrlsOf(p);
+    if (!us.length) return;
+    us.forEach(function (u, i) { lines.push(p.date + "　" + p.name + (us.length > 1 ? "（" + (i + 1) + "）" : "") + "　" + u); });
+  });
+  if (!lines.length) { alert("选中的计划里没有链接"); return; }
+  copyTextToClipboard(lines.join("\n"), "已复制 " + lines.length + " 条（带计划名）");
+}
+function exportSelLinksCsv() {
+  var ps = selPlans();
+  if (!ps.length) { alert("先勾选要导出的计划"); return; }
+  var rows = [["计划日期", "星期", "周次", "计划名称", "内容类型", "条数", "状态", "链接"]];
+  var cnt = 0;
+  ps.forEach(function (p) {
+    var us = planUrlsOf(p);
+    if (!us.length) { rows.push([p.date, wd(p.date), p.week || "", p.name, p.type, p.qty || 0, p.status || "", ""]); return; }
+    us.forEach(function (u) { cnt++; rows.push([p.date, wd(p.date), p.week || "", p.name, p.type, p.qty || 0, p.status || "", u]); });
+  });
+  csvDownload(rows, "选中计划链接_" + today() + ".csv");
+  try { toast("已导出链接 " + cnt + " 条"); } catch (e) { }
+}
+function exportSelScripts() {
+  var ps = selPlans();
+  if (!ps.length) { alert("先勾选要导出的计划"); return; }
+  exportScripts(ps.map(function (p) { return p.id; }));
+}
+function batchSetStatus() {
+  var ps = selPlans();
+  if (!ps.length) { alert("先勾选要改的计划"); return; }
+  var v = $("pbStatus") ? $("pbStatus").value : "";
+  if (!v) return;
+  undoSnapshot("批量改状态");
+  ps.forEach(function (p) { p.status = v; });
+  savePlans(); renderPlans();
+  try { toast("已把 " + ps.length + " 条改成「" + v + "」"); } catch (e) { }
+}
+function batchSetType() {
+  var ps = selPlans();
+  if (!ps.length) { alert("先勾选要改的计划"); return; }
+  var v = $("pbType") ? $("pbType").value : "";
+  if (!v) return;
+  undoSnapshot("批量改类型");
+  ps.forEach(function (p) { p.type = v; });
+  savePlans(); renderPlans();
+  try { toast("已把 " + ps.length + " 条改成「" + v + "」"); } catch (e) { }
 }
 function planSelAll() {
   var cs = document.querySelectorAll("#planBody .pchk");
@@ -2749,8 +2854,9 @@ function csvDownload(rows, filename) {
   setTimeout(function () { URL.revokeObjectURL(url); }, 500);
 }
 function exportScripts(planId) {
-  var all = !planId;
-  var target = all ? plans.slice() : plans.filter(function (p) { return p.id === planId; });
+  var all = !planId, isSel = Object.prototype.toString.call(planId) === "[object Array]";
+  var target = isSel ? plans.filter(function (p) { return planId.indexOf(p.id) >= 0; })
+    : (all ? plans.slice() : plans.filter(function (p) { return p.id === planId; }));
   if (!target.length) { alert("还没有周计划文案可导出"); return; }
   var rows = [["计划日期", "星期", "周次", "计划名称", "内容类型", "第几条", "序号", "镜头/画面", "台词", "时长", "是否高亮"]];
   target.sort(function (a, b) { return a.date.localeCompare(b.date); }).forEach(function (p) {
@@ -2762,7 +2868,8 @@ function exportScripts(planId) {
       });
     });
   });
-  csvDownload(rows, all ? ("全部文案_" + today() + ".csv") : ("文案_" + target[0].name + "_" + today() + ".csv"));
+  csvDownload(rows, isSel ? ("选中文案_" + today() + ".csv")
+    : (all ? ("全部文案_" + today() + ".csv") : ("文案_" + target[0].name + "_" + today() + ".csv")));
 }
 
 /* ---- 导出台词图片 ---- */
