@@ -897,12 +897,24 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
       <div class="card"><div class="k">总剪辑量</div><div class="v" id="lgAll">0<small>条</small></div></div>
       <div class="card"><div class="k">我剪</div><div class="v" id="lgMe">0<small>条</small></div></div>
       <div class="card"><div class="k">下属剪</div><div class="v" id="lgSub">0<small>条</small></div></div>
-      <div class="card"><div class="k">已登记天数 / 账号数</div><div class="v"><span id="lgDays">0</span><small>天 / <span id="lgAccs">0</span> 个账号</small></div></div>
+      <div class="card"><div class="k">已登记天数 / 账号</div><div class="v"><span id="lgDays">0</span><small>天 · <span id="lgAccTxt">还没填账号</span></small></div></div>
     </div>
     <div class="scroll">
       <table class="sum">
         <thead><tr><th>内容类型</th><th>总数</th><th>我剪</th><th>下属剪</th><th>挂链</th><th>不挂链</th></tr></thead>
         <tbody id="lgSumBody"></tbody>
+      </table>
+    </div>
+    <div class="scroll" style="margin-top:10px">
+      <table class="sum">
+        <thead><tr><th>按账号</th><th>总数</th><th>我剪</th><th>下属剪</th><th>款号数</th></tr></thead>
+        <tbody id="lgAccBody"><tr><td colspan="5" class="legend" style="margin:0">登记时填了账号才会出现在这里</td></tr></tbody>
+      </table>
+    </div>
+    <div class="scroll" style="margin-top:10px">
+      <table class="sum">
+        <thead><tr><th>款号</th><th>条数（登记里写的款号×条数合计）</th></tr></thead>
+        <tbody id="lgCodeBody"><tr><td colspan="2" class="legend" style="margin:0">登记时填了款号才会出现在这里</td></tr></tbody>
       </table>
     </div>
     <p class="legend">口径跟第一页同步（本期＝15 日～次月 14 日，自然月＝1 日～月底）；数字按登记里「谁剪」分开算，导出的 CSV 可以直接拿去对账。</p>
@@ -1843,23 +1855,40 @@ function renderAccList() {
 }
 function ledgerSumData() {
   var rg = currentRange();
-  var out = {}, days = {}, accs = {};
+  var out = {}, days = {}, accMap = {}, codeMap = {};
   TYPES.forEach(function (t) { out[t] = { all: 0, me: 0, sub: 0, l: 0, n: 0 }; });
   data.forEach(function (r) {
     if (r.date < rg.start || r.date > rg.end) return;
     days[r.date] = 1;
-    var a = String(r.account || "").trim();
-    if (a) accs[a] = 1;
+    var a = String(r.account || "").trim() || "未填账号";
+    if (!accMap[a]) accMap[a] = { acc: a, all: 0, me: 0, sub: 0, codes: {} };
     var isSub = (r.owner === "sub");
+    (r.codes || []).forEach(function (c) {
+      var cd = String((c && c.c) || "").trim(); if (!cd) return;
+      var q = num(c && c.q);
+      codeMap[cd] = (codeMap[cd] || 0) + q;
+      accMap[a].codes[cd] = 1;
+    });
     TYPES.forEach(function (t) {
       var it = r.items[t]; if (!it) return;
       var o = out[t];
       var l = num(it.link), n = num(it.nolink);
       o.all += l + n; o.l += l; o.n += n;
       if (isSub) o.sub += l + n; else o.me += l + n;
+      accMap[a].all += l + n;
+      if (isSub) accMap[a].sub += l + n; else accMap[a].me += l + n;
     });
   });
-  return { rows: out, rg: rg, days: Object.keys(days).length, accs: Object.keys(accs).length };
+  var accRows = Object.keys(accMap).map(function (k) { return accMap[k]; })
+    .filter(function (x) { return x.acc !== "未填账号" || x.all > 0 || Object.keys(x.codes).length; })
+    .sort(function (x, y) {
+      if (x.acc === "未填账号") return 1;
+      if (y.acc === "未填账号") return -1;
+      return y.all - x.all;
+    });
+  var codeRows = Object.keys(codeMap).map(function (k) { return { code: k, q: codeMap[k] }; })
+    .sort(function (x, y) { return y.q - x.q; });
+  return { rows: out, rg: rg, days: Object.keys(days).length, accRows: accRows, codeRows: codeRows };
 }
 function renderLedgerSum() {
   var d = ledgerSumData();
@@ -1879,7 +1908,23 @@ function renderLedgerSum() {
   if ($("lgMe")) $("lgMe").innerHTML = me + "<small>条</small>";
   if ($("lgSub")) $("lgSub").innerHTML = sub + "<small>条</small>";
   if ($("lgDays")) $("lgDays").textContent = d.days;
-  if ($("lgAccs")) $("lgAccs").textContent = d.accs;
+  if ($("lgAccTxt")) {
+    var realAcc = d.accRows.filter(function (x) { return x.acc !== "未填账号"; }).length;
+    if (realAcc) $("lgAccTxt").textContent = realAcc + " 个账号";
+    else $("lgAccTxt").textContent = d.accRows.length ? "登记里没填账号" : "还没填账号";
+  }
+  if ($("lgAccBody")) {
+    $("lgAccBody").innerHTML = d.accRows.length
+      ? d.accRows.map(function (x) {
+          return "<tr><td>" + esc(x.acc) + "</td><td><b>" + x.all + "</b></td><td>" + x.me + "</td><td>" + x.sub + "</td><td>" + Object.keys(x.codes).length + "</td></tr>";
+        }).join("")
+      : '<tr><td colspan="5" class="legend" style="margin:0">登记时填了账号才会出现在这里</td></tr>';
+  }
+  if ($("lgCodeBody")) {
+    $("lgCodeBody").innerHTML = d.codeRows.length
+      ? d.codeRows.map(function (x) { return "<tr><td>" + esc(x.code) + "</td><td><b>" + x.q + "</b></td></tr>"; }).join("")
+      : '<tr><td colspan="2" class="legend" style="margin:0">登记时填了款号才会出现在这里</td></tr>';
+  }
 }
 function exportSumCsv() {
   var d = ledgerSumData();
@@ -1892,6 +1937,16 @@ function exportSumCsv() {
     rows.push([t, o.all, o.me, o.sub, o.l, o.n]);
   });
   rows.push(["合计", all, me, sub, l, n]);
+  rows.push([]);
+  rows.push(["按账号", "总数", "我剪", "下属剪", "款号数", ""]);
+  if (d.accRows.length) {
+    d.accRows.forEach(function (x) { rows.push([x.acc, x.all, x.me, x.sub, Object.keys(x.codes).length, ""]); });
+  } else { rows.push(["（本期还没有填账号的记录）", "", "", "", "", ""]); }
+  rows.push([]);
+  rows.push(["按款号", "条数", "", "", "", ""]);
+  if (d.codeRows.length) {
+    d.codeRows.forEach(function (x) { rows.push([x.code, x.q, "", "", "", ""]); });
+  } else { rows.push(["（本期还没有填款号的记录）", "", "", "", "", ""]); }
   function q(v) { return '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"'; }
   var csv = "\ufeff" + [head].concat(rows).map(function (r) { return r.map(q).join(","); }).join("\r\n");
   var blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
