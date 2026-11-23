@@ -857,6 +857,10 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
       <div class="fld"><label>日期</label><div><input type="date" id="logDate" onchange="checkDup()"><span class="wd on" id="dateWd"></span></div></div>
       <div class="fld"><label>这批是谁剪的</label><select id="logOwner" style="padding:8px 10px;font-size:13px"><option value="">我</option><option value="sub">下属</option></select></div>
       <div class="fld grow"><label>当天备注（选填）</label><input type="text" id="note" placeholder="例：上午棚拍，下午外景，模特小杨"></div>
+      <div class="fld"><label>账号（可加新）</label><input type="text" id="logAccount" list="accList" placeholder="例：主号 / 小号2"><datalist id="accList"></datalist></div>
+      <div class="fld" style="flex:1 1 100%"><label>款号（可加多个 · 款号 × 条数）</label>
+        <div id="logCodes" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"></div>
+      </div>
     </div>
     <div class="scroll">
       <table class="entry">
@@ -876,7 +880,32 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
   <div class="box">
     <div class="listhead"><h2>已登记记录</h2><input id="kw" placeholder="搜日期 / 备注 / 素材" oninput="renderRecords()"></div>
     <div class="scroll"><table class="rec"><thead id="recHead"></thead><tbody id="recBody"></tbody></table></div>
-    <p class="legend">单元格为「挂链 / 不挂链」；点「明细」展开当天剪的具体素材。</p>
+    <p class="legend">单元格为「挂链 / 不挂链」；点「明细」展开当天剪的具体素材。账号和款号也在列表里，导出 CSV 会带上。</p>
+  </div>
+
+  <div class="box">
+    <div class="listhead">
+      <h2>剪辑量汇总（<span id="lgScope">本期</span> · <span id="lgRange">—</span>）</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="mini" id="lgSegCycle" onclick="setMode('cycle')">本期</button>
+        <button class="mini" id="lgSegMonth" onclick="setMode('month')">自然月</button>
+        <button class="mini blue" onclick="exportSumCsv()">导出汇总 CSV</button>
+        <button class="mini green" onclick="exportCsv()">导出全部明细 CSV</button>
+      </div>
+    </div>
+    <div class="stats" style="margin-bottom:10px">
+      <div class="card"><div class="k">总剪辑量</div><div class="v" id="lgAll">0<small>条</small></div></div>
+      <div class="card"><div class="k">我剪</div><div class="v" id="lgMe">0<small>条</small></div></div>
+      <div class="card"><div class="k">下属剪</div><div class="v" id="lgSub">0<small>条</small></div></div>
+      <div class="card"><div class="k">已登记天数 / 账号数</div><div class="v"><span id="lgDays">0</span><small>天 / <span id="lgAccs">0</span> 个账号</small></div></div>
+    </div>
+    <div class="scroll">
+      <table class="sum">
+        <thead><tr><th>内容类型</th><th>总数</th><th>我剪</th><th>下属剪</th><th>挂链</th><th>不挂链</th></tr></thead>
+        <tbody id="lgSumBody"></tbody>
+      </table>
+    </div>
+    <p class="legend">口径跟第一页同步（本期＝15 日～次月 14 日，自然月＝1 日～月底）；数字按登记里「谁剪」分开算，导出的 CSV 可以直接拿去对账。</p>
   </div>
 </div>
 
@@ -1639,6 +1668,29 @@ function setMode(m) {
   renderProg();
 }
 function shift(d) { offset += d; render(); renderProg(); }
+var logCodes = [];
+function renderLogCodes() {
+  var box = $("logCodes"); if (!box) return;
+  var html = logCodes.map(function (c, i) {
+    return '<span style="display:inline-flex;align-items:center;gap:4px;background:#f8fafc;border:1px solid #e8ecf0;border-radius:8px;padding:3px 6px">'
+      + '<input value="' + esc(c.c) + '" placeholder="款号" oninput="setLogCode(' + i + ',\'c\',this.value)" style="width:92px;padding:4px 6px;font-size:12px;border:1px solid #dfe3e8;border-radius:6px">'
+      + '<span style="font-size:12px;color:#9ca3af">×</span>'
+      + '<input type="number" min="0" value="' + esc(String(c.q == null ? "" : c.q)) + '" placeholder="条" oninput="setLogCode(' + i + ',\'q\',this.value)" style="width:54px;padding:4px 6px;font-size:12px;border:1px solid #dfe3e8;border-radius:6px">'
+      + '<button class="mini red" onclick="delLogCode(' + i + ')" title="删掉这个款号">×</button></span>';
+  }).join("");
+  if (!logCodes.length) html = '<span class="legend" style="margin:0">还没有款号，点右边加一个</span>';
+  box.innerHTML = html + '<button class="mini blue" onclick="addLogCode()">＋ 加款号</button>';
+}
+function addLogCode() { logCodes.push({ c: "", q: "" }); renderLogCodes(); var ins = $("logCodes").querySelectorAll('input[placeholder="款号"]'); if (ins.length) ins[ins.length - 1].focus(); }
+function delLogCode(i) { logCodes.splice(i, 1); renderLogCodes(); }
+function setLogCode(i, k, v) { if (logCodes[i]) logCodes[i][k] = v; }
+function logCodesClean() {
+  return logCodes.map(function (c) { return { c: String(c.c || "").trim(), q: num(c.q) }; }).filter(function (c) { return c.c; });
+}
+function logCodesText(codes) {
+  var arr = codes || [];
+  return arr.filter(function (x) { return String(x.c || "").trim(); }).map(function (x) { return String(x.c).trim() + "×" + num(x.q); }).join("、");
+}
 function buildForm() {
   var html = "";
   for (var i = 0; i < TYPES.length; i++) {
@@ -1666,7 +1718,12 @@ function checkDup() {
 }
 function resetForm(all) {
   for (var i = 0; i < TYPES.length; i++) { $("lnk" + i).value = ""; $("nol" + i).value = ""; $("det" + i).value = ""; }
-  if (all) { $("note").value = ""; $("logDate").value = today(); if ($("logOwner")) $("logOwner").value = ""; }
+  if (all) {
+    $("note").value = ""; $("logDate").value = today();
+    if ($("logOwner")) $("logOwner").value = "";
+    if ($("logAccount")) $("logAccount").value = "";
+    logCodes = []; renderLogCodes();
+  }
   editingId = null; $("saveBtn").textContent = "保存当天记录"; checkDup(); calc();
 }
 function saveDay() {
@@ -1680,10 +1737,12 @@ function saveDay() {
   if (total === 0 && !hasDetail) { alert("至少填一个条数或素材名"); return; }
   var note = $("note").value.trim();
   var owner = $("logOwner") ? $("logOwner").value : "";
+  var account = $("logAccount") ? $("logAccount").value.trim() : "";
+  var codes = logCodesClean();
   if (editingId) {
     var rec = null;
     for (var j = 0; j < data.length; j++) if (data[j].id === editingId) rec = data[j];
-    if (rec) { rec.date = date; rec.note = note; rec.items = items; rec.owner = owner; }
+    if (rec) { rec.date = date; rec.note = note; rec.items = items; rec.owner = owner; rec.account = account; rec.codes = codes; }
   } else {
     var dup = null;
     for (var k = 0; k < data.length; k++) if (data[k].date === date) dup = data[k];
@@ -1691,11 +1750,12 @@ function saveDay() {
       if (!confirm(date + " 已有一条记录，覆盖为当前填写吗？")) return;
       data = data.filter(function (r) { return r.id !== dup.id; });
     }
-    data.push({ id: Date.now(), date: date, note: note, items: items, owner: owner });
+    data.push({ id: Date.now(), date: date, note: note, items: items, owner: owner, account: account, codes: codes });
   }
   localStorage.setItem(KEY_DATA, JSON.stringify(data));
   autoBackup();
   resetForm(false); render();
+  renderAccList();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 function editRec(id) {
@@ -1704,6 +1764,8 @@ function editRec(id) {
   if (!rec) return;
   $("logDate").value = rec.date; $("note").value = rec.note || "";
   if ($("logOwner")) $("logOwner").value = rec.owner || "";
+  if ($("logAccount")) $("logAccount").value = rec.account || "";
+  logCodes = (rec.codes || []).map(function (x) { return { c: x.c, q: x.q }; }); renderLogCodes();
   for (var t = 0; t < TYPES.length; t++) {
     var it = rec.items[TYPES[t]] || {};
     $("lnk" + t).value = it.link || ""; $("nol" + t).value = it.nolink || ""; $("det" + t).value = it.detail || "";
@@ -1730,6 +1792,7 @@ function render() {
   paintPeriodLabels();
   renderRecords();
   renderWeekDone();
+  renderLedgerSum();
   refreshProg();
 }
 function refreshProg() {
@@ -1741,7 +1804,7 @@ function refreshProg() {
   }
 }
 function renderRecords() {
-  $("recHead").innerHTML = "<tr><th>日期</th><th>谁剪</th>" + TYPES.map(function (t) { return "<th>" + t + "</th>"; }).join("") + "<th>当日合计</th><th>备注</th><th>操作</th></tr>";
+  $("recHead").innerHTML = "<tr><th>日期</th><th>账号</th><th>谁剪</th>" + TYPES.map(function (t) { return "<th>" + t + "</th>"; }).join("") + "<th>当日合计</th><th>款号</th><th>备注</th><th>操作</th></tr>";
   var kw = $("kw").value.trim().toLowerCase();
   var list = data.filter(function (r) {
     if (!kw) return true;
@@ -1749,7 +1812,7 @@ function renderRecords() {
     for (var n in r.items) if (r.items.hasOwnProperty(n)) hay += " " + n + " " + (r.items[n].detail || "");
     return hay.toLowerCase().indexOf(kw) > -1;
   }).sort(function (a, b) { return b.date.localeCompare(a.date); });
-  if (!list.length) { $("recBody").innerHTML = '<tr><td colspan="' + (TYPES.length + 5) + '"><div class="empty">还没有记录，先在上面填一天的数据吧</div></td></tr>'; return; }
+  if (!list.length) { $("recBody").innerHTML = '<tr><td colspan="' + (TYPES.length + 7) + '"><div class="empty">还没有记录，先在上面填一天的数据吧</div></td></tr>'; return; }
   $("recBody").innerHTML = list.map(function (r) {
     var sum = 0, hasDetail = false, dets = [];
     TYPES.forEach(function (t) {
@@ -1761,25 +1824,95 @@ function renderRecords() {
       if (!it || (!it.link && !it.nolink)) return '<td><span class="zero">—</span></td>';
       return '<td><span class="pair"><b>' + (it.link || 0) + "</b> / <span>" + (it.nolink || 0) + "</span></span></td>";
     }).join("");
-    return "<tr><td>" + r.date + wdHtml(r.date) + "</td><td>" + (r.owner === "sub" ? "下属" : "我") + "</td>" + cells + "<td><b>" + sum + '</b></td><td class="note">' + (esc(r.note) || "—") + "</td>"
+    return "<tr><td>" + r.date + wdHtml(r.date) + "</td><td>" + (esc(r.account) || '<span class="zero">—</span>') + "</td><td>" + (r.owner === "sub" ? "下属" : "我") + "</td>" + cells + "<td><b>" + sum + '</b></td><td class="prepcell">' + (logCodesText(r.codes) || '<span class="zero">—</span>') + '</td><td class="note">' + (esc(r.note) || "—") + "</td>"
       + '<td><div class="ops">' + (hasDetail ? '<button class="mini blue" onclick="toggleDetail(' + r.id + ')">明细</button>' : "")
       + '<button class="mini" onclick="editRec(' + r.id + ')">编辑</button>'
       + '<button class="mini red" onclick="delRec(' + r.id + ')">删除</button></div></td></tr>'
-      + '<tr class="detail" id="d' + r.id + '" style="display:none"><td colspan="' + (TYPES.length + 5) + '">' + (dets.join(" ｜ ") || "无素材备注") + "</td></tr>";
+      + '<tr class="detail" id="d' + r.id + '" style="display:none"><td colspan="' + (TYPES.length + 7) + '">' + (dets.join(" ｜ ") || "无素材备注") + (logCodesText(r.codes) ? " ｜ 款号：" + logCodesText(r.codes) : "") + "</td></tr>";
   }).join("");
+}
+function renderAccList() {
+  var dl = $("accList"); if (!dl) return;
+  var seen = {}, list = [];
+  data.forEach(function (r) {
+    var a = String(r.account || "").trim();
+    if (a && !seen[a]) { seen[a] = 1; list.push(a); }
+  });
+  list.sort();
+  dl.innerHTML = list.map(function (a) { return '<option value="' + esc(a) + '">'; }).join("");
+}
+function ledgerSumData() {
+  var rg = currentRange();
+  var out = {}, days = {}, accs = {};
+  TYPES.forEach(function (t) { out[t] = { all: 0, me: 0, sub: 0, l: 0, n: 0 }; });
+  data.forEach(function (r) {
+    if (r.date < rg.start || r.date > rg.end) return;
+    days[r.date] = 1;
+    var a = String(r.account || "").trim();
+    if (a) accs[a] = 1;
+    var isSub = (r.owner === "sub");
+    TYPES.forEach(function (t) {
+      var it = r.items[t]; if (!it) return;
+      var o = out[t];
+      var l = num(it.link), n = num(it.nolink);
+      o.all += l + n; o.l += l; o.n += n;
+      if (isSub) o.sub += l + n; else o.me += l + n;
+    });
+  });
+  return { rows: out, rg: rg, days: Object.keys(days).length, accs: Object.keys(accs).length };
+}
+function renderLedgerSum() {
+  var d = ledgerSumData();
+  if ($("lgRange")) $("lgRange").textContent = d.rg.label;
+  if ($("lgScope")) $("lgScope").textContent = (mode === "month" ? "自然月" : "本期");
+  if ($("lgSegCycle")) $("lgSegCycle").className = (mode === "cycle" ? "mini blue" : "mini");
+  if ($("lgSegMonth")) $("lgSegMonth").className = (mode === "month" ? "mini blue" : "mini");
+  var all = 0, me = 0, sub = 0, l = 0, n = 0, html = "";
+  TYPES.forEach(function (t) {
+    var o = d.rows[t];
+    all += o.all; me += o.me; sub += o.sub; l += o.l; n += o.n;
+    html += "<tr><td>" + t + "</td><td><b>" + o.all + "</b></td><td>" + o.me + "</td><td>" + o.sub + "</td><td>" + o.l + "</td><td>" + o.n + "</td></tr>";
+  });
+  html += '<tr class="tot"><td>合计</td><td>' + all + "</td><td>" + me + "</td><td>" + sub + "</td><td>" + l + "</td><td>" + n + "</td></tr>";
+  if ($("lgSumBody")) $("lgSumBody").innerHTML = html;
+  if ($("lgAll")) $("lgAll").innerHTML = all + "<small>条</small>";
+  if ($("lgMe")) $("lgMe").innerHTML = me + "<small>条</small>";
+  if ($("lgSub")) $("lgSub").innerHTML = sub + "<small>条</small>";
+  if ($("lgDays")) $("lgDays").textContent = d.days;
+  if ($("lgAccs")) $("lgAccs").textContent = d.accs;
+}
+function exportSumCsv() {
+  var d = ledgerSumData();
+  var head = [d.rg.label + (mode === "month" ? "（自然月）" : "（本期）"), "", "", "", "", ""];
+  var rows = [["内容类型", "总数", "我剪", "下属剪", "挂链", "不挂链"]];
+  var all = 0, me = 0, sub = 0, l = 0, n = 0;
+  TYPES.forEach(function (t) {
+    var o = d.rows[t];
+    all += o.all; me += o.me; sub += o.sub; l += o.l; n += o.n;
+    rows.push([t, o.all, o.me, o.sub, o.l, o.n]);
+  });
+  rows.push(["合计", all, me, sub, l, n]);
+  function q(v) { return '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"'; }
+  var csv = "\ufeff" + [head].concat(rows).map(function (r) { return r.map(q).join(","); }).join("\r\n");
+  var blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = "剪辑量汇总_" + d.rg.start + "_" + d.rg.end + ".csv";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 500);
 }
 function exportCsv() {
   if (!data.length) { alert("还没有记录可导出"); return; }
-  var head = ["日期", "星期", "谁剪"];
+  var head = ["日期", "星期", "账号", "谁剪"];
   TYPES.forEach(function (t) { head.push(t + "-挂链", t + "-不挂链", t + "-素材"); });
-  head.push("挂链合计", "不挂链合计", "合计", "当天备注");
+  head.push("挂链合计", "不挂链合计", "合计", "款号（款号×条数）", "当天备注");
   var rows = data.slice().sort(function (a, b) { return b.date.localeCompare(a.date); }).map(function (r) {
-    var row = [r.date, wd(r.date), r.owner === "sub" ? "下属" : "我"], l = 0, n = 0;
+    var row = [r.date, wd(r.date), r.account || "", r.owner === "sub" ? "下属" : "我"], l = 0, n = 0;
     TYPES.forEach(function (t) {
       var it = r.items[t] || { link: 0, nolink: 0, detail: "" };
       row.push(it.link || 0, it.nolink || 0, it.detail || ""); l += it.link || 0; n += it.nolink || 0;
     });
-    row.push(l, n, l + n, r.note || ""); return row;
+    row.push(l, n, l + n, logCodesText(r.codes), r.note || ""); return row;
   });
   function q(v) { return '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"'; }
   var csv = "\ufeff" + [head].concat(rows).map(function (r) { return r.map(q).join(","); }).join("\r\n");
@@ -4971,6 +5104,8 @@ function renderProg() {
 
 /* ================= 启动 ================= */
 buildForm();
+renderLogCodes();
+renderAccList();
 $("logDate").value = today();
 checkDup();
 calc();
