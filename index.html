@@ -109,6 +109,8 @@ td,th{word-break:break-word;overflow-wrap:break-word}
 .codewrap .cc input.cin{flex:1;min-width:0;padding:5px 6px;font-size:12px;text-align:left;min-width:0!important}
 .codewrap .cc input.cqn{width:46px;padding:5px 2px;font-size:12px;text-align:center}
 .codewrap .cc i{font-size:11px;color:#9ca3af;font-style:normal}
+.codewrap .codeadd{grid-column:1/-1;justify-self:start;border:1px dashed #cbd5e1;background:#fff;color:#2563eb;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer}
+.codewrap .codeadd:hover{background:#eff6ff;border-color:#93c5fd}
 /* 每日计划表格里的款号格子（宽度受限，单独收窄） */
 .shootscroll td .codewrap{grid-template-columns:1fr;gap:3px}
 .shootscroll td .codewrap .cc{background:#f8fafc;border:1px solid #e5e9ef;border-radius:6px;padding:2px 3px}
@@ -935,6 +937,9 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
     <div class="card"><div class="k" id="pQtyK">本周计划总量</div><div class="v" id="pQty">0<small>条</small></div></div>
     <div class="card"><div class="k" id="pDoneK">本周已产出</div><div class="v" id="pDone">0<small>条</small></div><div class="bar"><i class="g" id="pBar" style="width:0"></i></div></div>
   </div>
+  <div class="box" style="padding:10px 16px">
+    <div class="legend" style="margin:0" id="planDoneLine"></div>
+  </div>
 
   <div class="box">
     <div class="listhead"><h2>新增 / 编辑周计划</h2><span class="legend">一条计划里可以一条条加文案，每条文案可以配自己的链接和多张图</span></div>
@@ -1042,7 +1047,7 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
         <button class="mini" onclick="exportWeekCsv('plan')">导出全部CSV</button>
       </div>
     </div>
-    <p class="legend" style="margin:0 0 12px">每周一张表：周次、发布账号、周度目标、7 类产出形式（挂链 / 不挂链 / 款号），再填资金申请、模特、其他协助。</p>
+    <p class="legend" style="margin:0 0 12px">每周一张表：周次、发布账号、周度目标、各类产出形式（挂链 / 不挂链）+ 资金申请 / 模特 / 协助。款号在「每日计划」里按天填，这里自动汇总。</p>
     <div id="sheetList"></div>
   </div>
 </div>
@@ -1055,19 +1060,24 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
         <button onclick="shiftShoot(-1)">‹ 上个月</button>
         <b id="shootMonth">—</b>
         <button onclick="shiftShoot(1)">下个月 ›</button>
-        <span style="font-size:12px;color:#6b7280">选择月份</span>
         <input type="month" id="shootMonthPick" onchange="setShootMonth(this.value)" style="padding:6px 8px;font-size:13px">
-        <span style="font-size:12px;color:#6b7280">选中天数范围</span>
+      </div>
+      <div class="nav" style="gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button class="mini" onclick="shootWeekShift(-1)">‹ 上一周</button>
+        <button class="mini" onclick="selShootWeek()">本周</button>
+        <button class="mini" onclick="shootWeekShift(1)">下一周 ›</button>
+        <button class="mini blue" onclick="selShootNextWeek()">排下周</button>
+        <span style="font-size:12px;color:#6b7280">看具体日期</span>
         <input type="date" id="shootFromPick" onchange="setShootRange('from',this.value)" style="padding:6px 8px;font-size:13px" title="开始日期">
         <span style="font-size:12px;color:#6b7280">~</span>
         <input type="date" id="shootToPick" onchange="setShootRange('to',this.value)" style="padding:6px 8px;font-size:13px" title="结束日期">
-        <button class="mini" onclick="selShootWeek()">选本周</button>
-        <button class="mini blue" onclick="selShootNextWeek()">排下周（下周一～周日）</button>
         <button class="mini" onclick="clearShootDate()">取消选中</button>
         <button class="mini" onclick="resetShootMonth()">回到本月</button>
         <button class="mini green" onclick="saveShootPage()">保存</button>
-        <span class="legend" style="margin:0" id="shootSummary"></span>
       </div>
+      <span class="legend" style="margin:6px 0 0;display:block" id="shootSummary"></span>
+      </div>
+      <div id="shootWeekRec" class="legend" style="margin:8px 0 0;background:#f8fafc;border:1px solid #e8ecf0;border-radius:8px;padding:7px 10px"></div>
       <div class="ops" style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="mini blue" onclick="applyShootTemplate()">套用通用周模板</button>
         <button class="mini blue" onclick="applyShootTemplateForce()">按模板重排整月</button>
@@ -2541,10 +2551,30 @@ function updatePlanCards(wr) {
   if ($("pDone")) $("pDone").innerHTML = doneQty + "<small>条</small>";
   if ($("pBar")) $("pBar").style.width = (shootQty > 0 ? Math.min(100, Math.round(doneQty / shootQty * 100)) : 0) + "%";
 }
+function updatePlanDoneLine(wr) {
+  var el = $("planDoneLine"); if (!el) return;
+  if (!wr) wr = weekRange();
+  var qty = 0, items = 0;
+  plans.forEach(function (p) {
+    if (!wr.all && (p.date < wr.start || p.date > wr.end)) return;
+    qty += num(p.qty); items++;
+  });
+  var done = 0, dl = 0, dn = 0;
+  data.forEach(function (r) {
+    if (!wr.all && (r.date < wr.start || r.date > wr.end)) return;
+    TYPES.forEach(function (t) { var it = r.items[t]; if (it) { dl += (it.link || 0); dn += (it.nolink || 0); } });
+  });
+  done = dl + dn;
+  var pct = qty > 0 ? Math.round(Math.min(100, done / qty * 100)) : 0;
+  var scope = wr.all ? "全部时间" : (wr.start + " ~ " + wr.end);
+  el.innerHTML = "📌 " + scope + "：计划 <b>" + items + "</b> 项 / <b>" + qty + "</b> 条　｜　台账实际已剪 <b>" + done + "</b> 条（挂链 " + dl + " / 不挂链 " + dn + "）　完成 <b>" + pct + "%</b>"
+    + (qty - done > 0 ? "　还差 <b>" + (qty - done) + "</b> 条" : "　（已完成）");
+}
 function renderPlans() {
   var wr = weekRange();
   syncPlanWeekUI();
   updatePlanCards(wr);
+  updatePlanDoneLine(wr);
 
   var kw = $("pKw").value.trim().toLowerCase();
   var list = plans.filter(function (p) {
@@ -3682,7 +3712,7 @@ function shootSet(date, k, v) {
   if (!shootPlan[date]) shootPlan[date] = { place: "", detail: "", shot: 0, edit: "", editN: 0 };
   shootPlan[date][k] = v;
   saveShoot();
-  if (k === "shot" || k === "editN") shootSummaryText();
+  if (k === "shot" || k === "editN") { shootSummaryText(); shootWeekRecText(); }
 }
 
 /* ===== 每日计划里的「拍摄款号」（款号 × 条数），原来在周计划表填，现在按天填 ===== */
@@ -3702,6 +3732,7 @@ function dayCodeCell(ds) {
       + '<input class="cqn" type="number" min="0" value="' + (num(cs[i].q) ? num(cs[i].q) : "") + '" placeholder="0" oninput="setDayCode(\'' + ds + "'," + i + ',\'q\',this.value)">'
       + '<button type="button" class="codel" title="删掉这个款号" onclick="delDayCode(\'' + ds + "'," + i + ')">×</button></span>';
   }
+  html += '<button type="button" class="codeadd" title="再加一个款号" onclick="addDayCode(\'' + ds + '\')">＋ 加款号</button>';
   return html + "</div>";
 }
 function setDayCode(ds, i, k, v) {
@@ -3716,9 +3747,11 @@ function addDayCode(ds) {
   var r = shootDay(ds);
   if (!r.codes) r.codes = [];
   r.codes.push({ c: "", q: 0 });
-  saveShoot();
+  saveShoot(true);
   refreshDayCell(ds);
   refreshCodes();
+  var tr = document.getElementById("sd-" + ds);
+  if (tr) { var ins = tr.querySelectorAll(".cin"); if (ins.length) ins[ins.length - 1].focus(); }
 }
 function delDayCode(ds, i) {
   var r = shootDay(ds);
@@ -3777,6 +3810,7 @@ function weekDistText(rec) {
 function refreshCodes() {
   try { if ($("sheetList") && weekTables && weekTables.length) renderSheetList(); } catch (e) {}
   try { if ($("weekDoneBody")) renderWeekDone(); } catch (e2) {}
+  try { shootWeekRecText(); } catch (e3) {}
 }
 function shiftShoot(d) {
   var b = shootMonthBase();
@@ -3814,8 +3848,49 @@ function setShootRange(which, v) {
   localStorage.setItem(KEY_SHOOT_SEL, shootMonthStr);
   renderShootPlan();
 }
-function selShootWeek() {
-  var mon = mondayOf(today());
+/* 按周翻看：记录过去的计划，并对照台账实际完成 */
+function shootWeekShift(d) {
+  var base = shootFrom || mondayOf(today());
+  var mon = new Date(mondayOf(base) + "T00:00:00");
+  mon.setDate(mon.getDate() + 7 * d);
+  shootFrom = ymd(mon);
+  var e = new Date(mon); e.setDate(e.getDate() + 6);
+  shootTo = ymd(e);
+  localStorage.setItem(KEY_SHOOT_FROM, shootFrom);
+  localStorage.setItem(KEY_SHOOT_TO, shootTo);
+  localStorage.removeItem(KEY_SHOOT_DAY);
+  shootMonthStr = shootFrom.slice(0, 7);
+  localStorage.setItem(KEY_SHOOT_SEL, shootMonthStr);
+  renderShootPlan();
+}
+function shootWeekRecText() {
+  var el = $("shootWeekRec"); if (!el) return;
+  var span = shootSpan(), start = ymd(span.s), end = ymd(span.e);
+  var days = Math.round((span.e - span.s) / 86400000) + 1;
+  var planShot = 0, planEdit = 0, codes = 0, codeQty = 0, filled = 0;
+  var cur = new Date(span.s);
+  while (cur <= span.e) {
+    var ds = ymd(cur), me = shootPlan[ds] || {};
+    planShot += num(me.shot); planEdit += num(me.editN);
+    if ((me.detail || "").trim() || (me.place || "").trim()) filled++;
+    var cs = me.codes || [];
+    for (var i = 0; i < cs.length; i++) { if (String(cs[i].c || "").trim()) { codes++; codeQty += num(cs[i].q); } }
+    cur.setDate(cur.getDate() + 1);
+  }
+  var done = 0, doneLink = 0, doneNoLink = 0;
+  data.forEach(function (r) {
+    if (r.date < start || r.date > end) return;
+    TYPES.forEach(function (t) { var it = r.items[t]; if (it) { doneLink += (it.link || 0); doneNoLink += (it.nolink || 0); } });
+  });
+  done = doneLink + doneNoLink;
+  var pct = planEdit > 0 ? Math.round(Math.min(100, done / planEdit * 100)) : 0;
+  var tail = planEdit > done ? "　还差 <b>" + (planEdit - done) + "</b> 条没剪" : (planEdit > 0 ? "　已剪满计划" : "");
+  el.innerHTML = "🗓 " + (span.ranged ? ("这一周（" + start + " ~ " + end + "，共 " + days + " 天）") : ("本月（" + start + " ~ " + end + "，共 " + days + " 天）")) + "：已排 " + filled + " 天"
+    + "　计划拍摄 <b>" + planShot + "</b> 条 · 计划剪辑 <b>" + planEdit + "</b> 条"
+    + "　款号 <b>" + codes + "</b> 个 / <b>" + codeQty + "</b> 条　｜　台账实际已剪 <b>" + done + "</b> 条"
+    + "（挂链 " + doneLink + " / 不挂链 " + doneNoLink + "）　完成 <b>" + pct + "%</b>" + tail;
+}
+function selShootWeek() {  var mon = mondayOf(today());
   var d = new Date(mon + "T00:00:00");
   d.setDate(d.getDate() + 6);
   shootFrom = mon; shootTo = ymd(d);
@@ -3972,6 +4047,7 @@ function renderShootPlan() {
     tas[k].addEventListener("input", function () { autoGrow(this); refreshUrlChips(this); });
   }
   shootSummaryText();
+  shootWeekRecText();
   fillShootExpWeek();
   if (shootFrom) {
     var row = document.getElementById("sd-" + shootFrom);
