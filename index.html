@@ -1065,6 +1065,7 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
         <button class="mini blue" onclick="selShootNextWeek()">排下周（下周一～周日）</button>
         <button class="mini" onclick="clearShootDate()">取消选中</button>
         <button class="mini" onclick="resetShootMonth()">回到本月</button>
+        <button class="mini green" onclick="saveShootPage()">保存</button>
         <span class="legend" style="margin:0" id="shootSummary"></span>
       </div>
       <div class="ops" style="display:flex;gap:6px;flex-wrap:wrap">
@@ -2917,6 +2918,38 @@ function renderResults() {
 /* ================= 周计划表 / 本周完成量 ================= */
 var KEY_WK = "clipWeekTablesV1";
 var weekTables = JSON.parse(localStorage.getItem(KEY_WK) || "[]");
+/* 老数据补全：每个产出形式都要有 l/n 两个数字，缺了就补 0，否则输入框看似能填、实际存不进去 */
+(function () {
+  function pickKey(k) {
+    if (TYPES.indexOf(k) >= 0) return k;
+    for (var y = 0; y < TYPES.length; y++) { if (String(k).indexOf(TYPES[y]) >= 0) return TYPES[y]; }
+    return null;
+  }
+  for (var q = 0; q < weekTables.length; q++) {
+    var rr = weekTables[q]; if (!rr) continue;
+    var src = rr.rows || {};
+    var out = {};
+    for (var key in src) {
+      if (!src.hasOwnProperty(key)) continue;
+      var to = pickKey(key) || key;
+      if (!out[to]) out[to] = { l: 0, n: 0, style: "", codes: [] };
+      out[to].l = num(out[to].l) + num(src[key].l);
+      out[to].n = num(out[to].n) + num(src[key].n);
+      if (src[key] && src[key].style && !out[to].style) out[to].style = src[key].style;
+      if (src[key] && src[key].codes && src[key].codes.length) out[to].codes = src[key].codes;
+    }
+    rr.rows = out;
+    for (var z = 0; z < TYPES.length; z++) {
+      var tt = TYPES[z];
+      if (!rr.rows[tt]) rr.rows[tt] = { l: 0, n: 0, style: "", codes: [] };
+      rr.rows[tt].l = num(rr.rows[tt].l);
+      rr.rows[tt].n = num(rr.rows[tt].n);
+    }
+  }
+  if (weekTables.length) setTimeout(function () {
+    try { localStorage.setItem(KEY_WK, JSON.stringify(weekTables)); } catch (e) { }
+  }, 1200);
+})();
 var KEY_WEEK_SEL = "clipWeekDoneSel";
 var weekDoneDay = localStorage.getItem(KEY_WEEK_SEL) || today();
 var wkTimer = null;
@@ -3185,8 +3218,32 @@ function delWeekTable(i) {
 function setWeekField(i, k, v) {
   if (!weekTables[i]) return;
   weekTables[i][k] = v;
-  saveWeekTables();
+  saveWeekTables(true);
   if (k === "name" || k === "account" || k === "goal") renderWeekDoneLight();
+}
+/* 把卡片上正在显示的数字全部收回数据里（防止出现「看着改了、其实没存」） */
+function syncWeekInputs() {
+  var cards = document.querySelectorAll("#sheetList .wkcard");
+  for (var i = 0; i < cards.length; i++) {
+    var rec = weekTables[i]; if (!rec) continue;
+    if (!rec.rows) rec.rows = {};
+    var trs = cards[i].querySelectorAll("tbody tr");
+    for (var ti = 0; ti < TYPES.length && ti < trs.length; ti++) {
+      var t = TYPES[ti], ins = trs[ti].querySelectorAll("input");
+      if (!rec.rows[t]) rec.rows[t] = { l: 0, n: 0, style: "", codes: [] };
+      if (ins[0]) rec.rows[t].l = num(ins[0].value);
+      if (ins[1]) rec.rows[t].n = num(ins[1].value);
+    }
+  }
+}
+function saveWeekCard(i) {
+  syncWeekInputs();
+  saveWeekTables(true);
+  renderSheetList();
+  renderWeekDone();
+  refreshProg();
+  if ($("sheetList")) setTimeout(function () { }, 0);
+  try { toast("已保存这一周"); } catch (e) { }
 }
 function renderWeekDoneLight() {
   var ws = mondayOf(today()), rec = findWeekTable(ws);
@@ -3203,7 +3260,9 @@ function setWeekDate(i, v) {
 }
 function setWeekNum(i, t, k, v) {
   var rec = weekTables[i];
-  if (!rec || !rec.rows[t]) return;
+  if (!rec) return;
+  if (!rec.rows) rec.rows = {};
+  if (!rec.rows[t]) rec.rows[t] = { l: 0, n: 0, style: "", codes: [] };
   rec.rows[t][k] = num(v);
   var l = rec.rows[t].l || 0, n = rec.rows[t].n || 0;
   var cell = document.getElementById("sk" + i + "_" + TYPES.indexOf(t));
@@ -3217,13 +3276,15 @@ function setWeekNum(i, t, k, v) {
   var wf = document.getElementById("wf" + i);
   if (wf) wf.innerHTML = weekFootText(rec.ws);
   refreshWeekSum(i);
-  saveWeekTables();
+  saveWeekTables(true);
 }
 function copyWeekFromDone(i) {
   var rec = weekTables[i];
   if (!rec) return;
+  if (!rec.rows) rec.rows = {};
   var c = weekCounts(rec.ws, weekEndOf(rec.ws));
   TYPES.forEach(function (t) {
+    if (!rec.rows[t]) rec.rows[t] = { l: 0, n: 0, style: "", codes: [] };
     rec.rows[t].l = c[t].l; rec.rows[t].n = c[t].n;
   });
   saveWeekTables(true);
@@ -3338,6 +3399,7 @@ function renderSheetList() {
       + '<div class="ops">'
       + '<button class="mini blue" onclick="exportWeekImage(\'plan\',' + i + ')">导出表格图片</button>'
       + '<button class="mini" onclick="copyWeekFromDone(' + i + ')">按台账回填</button>'
+      + '<button class="mini green" onclick="saveWeekCard(' + i + ')">保存</button>'
       + '<button class="mini red" onclick="delWeekTable(' + i + ')">删除</button>'
       + "</div></div>"
       + '<div class="flds" style="margin-bottom:10px"><div class="fld grow" style="flex:1;min-width:260px"><label>周度目标</label><textarea style="min-height:56px" oninput="setWeekField(' + i + ',\'goal\',this.value)" placeholder="例：稳定成交素材供给，验证3个可复用选题方向">' + esc(rec.goal) + '</textarea></div></div>'
@@ -3365,6 +3427,7 @@ function setWeekStyle(i, t, v) {
 
 /* 导出表格图片（图一 / 图二同款） */
 function exportWeekImage(mode, idx) {
+  if (mode === "plan") { syncWeekInputs(); saveWeekTables(true); }
   var FONT = "'Microsoft YaHei','PingFang SC','Hiragino Sans GB',sans-serif";
   var rec, c, hdr = {};
   if (mode === "done") {
@@ -3525,6 +3588,8 @@ function exportWeekImage(mode, idx) {
 
 /* 导出 CSV */
 function exportWeekCsv(mode, idx) {
+  syncWeekInputs();
+  saveWeekTables(true);
   var list = [];
   if (mode === "done") {
     var ws = mondayOf(weekDoneDay), we = weekEndOf(ws);
@@ -3598,8 +3663,12 @@ function migrateShoot() {
 }
 migrateShoot();
 
-function saveShoot(now) {
-  clearTimeout(shootTimer);
+function saveShootPage() {
+  saveShoot(true);
+  refreshProg();
+  try { toast("已保存每日计划"); } catch (e) { }
+}
+function saveShoot(now) {  clearTimeout(shootTimer);
   refreshProg();
   if (now) {
     try { localStorage.setItem(KEY_SHOOT, JSON.stringify(shootPlan)); } catch (e) { }
