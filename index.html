@@ -677,6 +677,12 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
   <button class="tab" data-pane="result" onclick="switchTab('result')">执行结果</button>
 </div>
 
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin:-6px 0 14px">
+  <span class="legend" style="margin:0;padding:5px 10px;background:#f5f8ff;border:1px solid #dfe8ff;border-radius:8px;color:#1f3b73">📅 <b>本期</b>＝每月 15 日～次月 14 日（<b>半个月</b>，不是周也不是自然月）｜当前本期：<b id="topPeriod">—</b></span>
+  <span class="legend" style="margin:0;padding:5px 10px;background:#f7f7fa;border:1px solid #e6e6ef;border-radius:8px">🗓 <b>周</b>＝周一～周日（周计划 / 每日计划 / 周计划表用）</span>
+  <span class="legend" style="margin:0;padding:5px 10px;background:#f6f9f5;border:1px solid #e2ece0;border-radius:8px">📆 <b>月</b>＝1 日～月底（只有「月度目标」用）</span>
+</div>
+
 <div class="btns" style="margin:-2px 0 14px">
   <button class="mini" onclick="exportAllJson()">⬇ 导出全部数据备份</button>
   <button class="mini green" onclick="exportPortableHtml()">📦 导出带数据的副本（可直接发人）</button>
@@ -702,6 +708,7 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
       </div>
       <div class="ops"><button class="mini" onclick="switchTab('ledger');toggleTargetPanel()">⚙ 修改目标（在剪辑登记里）</button></div>
     </div>
+    <p class="legend" style="margin:-6px 0 10px">口径：<b>本期＝每月 15 日～次月 14 日（半个月）</b>，上面「‹ 上一期 / 下一期 ›」翻的也是这半个月，不是自然月。</p>
     <div class="stats">
       <div class="card"><div class="k">本期目标（合计）</div><div class="v" id="pgAim">0<small>条</small></div></div>
       <div class="card"><div class="k">本期已剪</div><div class="v" id="pgDone">0<small>条</small></div><div class="bar"><i class="g" id="pgBar" style="width:0"></i></div></div>
@@ -729,7 +736,7 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
 
   <div class="box">
     <div class="listhead">
-      <h2>月度目标（按月单独设 · 可导出）</h2>
+      <h2>月度目标（自然月 1 日～月底 · 单独一套 · 可导出）</h2>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <input type="month" id="mtMonth" onchange="renderMonthTgt()" style="padding:6px 8px;font-size:13px;border:1px solid #dfe3e8;border-radius:8px">
         <button class="mini blue" onclick="exportMonthTgtImage()">导出月目标图片</button>
@@ -773,15 +780,16 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
         <button onclick="shift(1)">下一期 ›</button>
       </div>
     </div>
+    <p class="legend" style="margin:-6px 0 12px" id="ledgerHint">上方按钮选口径：<b>本期＝15 日～次月 14 日（半个月）</b>、自然月＝1 日～月底；这里只影响「剪辑登记」的统计范围，改目标请点右上「⚙ 修改目标」。</p>
 
     <div class="stats">
-      <div class="card"><div class="k">挂链条数</div><div class="v"><span id="vLink">0</span><small>/ <span id="gLink">60</span></small></div><div class="bar"><i id="bLink" style="width:0"></i></div></div>
-      <div class="card"><div class="k">不挂链条数</div><div class="v"><span id="vNoLink">0</span><small>/ <span id="gNoLink">52</span></small></div><div class="bar"><i id="bNoLink" class="g" style="width:0"></i></div></div>
-      <div class="card"><div class="k">合计条数</div><div class="v"><span id="vTotal">0</span><small>/ <span id="gTotal">112</span></small></div><div class="bar"><i id="bTotal" style="width:0"></i></div></div>
-      <div class="card"><div class="k">已登记天数</div><div class="v"><span id="vDays">0</span><small>天</small></div></div>
+      <div class="card"><div class="k" id="kLink">本期挂链条数</div><div class="v"><span id="vLink">0</span><small>/ <span id="gLink">60</span></small></div><div class="bar"><i id="bLink" style="width:0"></i></div></div>
+      <div class="card"><div class="k" id="kNoLink">本期不挂链条数</div><div class="v"><span id="vNoLink">0</span><small>/ <span id="gNoLink">52</span></small></div><div class="bar"><i id="bNoLink" class="g" style="width:0"></i></div></div>
+      <div class="card"><div class="k" id="kTotal">本期合计条数</div><div class="v"><span id="vTotal">0</span><small>/ <span id="gTotal">112</span></small></div><div class="bar"><i id="bTotal" style="width:0"></i></div></div>
+      <div class="card"><div class="k" id="kDays">本期已登记天数</div><div class="v"><span id="vDays">0</span><small>天</small></div></div>
     </div>
 
-    <h2 style="margin-bottom:10px">分类汇总（对比本期目标）</h2>
+    <h2 style="margin-bottom:6px">分类汇总（<span id="ledgerScope">本期</span>：实际 vs 目标）</h2>
     <div class="scroll">
       <table class="sum">
         <thead><tr><th>内容类型</th><th>挂链</th><th>挂链目标</th><th>不挂链</th><th>不挂链目标</th><th>小计</th></tr></thead>
@@ -834,11 +842,12 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
   </div>
 
   <div class="box" id="targetPanel" style="display:none">
-    <div class="listhead"><h2>目标设置</h2><span class="legend">改完点保存，统计即刻按新目标计算</span></div>
+    <div class="listhead"><h2>目标设置 · 本期目标（<span id="tgtPeriod">—</span>）</h2><span class="legend">改完点保存，统计即刻按新目标计算</span></div>
+    <p class="legend" style="margin:-4px 0 12px">⚠️ 这里填的是<b>「本期」</b>的目标：本期＝每月 15 日～次月 14 日（<b>半个月</b>），<b>不是周目标、也不是自然月目标</b>；自然月的目标在上面「月度目标」那块单独填。</p>
     <div class="flds" style="margin-bottom:12px">
-      <div class="fld"><label>拍摄目标合计（自动）</label><span class="legend" style="margin:0;font-size:15px;color:#111827"><b id="tgShootVal">0</b> 条/期</span></div>
-      <div class="fld"><label>我剪目标合计（自动）</label><span class="legend" style="margin:0;font-size:15px;color:#111827"><b id="tgEditMeVal">0</b> 条/期</span></div>
-      <div class="fld"><label>下属剪目标合计（自动）</label><span class="legend" style="margin:0;font-size:15px;color:#111827"><b id="tgEditSubVal">0</b> 条/期</span></div>
+      <div class="fld"><label>本期拍摄目标合计（自动）</label><span class="legend" style="margin:0;font-size:15px;color:#111827"><b id="tgShootVal">0</b> 条/本期</span></div>
+      <div class="fld"><label>本期我剪目标合计（自动）</label><span class="legend" style="margin:0;font-size:15px;color:#111827"><b id="tgEditMeVal">0</b> 条/本期</span></div>
+      <div class="fld"><label>本期下属剪目标合计（自动）</label><span class="legend" style="margin:0;font-size:15px;color:#111827"><b id="tgEditSubVal">0</b> 条/本期</span></div>
       <div class="fld"><label>剪辑合计</label><span class="legend" style="margin:0" id="tgEditTotal">0 条</span></div>
       <div class="fld grow"><label>说明</label><span class="legend" style="margin:0">按类型填「拍摄 / 挂链 / 不挂链 / 总剪辑目标」四列，其余自动算：我剪小计＝挂链＋不挂链，下属剪＝总剪辑目标−我剪小计，上面的合计全部自动加总。</span></div>
     </div>
@@ -1316,6 +1325,7 @@ function toggleTargetPanel() {
   else { buildTargetForm(); p.style.display = ""; $("tgtBtn").textContent = "收起目标设置"; }
 }
 function buildTargetForm() {
+  paintPeriodLabels();
   var html = "";
   for (var i = 0; i < TYPES.length; i++) {
     var t = targets[TYPES[i]];
@@ -1759,6 +1769,7 @@ function toggleDetail(id) {
 function render() {
   var rg = currentRange();
   $("cycleRange").textContent = rg.label;
+  paintPeriodLabels();
   var g = goals();
   $("gLink").textContent = g.link; $("gNoLink").textContent = g.noLink; $("gTotal").textContent = g.total;
   var inRange = data.filter(function (r) { return r.date >= rg.start && r.date <= rg.end; });
@@ -4953,6 +4964,31 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 });
 
+/* 口径标签：本期 = 15 日～次月 14 日，固定按今天算 */
+function periodLabelToday() {
+  var now = new Date(), y = now.getFullYear(), m = now.getMonth(), day = now.getDate();
+  if (day < 15) { var d = new Date(y, m - 1, 1); y = d.getFullYear(); m = d.getMonth(); }
+  var s = new Date(y, m, 15), e = new Date(y, m + 1, 14);
+  return s.getFullYear() + "年" + (s.getMonth() + 1) + "月15日 — " + (e.getMonth() + 1) + "月14日";
+}
+function paintPeriodLabels() {
+  var lab = periodLabelToday();
+  if ($("topPeriod")) $("topPeriod").textContent = lab;
+  if ($("tgtPeriod")) $("tgtPeriod").textContent = lab;
+  var isMonth = (typeof mode !== "undefined" && mode === "month");
+  if ($("ledgerScope")) $("ledgerScope").textContent = isMonth ? "自然月" : "本期";
+  var pf = isMonth ? "本月" : "本期";
+  if ($("kLink")) $("kLink").textContent = pf + "挂链条数";
+  if ($("kNoLink")) $("kNoLink").textContent = pf + "不挂链条数";
+  if ($("kTotal")) $("kTotal").textContent = pf + "合计条数";
+  if ($("kDays")) $("kDays").textContent = pf + "已登记天数";
+  if ($("ledgerHint")) {
+    $("ledgerHint").innerHTML = isMonth
+      ? '当前口径：<b>自然月（1 日～月底）</b>；「本期」是另一套（15 日～次月 14 日，半个月）。改目标点右上「⚙ 修改目标」。'
+      : '当前口径：<b>本期＝15 日～次月 14 日（半个月）</b>；自然月＝1 日～月底。改目标点右上「⚙ 修改目标」。';
+  }
+}
+
 /* ================= 进度总览 ================= */
 var progOffset = 0;
 function progRange() {
@@ -4966,6 +5002,7 @@ function resetProg() { progOffset = 0; renderProg(); }
 function renderProg() {
   var rg = progRange();
   $("progRange").textContent = rg.label;
+  paintPeriodLabels();
   var done = {}, planned = {};
   TYPES.forEach(function (t) { done[t] = { l: 0, n: 0 }; planned[t] = { l: 0, n: 0 }; });
   data.forEach(function (r) {
