@@ -68,7 +68,9 @@ button:active{transform:scale(.98)}
 .rec th{font-size:12px;color:#6b7280;font-weight:600;padding:9px 6px;background:#fbfcfd;border-bottom:1px solid #eef1f4;text-align:center;white-space:nowrap}
 .rec th:first-child{text-align:left}
 .rec td{padding:9px 6px;border-bottom:1px solid #f5f7f9;text-align:center;vertical-align:middle}
-#planBody td:nth-child(2),#planBody td:nth-child(3),#planBody td:nth-child(5),#planBody td:nth-child(6),#planBody td:nth-child(7),#planBody td:nth-child(12){white-space:nowrap}
+#planBody td:nth-child(2),#planBody td:nth-child(3),#planBody td:nth-child(5),#planBody td:nth-child(6),#planBody td:nth-child(7),#planBody td:nth-child(12),#planBody td:nth-child(13){white-space:nowrap}
+.prepcell{text-align:left;font-size:11px;color:#374151;line-height:1.5;max-width:170px;white-space:normal}
+.wkweek button{vertical-align:middle}
 .rec td:first-child{text-align:left;font-weight:600}
 .rec td.note{text-align:left;white-space:normal;max-width:150px;color:#6b7280;font-size:12px}
 .pair{font-size:12px}
@@ -960,6 +962,9 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
       <div class="fld"><label>状态</label>
         <select id="pStatus"><option>未开始</option><option>进行中</option><option>已完成</option><option>延期</option></select>
       </div>
+      <div class="fld grow" style="flex:1 1 100%"><label>需要准备的东西</label>
+        <textarea id="pPrep" placeholder="例：开衫2件 / 白背景纸 / 模特1人 / 大疆pocket + 麦克风 / 反光板" style="min-height:52px"></textarea>
+      </div>
     </div>
 
     <div class="ih" style="display:flex;justify-content:space-between;align-items:center;margin:4px 0 10px">
@@ -1014,11 +1019,12 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
       <button class="mini" onclick="copySelLinksNamed()">复制「日期+计划+链接」</button>
       <button class="mini green" onclick="exportSelLinksCsv()">导出选中链接表 CSV</button>
       <button class="mini green" onclick="exportSelScripts()">导出选中文案 CSV</button>
+      <button class="mini" onclick="prepSelOnly()">准备单（选中）</button>
       <span class="legend" style="margin:0" id="pSelHint">先在上面勾选要导出的计划</span>
     </div>
     <div class="scroll">
-      <table class="rec" style="min-width:1000px">
-        <thead><tr><th style="width:30px"><input type="checkbox" id="pAllChk" onchange="planSelAllChk(this.checked)"></th><th>日期</th><th>周次</th><th>计划</th><th>类型</th><th>数量</th><th>状态</th><th>文案</th><th>图片</th><th>链接</th><th>产出</th><th>操作</th></tr></thead>
+      <table class="rec" style="min-width:1120px">
+        <thead><tr><th style="width:30px"><input type="checkbox" id="pAllChk" onchange="planSelAllChk(this.checked)"></th><th>日期</th><th>周次</th><th>计划</th><th>类型</th><th>数量</th><th>状态</th><th>文案</th><th>图片</th><th>链接</th><th>准备</th><th>产出</th><th>操作</th></tr></thead>
         <tbody id="planBody"></tbody>
       </table>
     </div>
@@ -2456,6 +2462,7 @@ function savePlan() {
     type: $("pType").value,
     qty: qty,
     status: $("pStatus").value,
+    prep: ($("pPrep") ? $("pPrep").value.trim() : ""),
     items: items
   };
   if (planEditingId) {
@@ -2470,6 +2477,7 @@ function savePlan() {
 }
 function resetPlanForm(all) {
   $("pName").value = ""; $("pQty").value = "";
+  if ($("pPrep")) $("pPrep").value = "";
   if (all) { $("pDate").value = today(); autoWeek(); $("pStatus").value = "未开始"; $("pType").value = "混剪"; }
   planEditingId = null; planItems = [blankItem()];
   renderItems("plan");
@@ -2482,6 +2490,7 @@ function editPlan(id) {
   $("pDate").value = p.date; $("pWeek").value = p.week; $("pName").value = p.name;
   $("pWd").textContent = wd(p.date);
   $("pType").value = p.type; $("pQty").value = p.qty; $("pStatus").value = p.status;
+  if ($("pPrep")) $("pPrep").value = p.prep || "";
   planItems = (p.items && p.items.length ? JSON.parse(JSON.stringify(p.items)) : [blankItem()]);
   renderItems("plan");
   planEditingId = id; $("pSaveBtn").textContent = "更新这条计划";
@@ -2625,7 +2634,7 @@ function renderPlans() {
   }).sort(function (a, b) { return b.date.localeCompare(a.date); });
 
   if (!list.length) {
-    $("planBody").innerHTML = '<tr><td colspan="12"><div class="empty">还没有周计划，先在上面加一条</div></td></tr>';
+    $("planBody").innerHTML = '<tr><td colspan="13"><div class="empty">还没有周计划，先在上面加一条</div></td></tr>';
     if ($("planStatText")) $("planStatText").textContent = "该时间段没有计划";
     return;
   }
@@ -2643,8 +2652,10 @@ function renderPlans() {
       results.forEach(function (r) { if (r.planId === p.id) gdone += (r.qty || 0); });
     });
     statPlans += gr.items.length; statQty += gq; statDone += gdone;
-    html.push('<tr class="wkweek"><td colspan="12">' + gr.date + " " + wd(gr.date)
-      + " · " + gr.items.length + " 项 · 计划 " + gq + " 条 · 已产出 " + gdone + " 条</td></tr>");
+    html.push('<tr class="wkweek"><td colspan="13">' + gr.date + " " + wd(gr.date)
+      + " · " + gr.items.length + " 项 · 计划 " + gq + " 条 · 已产出 " + gdone + " 条"
+      + ' <button class="mini" style="margin-left:8px" onclick="prepDayOnly(\'' + gr.date + '\')">准备清单</button>'
+      + "</td></tr>");
     gr.items.forEach(function (p) {
       var rs = results.filter(function (r) { return r.planId === p.id; });
       var rq = rs.reduce(function (a, b) { return a + (b.qty || 0); }, 0);
@@ -2666,9 +2677,11 @@ function renderPlans() {
         + "<td>" + copyCell + "</td>"
         + "<td>" + imgCell(p.items, 3) + "</td>"
         + "<td>" + linkCell(p.items) + "</td>"
+        + "<td>" + prepCell(p) + "</td>"
         + "<td>" + (rs.length ? rs.length + " 次 · " + rq + " 条" : '<span class="zero">—</span>') + "</td>"
         + '<td><div class="ops"><button class="mini blue" onclick="exportScripts(' + p.id + ')">导文案</button>'
         + '<button class="mini green" onclick="exportScriptImage(' + p.id + ')">导图</button>'
+        + '<button class="mini" onclick="prepOnly(' + p.id + ')">准备单</button>'
         + '<button class="mini" onclick="editPlan(' + p.id + ')">编辑</button>'
         + '<button class="mini red" onclick="delPlan(' + p.id + ')">删除</button></div></td></tr>');
     });
@@ -2679,6 +2692,100 @@ function renderPlans() {
     $("planStatText").textContent = "共 " + statPlans + " 项，分布在 " + groups.length + " 天（日均 "
       + (statPlans / groups.length).toFixed(1) + " 项）｜ 计划 " + statQty + " 条 ｜ 已产出 " + statDone + " 条";
   }
+}
+
+/* ---- 需要准备的东西：单条 / 单天 / 批量导出 ---- */
+function prepCell(p) {
+  var t = String(p.prep || "").trim();
+  if (!t) return '<span class="zero">—</span>';
+  var short = t.replace(/\s*\n+\s*/g, " / ");
+  return '<div class="prepcell" title="' + esc(t) + '">' + esc(short.length > 28 ? short.slice(0, 28) + "…" : short) + "</div>";
+}
+function prepOneText(p) {
+  var lines = [];
+  lines.push("准备清单");
+  lines.push("日期：" + p.date + " " + wd(p.date) + "（" + (p.week || "") + "）");
+  lines.push("计划：" + p.name + "（" + p.type + " · " + (p.qty || 0) + " 条 · " + (p.status || "") + "）");
+  lines.push("说明：" + (String(p.prep || "").trim() || "（还没填准备内容，去「新增 / 编辑周计划」里填）"));
+  return lines.join("\n");
+}
+function prepDayText(date) {
+  var ps = plans.filter(function (p) { return p.date === date; })
+    .sort(function (a, b) { return (a.name || "").localeCompare(b.name || ""); });
+  var lines = [];
+  lines.push("准备清单 · " + date + " " + wd(date) + "（共 " + ps.length + " 项）");
+  lines.push("");
+  ps.forEach(function (p, i) {
+    lines.push((i + 1) + ". " + p.name + "（" + p.type + " · " + (p.qty || 0) + " 条）");
+    var t = String(p.prep || "").trim();
+    lines.push("   " + (t ? t.replace(/\s*\n+\s*/g, " / ") : "（还没填准备内容）"));
+  });
+  if (!ps.length) lines.push("这天还没有计划");
+  return lines.join("\n");
+}
+function prepSelText() {
+  var ps = selPlans();
+  if (!ps.length) return "";
+  var lines = ["准备清单（选中 " + ps.length + " 项）", ""];
+  ps.forEach(function (p, i) {
+    lines.push((i + 1) + ". " + p.date + " " + wd(p.date) + " · " + p.name + "（" + p.type + " · " + (p.qty || 0) + " 条）");
+    var t = String(p.prep || "").trim();
+    lines.push("   " + (t ? t.replace(/\s*\n+\s*/g, " / ") : "（还没填准备内容）"));
+  });
+  return lines.join("\n");
+}
+function downloadText(txt, name) {
+  var blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 500);
+}
+function showTextView(title, text, fname) {
+  var old = document.getElementById("textView");
+  if (old) old.parentNode.removeChild(old);
+  var d = document.createElement("div");
+  d.id = "textView";
+  d.style.cssText = "position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px";
+  d.innerHTML = '<div style="background:#fff;border-radius:12px;max-width:760px;width:100%;padding:16px">'
+    + '<div style="font-size:14px;font-weight:600;margin-bottom:10px">' + esc(title) + "</div>"
+    + '<textarea id="tvText" style="width:100%;height:300px;font-size:13px;line-height:1.8;padding:10px;border:1px solid #dfe3e8;border-radius:8px;font-family:inherit"></textarea>'
+    + '<div style="text-align:right;margin-top:10px;display:flex;gap:8px;justify-content:flex-end">'
+    + '<button class="mini blue" onclick="copyTextView()">复制全部</button>'
+    + '<button class="mini green" onclick="downloadTextView()">下载 txt</button>'
+    + '<button class="mini" onclick="closeTextView()">关闭</button></div></div>';
+  document.body.appendChild(d);
+  var ta = document.getElementById("tvText");
+  ta.value = text;
+  d.setAttribute("data-fname", fname || "准备清单.txt");
+}
+function copyTextView() {
+  var ta = document.getElementById("tvText");
+  if (ta) copyTextToClipboard(ta.value, "已复制到剪贴板");
+}
+function downloadTextView() {
+  var d = document.getElementById("textView"), ta = document.getElementById("tvText");
+  if (!d || !ta) return;
+  downloadText(ta.value, d.getAttribute("data-fname") || "准备清单.txt");
+}
+function closeTextView() {
+  var d = document.getElementById("textView");
+  if (d) d.parentNode.removeChild(d);
+}
+function prepOnly(id) {
+  var p = null;
+  for (var i = 0; i < plans.length; i++) if (plans[i].id === id) p = plans[i];
+  if (!p) return;
+  showTextView("准备单 · " + p.name, prepOneText(p), "准备清单_" + p.date + "_" + (p.name || "") + ".txt");
+}
+function prepDayOnly(date) {
+  showTextView("准备单 · " + date, prepDayText(date), "准备清单_" + date + ".txt");
+}
+function prepSelOnly() {
+  var ps = selPlans();
+  if (!ps.length) { alert("先勾选要导出的计划"); return; }
+  showTextView("准备单 · 选中 " + ps.length + " 项", prepSelText(), "准备清单_选中_" + today() + ".txt");
 }
 
 /* ---- 批量改日期（勾选若干条计划，统一平移/改成同一天/按天排开） ---- */
