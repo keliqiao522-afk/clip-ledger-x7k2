@@ -700,29 +700,33 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
 <div id="pane-prog" class="pane">
   <div class="box">
     <div class="period">
+      <div class="seg">
+        <button id="segCycle" class="on" onclick="setMode('cycle')">本期（15日～次月14日）</button>
+        <button id="segMonth" onclick="setMode('month')">自然月（1日～月底）</button>
+      </div>
       <div class="nav" style="gap:8px">
-        <button onclick="shiftProg(-1)">‹ 上一期</button>
+        <button onclick="shiftProg(-1)">‹ 上一页</button>
         <b id="progRange">—</b>
-        <button onclick="shiftProg(1)">下一期 ›</button>
+        <button onclick="shiftProg(1)">下一页 ›</button>
         <button class="mini" onclick="resetProg()">回到本期</button>
       </div>
-      <div class="ops"><button class="mini" onclick="switchTab('ledger');toggleTargetPanel()">⚙ 修改目标（在剪辑登记里）</button></div>
+      <div class="ops"><button class="mini" onclick="toggleTargetPanel()" id="tgtBtn">⚙ 修改目标</button></div>
     </div>
     <p class="legend" style="margin:-6px 0 10px">口径：<b>本期＝每月 15 日～次月 14 日（半个月）</b>，上面「‹ 上一期 / 下一期 ›」翻的也是这半个月，不是自然月。</p>
     <div class="stats">
-      <div class="card"><div class="k">本期目标（合计）</div><div class="v" id="pgAim">0<small>条</small></div></div>
-      <div class="card"><div class="k">本期已剪</div><div class="v" id="pgDone">0<small>条</small></div><div class="bar"><i class="g" id="pgBar" style="width:0"></i></div></div>
+      <div class="card"><div class="k">本期剪辑目标（我剪＋下属剪）</div><div class="v" id="pgAim">0<small>条</small></div><div class="wd" id="pgAimSub">—</div></div>
+      <div class="card"><div class="k">本期已剪（我剪＋下属剪）</div><div class="v" id="pgDone">0<small>条</small></div><div class="wd" id="pgDoneSub">—</div><div class="bar"><i class="g" id="pgBar" style="width:0"></i></div></div>
       <div class="card"><div class="k">还差多少</div><div class="v" id="pgGap">0<small>条</small></div></div>
       <div class="card"><div class="k">完成率</div><div class="v" id="pgRate">0<small>%</small></div></div>
     </div>
-    <h2 style="margin:4px 0 10px">七类进度明细（目标 / 已排计划 / 实际已剪 / 还差）</h2>
+    <h2 style="margin:4px 0 10px">剪辑进度明细（我剪 / 下属剪，各自对目标）</h2>
     <div class="scroll">
       <table class="sum">
-        <thead><tr><th>内容类型</th><th>目标</th><th>已排计划</th><th>实际已剪</th><th>还差</th><th style="width:220px">完成进度</th></tr></thead>
+        <thead><tr><th>内容类型</th><th>我剪目标</th><th>我已剪</th><th>下属剪目标</th><th>下属已剪</th><th>已剪小计</th><th>还差（我＋下属）</th></tr></thead>
         <tbody id="progBody"></tbody>
       </table>
     </div>
-    <p class="legend">「已排计划」取周计划表里这一期各类型的挂链+不挂链；「实际已剪」取剪辑登记里这一期登记的条数。</p>
+    <p class="legend">目标来自「⚙ 修改目标」：我剪目标＝挂链＋不挂链，下属剪目标＝总剪辑目标−我剪。「我已剪 / 下属已剪」按剪辑登记里的「谁剪」分开算，不再混在一起。</p>
 
     <h2 style="margin:18px 0 10px">拍摄量 / 剪辑量（整期总账）</h2>
     <div class="scroll">
@@ -734,7 +738,32 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
     <p class="legend">拍摄：只算我拍的，已完成按执行结果里登记的已拍量。剪辑：按剪辑登记里「谁剪」分别算我剪 / 下属剪，目标在「⚙ 修改目标」里分别填。</p>
   </div>
 
-  <div class="box">
+    <div class="box">
+    <div class="listhead">
+      <h2>周完成剪辑量（周一 ~ 周日，可切换周）</h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="mini blue" onclick="exportWeekImage('done')">导出表格图片（图一格式）</button>
+        <button class="mini" onclick="exportWeekCsv('done')">导出CSV</button>
+      </div>
+    </div>
+    <div class="nav" style="gap:8px;margin-bottom:8px;display:flex;align-items:center;flex-wrap:wrap;font-size:13px">
+      <button class="mini" onclick="shiftWeekDone(-1)">‹ 上一周</button>
+      <input type="date" id="weekDonePick" onchange="setWeekDoneDay(this.value)">
+      <button class="mini" onclick="shiftWeekDone(1)">下一周 ›</button>
+      <button class="mini" onclick="resetWeekDone()">本周</button>
+      <span class="legend" style="margin:0">选任意一天，就显示那一天所在的那一周</span>
+    </div>
+    <div id="weekDoneHead" class="legend" style="margin:0 0 10px"></div>
+    <div class="scroll">
+      <table class="wk">
+        <thead><tr><th>产出形式</th><th>挂链（条）</th><th>不挂链（条）</th><th>小计（条）</th></tr></thead>
+        <tbody id="weekDoneBody"></tbody>
+      </table>
+    </div>
+    <p class="legend">挂链/不挂链 是按台账里本周实际登记的数自动算的；款号改到「每日计划」里按天填，这里不再单独填。</p>
+  </div>
+
+<div class="box">
     <div class="listhead">
       <h2>月度目标（自然月 1 日～月底 · 单独一套 · 可导出）</h2>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -763,84 +792,6 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
     </div>
     <p class="legend">一个月一套自己的目标，和上面「本期（15日～次月14日）」的目标互不影响；拍摄列只有真会拍的类型能填，切片 / 混剪属于剪辑形式，这里固定不参与拍摄。</p>
   </div>
-</div>
-
-<!-- ================= 剪辑登记 ================= -->
-<div id="pane-ledger" class="pane" style="display:none">
-  <div class="box">
-    <div class="period">
-      <div class="seg">
-        <button id="segCycle" class="on" onclick="setMode('cycle')">本期（15日～次月14日）</button>
-        <button id="segMonth" onclick="setMode('month')">自然月（1日～月底）</button>
-      </div>
-      <div class="nav">
-        <button class="mini blue" onclick="toggleTargetPanel()" id="tgtBtn">⚙ 修改目标</button>
-        <button onclick="shift(-1)">‹ 上一期</button>
-        <b id="cycleRange">—</b>
-        <button onclick="shift(1)">下一期 ›</button>
-      </div>
-    </div>
-    <p class="legend" style="margin:-6px 0 12px" id="ledgerHint">上方按钮选口径：<b>本期＝15 日～次月 14 日（半个月）</b>、自然月＝1 日～月底；这里只影响「剪辑登记」的统计范围，改目标请点右上「⚙ 修改目标」。</p>
-
-    <div class="stats">
-      <div class="card"><div class="k" id="kLink">本期挂链条数</div><div class="v"><span id="vLink">0</span><small>/ <span id="gLink">60</span></small></div><div class="bar"><i id="bLink" style="width:0"></i></div></div>
-      <div class="card"><div class="k" id="kNoLink">本期不挂链条数</div><div class="v"><span id="vNoLink">0</span><small>/ <span id="gNoLink">52</span></small></div><div class="bar"><i id="bNoLink" class="g" style="width:0"></i></div></div>
-      <div class="card"><div class="k" id="kTotal">本期合计条数</div><div class="v"><span id="vTotal">0</span><small>/ <span id="gTotal">112</span></small></div><div class="bar"><i id="bTotal" style="width:0"></i></div></div>
-      <div class="card"><div class="k" id="kDays">本期已登记天数</div><div class="v"><span id="vDays">0</span><small>天</small></div></div>
-    </div>
-
-    <h2 style="margin-bottom:6px">分类汇总（<span id="ledgerScope">本期</span>：实际 vs 目标）</h2>
-    <div class="scroll">
-      <table class="sum">
-        <thead><tr><th>内容类型</th><th>挂链</th><th>挂链目标</th><th>不挂链</th><th>不挂链目标</th><th>小计</th></tr></thead>
-        <tbody id="sumBody"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="box">
-    <div class="listhead">
-      <h2>周完成剪辑量（周一 ~ 周日，可切换周）</h2>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <button class="mini blue" onclick="exportWeekImage('done')">导出表格图片（图一格式）</button>
-        <button class="mini" onclick="exportWeekCsv('done')">导出CSV</button>
-      </div>
-    </div>
-    <div class="nav" style="gap:8px;margin-bottom:8px;display:flex;align-items:center;flex-wrap:wrap;font-size:13px">
-      <button class="mini" onclick="shiftWeekDone(-1)">‹ 上一周</button>
-      <input type="date" id="weekDonePick" onchange="setWeekDoneDay(this.value)">
-      <button class="mini" onclick="shiftWeekDone(1)">下一周 ›</button>
-      <button class="mini" onclick="resetWeekDone()">本周</button>
-      <span class="legend" style="margin:0">选任意一天，就显示那一天所在的那一周</span>
-    </div>
-    <div id="weekDoneHead" class="legend" style="margin:0 0 10px"></div>
-    <div class="scroll">
-      <table class="wk">
-        <thead><tr><th>产出形式</th><th>挂链（条）</th><th>不挂链（条）</th><th>小计（条）</th></tr></thead>
-        <tbody id="weekDoneBody"></tbody>
-      </table>
-    </div>
-    <p class="legend">挂链/不挂链 是按台账里本周实际登记的数自动算的；款号改到「每日计划」里按天填，这里不再单独填。</p>
-  </div>
-
-  <div class="box">
-    <div class="listhead">
-      <h2>分类进度（可切换类型）</h2>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <span class="legend" style="margin:0">选类型：</span>
-        <select id="voType" onchange="setVoType(this.value)" style="padding:6px 8px;font-size:13px;border:1px solid #dfe3e8;border-radius:8px"></select>
-        <span class="legend" style="margin:0">目标是「修改目标」里这一类的挂链+不挂链</span>
-      </div>
-    </div>
-    <div class="stats" style="margin-bottom:0">
-      <div class="card"><div class="k"><span id="voName">口播</span>目标</div><div class="v" id="voAim">0<small>条</small></div></div>
-      <div class="card"><div class="k">已排进计划</div><div class="v" id="voPlan">0<small>条</small></div></div>
-      <div class="card"><div class="k">台账实际已剪</div><div class="v" id="voDone">0<small>条</small></div></div>
-      <div class="card"><div class="k">还差</div><div class="v" id="voGap">0<small>条</small></div><div class="bar"><i id="voBar" class="g" style="width:0"></i></div></div>
-    </div>
-    <p class="legend" id="voHint" style="margin-bottom:0"></p>
-  </div>
-
   <div class="box" id="targetPanel" style="display:none">
     <div class="listhead"><h2>目标设置 · 本期目标（<span id="tgtPeriod">—</span>）</h2><span class="legend">改完点保存，统计即刻按新目标计算</span></div>
     <p class="legend" style="margin:-4px 0 12px">⚠️ 这里填的是<b>「本期」</b>的目标：本期＝每月 15 日～次月 14 日（<b>半个月</b>），<b>不是周目标、也不是自然月目标</b>；自然月的目标在上面「月度目标」那块单独填。</p>
@@ -894,6 +845,13 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
     </div>
   </div>
 
+</div>
+
+<!-- ================= 剪辑登记 ================= -->
+<div id="pane-ledger" class="pane" style="display:none">
+  <div class="box" style="padding:10px 16px">
+    <div class="legend" style="margin:0">这里只做<b>登记</b>：选日期 + 谁剪，填当天剪了多少条。所有进度、目标对比、周统计都在第一页「进度总览」看，不在这里混。</div>
+  </div>
   <div class="box">
     <div class="flds">
       <div class="fld"><label>日期</label><div><input type="date" id="logDate" onchange="checkDup()"><span class="wd on" id="dateWd"></span></div></div>
@@ -1320,9 +1278,10 @@ function goals() {
 }
 function toggleTargetPanel() {
   var p = $("targetPanel");
+  if (!p) return;
   var open = p.style.display !== "none";
-  if (open) { p.style.display = "none"; $("tgtBtn").textContent = "⚙ 修改目标"; }
-  else { buildTargetForm(); p.style.display = ""; $("tgtBtn").textContent = "收起目标设置"; }
+  if (open) { p.style.display = "none"; if ($("tgtBtn")) $("tgtBtn").textContent = "⚙ 修改目标"; }
+  else { buildTargetForm(); p.style.display = ""; if ($("tgtBtn")) $("tgtBtn").textContent = "收起目标设置"; if (p.scrollIntoView) p.scrollIntoView({ block: "start" }); }
 }
 function buildTargetForm() {
   paintPeriodLabels();
@@ -1673,12 +1632,13 @@ function currentRange() {
   return { start: ymd(s2), end: ymd(e2), label: (s2.getFullYear() + "年" + (s2.getMonth() + 1) + "月1日 — " + (e2.getMonth() + 1) + "月" + e2.getDate() + "日") };
 }
 function setMode(m) {
-  mode = m; offset = 0;
-  $("segCycle").className = m === "cycle" ? "on" : "";
-  $("segMonth").className = m === "month" ? "on" : "";
+  mode = m; offset = 0; progOffset = 0;
+  if ($("segCycle")) $("segCycle").className = m === "cycle" ? "on" : "";
+  if ($("segMonth")) $("segMonth").className = m === "month" ? "on" : "";
   render();
+  renderProg();
 }
-function shift(d) { offset += d; render(); }
+function shift(d) { offset += d; render(); renderProg(); }
 function buildForm() {
   var html = "";
   for (var i = 0; i < TYPES.length; i++) {
@@ -1767,44 +1727,7 @@ function toggleDetail(id) {
   if (tr) tr.style.display = (tr.style.display === "none") ? "" : "none";
 }
 function render() {
-  var rg = currentRange();
-  $("cycleRange").textContent = rg.label;
   paintPeriodLabels();
-  var g = goals();
-  $("gLink").textContent = g.link; $("gNoLink").textContent = g.noLink; $("gTotal").textContent = g.total;
-  var inRange = data.filter(function (r) { return r.date >= rg.start && r.date <= rg.end; });
-  var link = 0, noLink = 0, byType = {};
-  TYPES.forEach(function (t) { byType[t] = { link: 0, nolink: 0 }; });
-  inRange.forEach(function (r) {
-    for (var name in r.items) {
-      if (!r.items.hasOwnProperty(name)) continue;
-      var it = r.items[name];
-      if (!byType[name]) byType[name] = { link: 0, nolink: 0 };
-      byType[name].link += it.link || 0; byType[name].nolink += it.nolink || 0;
-      link += it.link || 0; noLink += it.nolink || 0;
-    }
-  });
-  var total = link + noLink;
-  $("vLink").textContent = link; $("vNoLink").textContent = noLink;
-  $("vTotal").textContent = total; $("vDays").textContent = inRange.length;
-  var pl = g.link > 0 ? Math.min(100, Math.round(link / g.link * 100)) : (link > 0 ? 100 : 0);
-  var pn = g.noLink > 0 ? Math.min(100, Math.round(noLink / g.noLink * 100)) : (noLink > 0 ? 100 : 0);
-  var pt = g.total > 0 ? Math.min(100, Math.round(total / g.total * 100)) : (total > 0 ? 100 : 0);
-  $("bLink").style.width = pl + "%"; $("bNoLink").style.width = pn + "%"; $("bTotal").style.width = pt + "%";
-  var sHtml = "";
-  TYPES.forEach(function (t) {
-    var s = byType[t] || { link: 0, nolink: 0 };
-    var tl = targets[t].tLink, tn = targets[t].tNoLink;
-    var hitL = tl > 0 && s.link >= tl, hitN = tn > 0 && s.nolink >= tn;
-    sHtml += "<tr><td>" + t + "</td>"
-      + '<td class="' + (hitL ? "hit" : "") + '">' + s.link + ' <span class="tgt">/ ' + (tl > 0 ? tl : "—") + "</span></td>"
-      + '<td class="tgt">' + (tl > 0 ? tl : "—") + "</td>"
-      + '<td class="' + (hitN ? "hit" : "") + '">' + s.nolink + ' <span class="tgt">/ ' + (tn > 0 ? tn : "—") + "</span></td>"
-      + '<td class="tgt">' + (tn > 0 ? tn : "—") + "</td>"
-      + "<td><b>" + (s.link + s.nolink) + "</b></td></tr>";
-  });
-  sHtml += '<tr class="tot"><td>合计</td><td>' + link + '</td><td class="tgt">' + g.link + "</td><td>" + noLink + '</td><td class="tgt">' + g.noLink + "</td><td>" + total + "</td></tr>";
-  $("sumBody").innerHTML = sHtml;
   renderRecords();
   renderWeekDone();
   refreshProg();
@@ -3503,7 +3426,6 @@ function renderWeekDone() {
   });
   html += '<tr class="tot"><td>合计（本周）</td><td>' + tl + "</td><td>" + tn + '</td><td class="sumcell">' + (tl + tn) + "</td></tr>";
   $("weekDoneBody").innerHTML = html;
-  renderVoProgress();
 }
 function setStyle(ws, t, v) {
   var rec = ensureWeekTable(ws);
@@ -3527,64 +3449,6 @@ function resetWeekDone() {
   weekDoneDay = today();
   localStorage.setItem(KEY_WEEK_SEL, weekDoneDay);
   renderWeekDone();
-}
-
-/* 分类进度（可切换 7 类） */
-var voTypeSel = localStorage.getItem("clipVoTypeSel") || "口播";
-function renderVoProgress() {
-  var sel = $("voType");
-  if (sel) {
-    if (!sel.options.length) {
-      sel.innerHTML = TYPES.map(function (t) { return '<option value="' + t + '">' + t + "</option>"; }).join("");
-    }
-    if (TYPES.indexOf(voTypeSel) < 0) voTypeSel = TYPES[0];
-    sel.value = voTypeSel;
-  }
-  var type = voTypeSel;
-  $("voName").textContent = type;
-  var g = targets[type] || { tLink: 0, tNoLink: 0 };
-  var aim = (g.tLink || 0) + (g.tNoLink || 0);
-  var rg = currentRange();
-  /* 已排 = 周计划表(图二)里这一类的挂链+不挂链 + 周计划(文案)里这一类的数量 */
-  var plannedTable = 0;
-  weekTables.forEach(function (r) {
-    var we = weekEndOf(r.ws);
-    if (we >= rg.start && r.ws <= rg.end) {
-      var x = r.rows[type] || { l: 0, n: 0 };
-      plannedTable += (x.l || 0) + (x.n || 0);
-    }
-  });
-  var plannedList = 0;
-  plans.forEach(function (p) {
-    var d = p.date || "";
-    if (!d) return;
-    if (d < rg.start || d > rg.end) return;
-    if ((p.type || "").indexOf(type) < 0 && type.indexOf(p.type || "×") < 0) return;
-    plannedList += (p.qty || 0);
-  });
-  var planned = plannedTable + plannedList;
-  var done = 0;
-  data.forEach(function (r) {
-    if (r.date >= rg.start && r.date <= rg.end && r.items[type]) {
-      done += (r.items[type].link || 0) + (r.items[type].nolink || 0);
-    }
-  });
-  var gap = Math.max(0, aim - planned);
-  var gapDone = Math.max(0, aim - done);
-  $("voAim").innerHTML = aim + "<small>条</small>";
-  $("voPlan").innerHTML = planned + "<small>条</small>";
-  $("voDone").innerHTML = done + "<small>条</small>";
-  $("voGap").innerHTML = gap + "<small>条</small>";
-  $("voBar").style.width = (aim > 0 ? Math.min(100, Math.round(done / aim * 100)) : 0) + "%";
-  $("voHint").textContent = "本期 " + rg.label + "：" + type + " 目标 " + aim + " 条（挂链 " + (g.tLink || 0) + " + 不挂链 " + (g.tNoLink || 0) + "）"
-    + "；已排进计划 " + planned + " 条（周计划表 " + plannedTable + " + 周计划文案 " + plannedList + "）"
-    + (gap > 0 ? "，还差 " + gap + " 条没排进计划" : "，计划量已排满")
-    + "；台账实际已剪 " + done + " 条" + (gapDone > 0 ? "，离目标还差 " + gapDone + " 条。" : "，已达成目标。");
-}
-function setVoType(v) {
-  voTypeSel = v;
-  localStorage.setItem("clipVoTypeSel", v);
-  renderVoProgress();
 }
 
 /* 周计划表列表 */
@@ -4991,64 +4855,83 @@ function paintPeriodLabels() {
 
 /* ================= 进度总览 ================= */
 var progOffset = 0;
-function progRange() {
-  var now = new Date(), y = now.getFullYear(), m = now.getMonth(), day = now.getDate();
-  if (day < 15) { var d = new Date(y, m - 1, 1); y = d.getFullYear(); m = d.getMonth(); }
-  var s = new Date(y, m + progOffset, 15), e = new Date(y, m + progOffset + 1, 14);
-  return { start: ymd(s), end: ymd(e), label: (s.getFullYear() + "年" + (s.getMonth() + 1) + "月15日 — " + (e.getMonth() + 1) + "月14日") };
-}
-function shiftProg(d) { progOffset += d; renderProg(); }
-function resetProg() { progOffset = 0; renderProg(); }
+function progRange() { return currentRange(); }
+function shiftProg(d) { offset += d; progOffset = offset; render(); renderProg(); }
+function resetProg() { offset = 0; progOffset = 0; render(); renderProg(); }
 function renderProg() {
   var rg = progRange();
-  $("progRange").textContent = rg.label;
+  if ($("progRange")) $("progRange").textContent = rg.label;
   paintPeriodLabels();
-  var done = {}, planned = {};
-  TYPES.forEach(function (t) { done[t] = { l: 0, n: 0 }; planned[t] = { l: 0, n: 0 }; });
+  if ($("segCycle")) $("segCycle").className = (mode === "cycle" ? "on" : "");
+  if ($("segMonth")) $("segMonth").className = (mode === "month" ? "on" : "");
+
+  /* 按「谁剪」分开：我 / 下属 */
+  var byMe = {}, bySub = {};
+  TYPES.forEach(function (t) { byMe[t] = { l: 0, n: 0 }; bySub[t] = { l: 0, n: 0 }; });
   data.forEach(function (r) {
-    if (r.date >= rg.start && r.date <= rg.end) {
-      TYPES.forEach(function (t) {
-        var it = r.items[t];
-        if (it) { done[t].l += (it.link || 0); done[t].n += (it.nolink || 0); }
-      });
+    if (r.date < rg.start || r.date > rg.end) return;
+    var isSub = (r.owner === "sub");
+    for (var name in r.items) {
+      if (!r.items.hasOwnProperty(name)) continue;
+      var it = r.items[name];
+      var box = (isSub ? bySub : byMe)[name];
+      if (!box) { box = { l: 0, n: 0 }; (isSub ? bySub : byMe)[name] = box; }
+      box.l += num(it.link); box.n += num(it.nolink);
     }
   });
+
+  var meAim = 0, subAim = 0, meDone = 0, subDone = 0;
+  TYPES.forEach(function (t) {
+    var g = targets[t] || {};
+    var a = num(g.tLink) + num(g.tNoLink);
+    meAim += a;
+    subAim += Math.max(0, num(g.tTot) - a);
+    meDone += byMe[t].l + byMe[t].n;
+    subDone += bySub[t].l + bySub[t].n;
+  });
+  var aim = meAim + subAim, dn = meDone + subDone;
+  var gap = Math.max(0, aim - dn);
+  var rate = aim > 0 ? Math.min(100, Math.round(dn / aim * 100)) : 0;
+  if ($("pgAim")) $("pgAim").innerHTML = aim + "<small>条</small>";
+  if ($("pgAimSub")) $("pgAimSub").textContent = "我剪 " + meAim + " ＋ 下属剪 " + subAim;
+  if ($("pgDone")) $("pgDone").innerHTML = dn + "<small>条</small>";
+  if ($("pgDoneSub")) $("pgDoneSub").textContent = "我剪 " + meDone + " ＋ 下属剪 " + subDone;
+  if ($("pgGap")) $("pgGap").innerHTML = gap + "<small>条</small>";
+  if ($("pgRate")) $("pgRate").innerHTML = rate + "<small>%</small>";
+  if ($("pgBar")) $("pgBar").style.width = rate + "%";
+
+  var html = "";
+  TYPES.forEach(function (t) {
+    var g = targets[t] || {};
+    var ta = num(g.tLink) + num(g.tNoLink);
+    var sa = Math.max(0, num(g.tTot) - ta);
+    var md = byMe[t].l + byMe[t].n, sd = bySub[t].l + bySub[t].n;
+    var tg = Math.max(0, ta + sa - md - sd);
+    html += "<tr><td>" + t + "</td>"
+      + "<td><b>" + ta + '</b><div class="wd">挂 ' + num(g.tLink) + " / 不挂 " + num(g.tNoLink) + "</div></td>"
+      + "<td>" + md + '<div class="wd">挂 ' + byMe[t].l + " / 不挂 " + byMe[t].n + "</div></td>"
+      + "<td><b>" + sa + "</b></td>"
+      + "<td>" + sd + '<div class="wd">挂 ' + bySub[t].l + " / 不挂 " + bySub[t].n + "</div></td>"
+      + "<td><b>" + (md + sd) + "</b></td>"
+      + "<td><b>" + (tg || "—") + "</b></td></tr>";
+  });
+  html += '<tr class="tot"><td>合计</td><td>' + meAim + "</td><td>" + meDone + "</td><td>" + subAim + "</td><td>" + subDone + "</td><td>" + dn + "</td><td>" + (gap || "—") + "</td></tr>";
+  if ($("progBody")) $("progBody").innerHTML = html;
+
+  /* 周计划表里这一区间已排的量（给下面总账用） */
+  var planned = {};
+  TYPES.forEach(function (t) { planned[t] = { l: 0, n: 0 }; });
   weekTables.forEach(function (rec) {
     var we = weekEndOf(rec.ws);
     if (we >= rg.start && rec.ws <= rg.end) {
       TYPES.forEach(function (t) {
         var x = rec.rows[t] || { l: 0, n: 0 };
-        planned[t].l += (x.l || 0); planned[t].n += (x.n || 0);
+        planned[t].l += num(x.l); planned[t].n += num(x.n);
       });
     }
   });
-  var aim = 0, dn = 0, pl = 0;
-  TYPES.forEach(function (t) {
-    aim += targets[t].tLink + targets[t].tNoLink;
-    dn += done[t].l + done[t].n;
-    pl += planned[t].l + planned[t].n;
-  });
-  var gap = Math.max(0, aim - dn);
-  var rate = aim > 0 ? Math.round(dn / aim * 100) : 0;
-  $("pgAim").innerHTML = aim + "<small>条</small>";
-  $("pgDone").innerHTML = dn + "<small>条</small>";
-  $("pgGap").innerHTML = gap + "<small>条</small>";
-  $("pgRate").innerHTML = rate + "<small>%</small>";
-  $("pgBar").style.width = Math.min(100, rate) + "%";
-  var html = "";
-  TYPES.forEach(function (t) {
-    var g = targets[t], tAim = g.tLink + g.tNoLink, d = done[t], p = planned[t];
-    var tGap = Math.max(0, tAim - (d.l + d.n));
-    var pct = tAim > 0 ? Math.min(100, Math.round((d.l + d.n) / tAim * 100)) : 0;
-    html += "<tr><td>" + t + "</td>"
-      + "<td><b>" + tAim + '</b><div class="wd">挂 ' + g.tLink + " / 不挂 " + g.tNoLink + "</div></td>"
-      + "<td>" + (p.l + p.n) + '<div class="wd">挂 ' + p.l + " / 不挂 " + p.n + "</div></td>"
-      + "<td>" + (d.l + d.n) + '<div class="wd">挂 ' + d.l + " / 不挂 " + d.n + "</div></td>"
-      + "<td><b>" + (tGap || "—") + "</b></td>"
-      + '<td><div class="bar" style="margin:0"><i class="' + (pct >= 100 ? "g" : "") + '" style="width:' + pct + '%"></i></div><div class="wd">' + pct + "%</div></td></tr>";
-  });
-  html += '<tr class="tot"><td>合计</td><td>' + aim + "</td><td>" + pl + "</td><td>" + dn + "</td><td>" + (gap || "—") + "</td><td>" + rate + "%</td></tr>";
-  $("progBody").innerHTML = html;
+  var pl = 0;
+  TYPES.forEach(function (t) { pl += planned[t].l + planned[t].n; });
 
   /* 拍摄量 / 剪辑量 整期总账（拍摄归我；剪辑拆我剪 / 下属剪） */
   var shotPlanSum = 0;
@@ -5073,7 +4956,7 @@ function renderProg() {
     var gap = Math.max(0, aim - done);
     var pct = aim > 0 ? Math.min(100, Math.round(done / aim * 100)) : 0;
     return "<tr><td><b>" + name + '</b><div class="wd">' + sub + "</div></td>"
-      + "<td><b>" + aim + '</b><div class="wd">条/期</div></td>'
+      + "<td><b>" + aim + '</b><div class="wd">条/本期</div></td>'
       + "<td>" + planned + '</td><td><b>' + done + "</b></td>"
       + "<td><b>" + (gap || "—") + '</b></td>'
       + '<td><div class="bar" style="margin:0"><i class="' + (pct >= 100 ? "g" : "") + '" style="width:' + pct + '%"></i></div><div class="wd">' + pct + "%</div></td></tr>";
