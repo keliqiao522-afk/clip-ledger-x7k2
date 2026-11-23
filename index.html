@@ -840,21 +840,19 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
       <div class="fld"><label>我剪目标合计（自动）</label><span class="legend" style="margin:0;font-size:15px;color:#111827"><b id="tgEditMeVal">0</b> 条/期</span></div>
       <div class="fld"><label>下属剪目标合计（自动）</label><span class="legend" style="margin:0;font-size:15px;color:#111827"><b id="tgEditSubVal">0</b> 条/期</span></div>
       <div class="fld"><label>剪辑合计</label><span class="legend" style="margin:0" id="tgEditTotal">0 条</span></div>
-      <div class="fld grow"><label>说明</label><span class="legend" style="margin:0">三类目标都在下面按类型填，上面三个数字自动加总。拍摄只归我；剪辑按「我剪 / 下属剪」分开算。</span></div>
+      <div class="fld grow"><label>说明</label><span class="legend" style="margin:0">按类型填「拍摄 / 挂链 / 不挂链 / 总剪辑目标」四列，其余自动算：我剪小计＝挂链＋不挂链，下属剪＝总剪辑目标−我剪小计，上面的合计全部自动加总。</span></div>
     </div>
     <div class="tgtpanel">
       <div class="scroll">
         <table class="sum">
-          <thead><tr><th>内容类型</th><th style="width:118px">拍摄目标<br><span class="tgt" style="font-weight:400">（我拍）</span></th><th style="width:112px">挂链目标<br><span class="tgt" style="font-weight:400">（我剪）</span></th><th style="width:112px">不挂链目标<br><span class="tgt" style="font-weight:400">（我剪）</span></th><th style="width:100px">我剪小计</th><th style="width:118px">剪辑目标<br><span class="tgt" style="font-weight:400">（下属剪）</span></th></tr></thead>
+          <thead><tr><th>内容类型</th><th style="width:118px">拍摄目标<br><span class="tgt" style="font-weight:400">（我拍）</span></th><th style="width:112px">挂链目标<br><span class="tgt" style="font-weight:400">（我剪）</span></th><th style="width:112px">不挂链目标<br><span class="tgt" style="font-weight:400">（我剪）</span></th><th style="width:100px">我剪小计</th><th style="width:118px">总剪辑目标<br><span class="tgt" style="font-weight:400">（我填）</span></th><th style="width:126px">下属剪<br><span class="tgt" style="font-weight:400">（自动＝总−我剪）</span></th></tr></thead>
           <tbody id="tgtBody"></tbody>
-          <tr class="tot"><td>合计</td><td id="tgShootT">0</td><td id="tgL">0</td><td id="tgN">0</td><td id="tgT">0</td><td id="tgSubT">0</td></tr>
+          <tr class="tot"><td>合计</td><td id="tgShootT">0</td><td id="tgL">0</td><td id="tgN">0</td><td id="tgT">0</td><td id="tgTotT">0</td><td id="tgSubT">0</td></tr>
         </table>
       </div>
       <div class="btns">
         <button class="add" onclick="saveTargets()">保存目标</button>
         <button class="ghost" onclick="resetTargets()">恢复默认目标</button>
-        <button class="ghost" onclick="autoFillShootTargets()">按我剪比例分摊「拍摄」列</button>
-        <button class="ghost" onclick="autoFillSubTargets()">按我剪比例分摊「下属剪」列</button>
       </div>
     </div>
     <div class="tgtpanel" style="margin-top:14px">
@@ -1252,26 +1250,47 @@ var SHOOT_TYPES = TYPES.filter(function (t) { return t !== "切片" && t !== "�
 var KEY_DATA = "clipDailyLogV1";
 var KEY_MONTH_TGT = "clipMonthTgtV1";
 var KEY_TGT = "clipTargetsV1";
+var TGT_ALIAS = { "口播": ["口播/剧情", "剧情"] };
 var KEY_SHOOT_TGT = "clipShootTgtV1";
 var data = JSON.parse(localStorage.getItem(KEY_DATA) || "[]");
 var targets = loadTargets();
 var shootTgt = loadShootTgt();
+/* 剪辑目标拆成「我剪 / 下属剪」：我剪 = 挂链+不挂链，下属剪 = 总剪辑目标 − 我剪 */
+function syncShootTgtFromTargets() {
+  try {
+    var me = 0, sub = 0;
+    TYPES.forEach(function (t) {
+      var g = targets[t] || {};
+      me += num(g.tLink) + num(g.tNoLink);
+      sub += Math.max(0, num(g.tTot) - num(g.tLink) - num(g.tNoLink));
+    });
+    shootTgt.editMe = me; shootTgt.editSub = sub; shootTgt.edit = me + sub;
+  } catch (e) { }
+}
+syncShootTgtFromTargets();
 var editingId = null;
 var mode = "cycle";
 var offset = 0;
 
+function tgtSavedOf(saved, name) {
+  if (!saved) return null;
+  if (saved[name]) return saved[name];
+  var al = (TGT_ALIAS || {})[name] || [];
+  for (var i = 0; i < al.length; i++) if (saved[al[i]]) return saved[al[i]];
+  return null;
+}
 function loadTargets() {
   var saved = null;
   try { saved = JSON.parse(localStorage.getItem(KEY_TGT) || "null"); } catch (e) { saved = null; }
   var obj = {};
   DEFAULTS.forEach(function (d) {
-    var s = (saved && saved[d.name]) ? saved[d.name] : null;
-    obj[d.name] = {
-      tLink: (s && typeof s.tLink === "number") ? Math.max(0, s.tLink) : d.tLink,
-      tNoLink: (s && typeof s.tNoLink === "number") ? Math.max(0, s.tNoLink) : d.tNoLink,
-      tShoot: (s && typeof s.tShoot === "number") ? Math.max(0, s.tShoot) : 0,
-      tSub: (s && typeof s.tSub === "number") ? Math.max(0, s.tSub) : 0
-    };
+    var s = tgtSavedOf(saved, d.name);
+    var link = (s && typeof s.tLink === "number") ? Math.max(0, s.tLink) : d.tLink;
+    var noLink = (s && typeof s.tNoLink === "number") ? Math.max(0, s.tNoLink) : d.tNoLink;
+    var shoot = (s && typeof s.tShoot === "number") ? Math.max(0, s.tShoot) : 0;
+    var sub = (s && typeof s.tSub === "number") ? Math.max(0, s.tSub) : 0;
+    var tot = (s && typeof s.tTot === "number") ? Math.max(0, s.tTot) : (link + noLink + sub);
+    obj[d.name] = { tLink: link, tNoLink: noLink, tShoot: shoot, tSub: Math.max(0, tot - link - noLink), tTot: tot };
   });
   return obj;
 }
@@ -1302,6 +1321,7 @@ function buildTargetForm() {
     var t = targets[TYPES[i]];
     if (t.tShoot == null) t.tShoot = 0;
     if (t.tSub == null) t.tSub = 0;
+    if (t.tTot == null) t.tTot = num(t.tLink) + num(t.tNoLink) + num(t.tSub);
     html += "<tr><td>" + TYPES[i] + "</td>"
       + (SHOOT_TYPES.indexOf(TYPES[i]) === -1
         ? '<td class="legend" style="text-align:center">— 不用拍</td>'
@@ -1309,46 +1329,34 @@ function buildTargetForm() {
       + '<td><input type="number" min="0" step="1" id="tgL' + i + '" value="' + t.tLink + '" oninput="calcTargets()"></td>'
       + '<td><input type="number" min="0" step="1" id="tgN' + i + '" value="' + t.tNoLink + '" oninput="calcTargets()"></td>'
       + '<td id="tgS' + i + '">' + (t.tLink + t.tNoLink) + "</td>"
-      + '<td><input type="number" min="0" step="1" id="tgSub' + i + '" value="' + t.tSub + '" oninput="calcTargets()"></td></tr>';
+      + '<td><input type="number" min="0" step="1" id="tgTot' + i + '" value="' + t.tTot + '" oninput="calcTargets()"></td>'
+      + '<td id="tgSb' + i + '" style="font-weight:700">' + Math.max(0, t.tTot - (t.tLink + t.tNoLink)) + "</td></tr>";
   }
   $("tgtBody").innerHTML = html; calcTargets();
   renderPersonTargets();
 }
 function calcTargets() {
-  var l = 0, n = 0, sh = 0, sb = 0;
+  var l = 0, n = 0, sh = 0, sb = 0, tot = 0;
   for (var i = 0; i < TYPES.length; i++) {
     var a = num($("tgL" + i).value), b = num($("tgN" + i).value);
     var s1el = $("tgSh" + i);
-    var s1 = s1el ? num(s1el.value) : 0, s2 = num($("tgSub" + i).value);
-    $("tgS" + i).textContent = a + b; l += a; n += b; sh += s1; sb += s2;
+    var s1 = s1el ? num(s1el.value) : 0;
+    var tt = num($("tgTot" + i).value);
+    var raw = tt - (a + b), sub = Math.max(0, raw);
+    var sbEl = $("tgSb" + i);
+    if (sbEl) {
+      sbEl.textContent = sub;
+      sbEl.style.color = raw < 0 ? "#dc2626" : "";
+      sbEl.title = raw < 0 ? "总剪辑目标比「我剪」少 " + (-raw) + " 条，下属剪按 0 算" : "";
+    }
+    $("tgS" + i).textContent = a + b; l += a; n += b; sh += s1; sb += sub; tot += tt;
   }
   $("tgL").textContent = l; $("tgN").textContent = n; $("tgT").textContent = l + n;
-  $("tgShootT").textContent = sh; $("tgSubT").textContent = sb;
+  $("tgShootT").textContent = sh; $("tgTotT").textContent = tot; $("tgSubT").textContent = sb;
   if ($("tgShootVal")) $("tgShootVal").textContent = sh;
   if ($("tgEditMeVal")) $("tgEditMeVal").textContent = l + n;
   if ($("tgEditSubVal")) $("tgEditSubVal").textContent = sb;
-  if ($("tgEditTotal")) $("tgEditTotal").textContent = (l + n + sb) + " 条（我剪 " + (l + n) + " + 下属剪 " + sb + "）";
-}
-function autoFillShootTargets() {
-  var any = false;
-  for (var i = 0; i < TYPES.length; i++) if (num($("tgL" + i).value) + num($("tgN" + i).value)) any = true;
-  if (!any) { alert("先把「挂链 / 不挂链」目标填上，再按比例分摊拍摄。"); return; }
-  for (var j = 0; j < TYPES.length; j++) {
-    var el = $("tgSh" + j);
-    if (el) el.value = num($("tgL" + j).value) + num($("tgN" + j).value);
-  }
-  calcTargets();
-  alert("已按「这一类型我剪多少 = 拍多少」铺好拍摄列（切片/混剪不参与），可再手动改。");
-}
-function autoFillSubTargets() {
-  var tot = 0;
-  for (var i = 0; i < TYPES.length; i++) tot += num($("tgL" + i).value) + num($("tgN" + i).value);
-  if (!tot) { alert("先填「挂链 / 不挂链」目标，才能按比例给下属分摊。"); return; }
-  for (var j = 0; j < TYPES.length; j++) {
-    $("tgSub" + j).value = num($("tgL" + j).value) + num($("tgN" + j).value);
-  }
-  calcTargets();
-  alert("已按「我剪的类型比例」铺好下属剪辑目标，可再手动改。");
+  if ($("tgEditTotal")) $("tgEditTotal").textContent = tot + " 条（我剪 " + (l + n) + " + 下属剪 " + sb + "）";
 }
 /* ---- 月度目标（独立一套，按月存，不影响本期目标） ---- */
 function monthTgtAll() {
@@ -1617,8 +1625,10 @@ function saveTargets() {
   for (var i = 0; i < TYPES.length; i++) {
     var a = num($("tgL" + i).value), b = num($("tgN" + i).value);
     var shEl = $("tgSh" + i);
-    var s1 = shEl ? num(shEl.value) : 0, s2 = num($("tgSub" + i).value);
-    obj[TYPES[i]] = { tLink: a, tNoLink: b, tShoot: s1, tSub: s2 };
+    var s1 = shEl ? num(shEl.value) : 0;
+    var tt = num($("tgTot" + i).value);
+    var s2 = Math.max(0, tt - (a + b));
+    obj[TYPES[i]] = { tLink: a, tNoLink: b, tShoot: s1, tTot: tt, tSub: s2 };
     sh += s1; sb += s2; me += a + b;
   }
   targets = obj;
@@ -5067,6 +5077,8 @@ function mergeJuqingIntoVo() {
       if (!targets[K]) targets[K] = { tLink: 0, tNoLink: 0 };
       targets[K].tLink = num(targets[K].tLink) + num(targets[J].tLink);
       targets[K].tNoLink = num(targets[K].tNoLink) + num(targets[J].tNoLink);
+      targets[K].tTot = num(targets[K].tTot) + num(targets[J].tTot);
+      targets[K].tSub = Math.max(0, num(targets[K].tTot) - num(targets[K].tLink) - num(targets[K].tNoLink));
       delete targets[J];
       localStorage.setItem(KEY_TGT, JSON.stringify(targets));
     }
