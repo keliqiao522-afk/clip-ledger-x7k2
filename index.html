@@ -278,11 +278,57 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
     if (this === localStorage && !hydrating && synced(k)) queue(k, "");
   };
 
+  var PENDK = "cloudPendingV1";
+  var lastStamp = null, staleHint = false, selfPushed = false;
+  var bc = null;
+  try { if (window.BroadcastChannel) bc = new BroadcastChannel("clipLedgerSync"); } catch (e) { bc = null; }
+
+  function savePending() {
+    try {
+      var o = {}, n = 0;
+      for (var k in pending) { if (Object.prototype.hasOwnProperty.call(pending, k)) { o[k] = pending[k]; n++; } }
+      if (n) localStorage.setItem(PENDK, JSON.stringify(o)); else localStorage.removeItem(PENDK);
+    } catch (e) {}
+  }
+  function loadPending() {
+    try { return JSON.parse(localStorage.getItem(PENDK) || "null") || null; } catch (e) { return null; }
+  }
+  function tellOthers() { if (bc) { try { bc.postMessage({ t: "push", at: Date.now() }); } catch (e) {} } }
+  if (bc) {
+    bc.onmessage = function (e) {
+      if (e.data && e.data.t === "push" && !staleHint) {
+        staleHint = true;
+        setChip("🔄 其他窗口改了数据，点这里刷新", "doing");
+      }
+    };
+  }
+
   function queue(k, v) {
     pending[k] = v;
+    savePending();
     setChip("☁ 同步中…", "doing");
     if (timer) clearTimeout(timer);
-    timer = setTimeout(flush, 700);
+    timer = setTimeout(function () { flush(); }, 150);
+  }
+
+  /* 推送：失败自动重试 3 次，避免"第一次不成功、要再点一次" */
+  function postKeys(payload, attempt, done) {
+    attempt = attempt || 0;
+    ensureToken().then(function (tk) {
+      return fetch(FULL + "?on_conflict=key", {
+        method: "POST",
+        headers: { "apikey": SB_KEY, "Authorization": "Bearer " + tk, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates" },
+        body: JSON.stringify(payload)
+      });
+    }).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      if (done) done(true);
+    }).catch(function () {
+      if (attempt < 2) {
+        setChip("☁ 正在重试…" + (attempt + 2) + "/3", "doing");
+        setTimeout(function () { postKeys(payload, attempt + 1, done); }, (attempt === 0 ? 2000 : 6000));
+      } else if (done) done(false);
+    });
   }
 
   function flush() {
@@ -294,19 +340,18 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
     var payload = [], sending = {};
     for (var i = 0; i < keys.length; i++) { payload.push({ key: keys[i], value: pending[keys[i]] }); sending[keys[i]] = pending[keys[i]]; }
     pending = {};
+    savePending();
     setChip("☁ 同步中…", "doing");
-    ensureToken().then(function (tk) {
-      return fetch(FULL + "?on_conflict=key", {
-        method: "POST",
-        headers: { "apikey": SB_KEY, "Authorization": "Bearer " + tk, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates" },
-        body: JSON.stringify(payload)
-      });
-    }).then(function (r) {
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      setChip("☁ 已同步 " + hm(), "ok");
-    }).catch(function () {
-      for (var kk in sending) { if (!(kk in pending)) pending[kk] = sending[kk]; }
-      setChip("⚠ 同步失败，点这里重试", "fail");
+    postKeys(payload, 0, function (ok) {
+      if (ok) {
+        setChip("☁ 已同步 " + hm(), "ok");
+        lastStamp = null;
+        tellOthers();
+      } else {
+        for (var kk in sending) { if (!(kk in pending)) pending[kk] = sending[kk]; }
+        savePending();
+        setChip("⚠ 同步失败，点这里重试", "fail");
+      }
     });
   }
 
@@ -319,16 +364,30 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
     }
     if (!up.length) { setChip("☁ 云端为空", "ok"); return; }
     setChip("☁ 首次上传中…", "doing");
-    ensureToken().then(function (tk) {
-      return fetch(FULL + "?on_conflict=key", {
-        method: "POST",
-        headers: { "apikey": SB_KEY, "Authorization": "Bearer " + tk, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates" },
-        body: JSON.stringify(up)
-      });
-    }).then(function (r) {
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      setChip("☁ 已同步 " + hm(), "ok");
-    }).catch(function () { setChip("⚠ 首次上传失败，点这里重试", "fail"); });
+    postKeys(up, 0, function (ok) {
+      if (ok) { setChip("☁ 已同步 " + hm(), "ok"); lastStamp = null; tellOthers(); }
+      else setChip("⚠ 首次上传失败，点这里重试", "fail");
+    });
+  }
+
+  /* 定时看一眼云端有没有别的设备/窗口的新数据 */
+  function pollOnce() {
+    if (!pulledOK) return;
+    fetch(FULL + "?select=updated_at&apikey=" + encodeURIComponent(SB_KEY))
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (rows) {
+        var mx = 0;
+        (rows || []).forEach(function (x) {
+          var t = x.updated_at ? Date.parse(x.updated_at) : 0;
+          if (t > mx) mx = t;
+        });
+        if (!mx) return;
+        if (lastStamp == null) { lastStamp = mx; return; }
+        if (mx > lastStamp + 2000) {
+          lastStamp = mx;
+          if (!staleHint) { staleHint = true; setChip("🔄 云端有新数据，点这里刷新", "doing"); }
+        }
+      }).catch(function () {});
   }
 
   /* ---------- 3) 登录条 ---------- */
@@ -405,6 +464,7 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
     if (old) old.remove();
     buildAuthBar();
     if (chip && pulledOK) chip.textContent = "☁ 已同步";
+    setTimeout(pushLeftoverPending, 300);
   }
 
   function buildAuthBar() {
@@ -471,15 +531,81 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
     chip.title = "点一下：重试未同步的数据；再从云端重新拉取会弹确认";
     chip.onclick = function () {
       if (!pulledOK) { location.reload(); return; }
+      if (staleHint) { staleHint = false; pullAndReload(); return; }
       var n = 0; for (var k in pending) n++;
       if (n) { flush(); return; }
       if (!logged()) { location.reload(); return; }
-      if (confirm("要从云端重新拉取吗？\n\n会用云端数据刷新这个浏览器里的缓存（云端为空则改为上传本机）。\n确定后页面自动重新加载。")) {
-        try { sessionStorage.setItem("clipCloudForcePull", "1"); } catch (e) {}
-        location.reload();
-      }
+      if (confirm("要从云端重新拉取吗？\n\n会用云端数据刷新这个浏览器里的缓存（云端为空则改为上传本机）。\n确定后页面自动重新加载。")) { pullAndReload(); }
     };
     document.body.appendChild(chip);
+  }
+
+  function pullAndReload() {
+    try { sessionStorage.setItem("clipCloudForcePull", "1"); } catch (e) {}
+    location.reload();
+  }
+
+  /* 记住上次看的页签和滚动位置，刷新后回到原处 */
+  function rememberView() {
+    var TABK = "cloudLastTab", SCK = "cloudScrollY";
+    if (window.switchTab) {
+      var orig = window.switchTab;
+      window.switchTab = function (name) {
+        try { localStorage.setItem(TABK, name); } catch (e) {}
+        return orig.apply(window, arguments);
+      };
+    }
+    document.addEventListener("click", function (e) {
+      var t = e.target && e.target.closest ? e.target.closest(".tab") : null;
+      if (t && t.getAttribute("data-pane")) {
+        try { localStorage.setItem(TABK, t.getAttribute("data-pane")); } catch (e2) {}
+      }
+    }, true);
+    var st = null;
+    window.addEventListener("scroll", function () {
+      clearTimeout(st);
+      st = setTimeout(function () {
+        try { sessionStorage.setItem(SCK, String(window.scrollY || 0)); } catch (e3) {}
+      }, 300);
+    }, { passive: true });
+
+    var want = "";
+    try { want = localStorage.getItem(TABK) || ""; } catch (e4) {}
+    var y = 0;
+    try { y = parseInt(sessionStorage.getItem(SCK) || "0", 10) || 0; } catch (e5) {}
+    function apply() {
+      if (want && window.switchTab) { try { window.switchTab(want); } catch (e6) {} }
+      if (y) { try { window.scrollTo(0, y); } catch (e7) {} }
+    }
+    apply();
+    setTimeout(apply, 300);
+  }
+
+  /* 上次没推成功的改动，这次打开先补推上去 */
+  function pushLeftoverPending() {
+    var left = loadPending();
+    if (!left) return;
+    var payload = [];
+    for (var k in left) { if (Object.prototype.hasOwnProperty.call(left, k)) payload.push({ key: k, value: left[k] }); }
+    if (!payload.length) return;
+    setChip("☁ 正在补推上次的改动…", "doing");
+    postKeys(payload, 0, function (ok) {
+      if (ok) {
+        try { localStorage.removeItem(PENDK); } catch (e) {}
+        pending = {};
+        setChip("☁ 已同步 " + hm(), "ok");
+        lastStamp = null;
+        tellOthers();
+        var guard = "";
+        try { guard = sessionStorage.getItem("cloudAfterPush") || ""; } catch (e2) {}
+        if (!guard) {
+          try { sessionStorage.setItem("cloudAfterPush", "1"); } catch (e3) {}
+          location.reload();
+        }
+      } else {
+        setChip("⚠ 上次的改动没推上去，点这里重试", "fail");
+      }
+    });
   }
 
   function boot() {
@@ -488,6 +614,10 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
     if (!logged()) { guardEdits(); tryRestore(); }
     if (pulledOK && isFirstUpload && logged()) uploadLocalAll();
     if (!pulledOK) setChip("⚠ 云端未连接，点这里重试", "fail");
+    if (logged()) setTimeout(pushLeftoverPending, 600);
+    rememberView();
+    pollOnce();
+    setInterval(pollOnce, 20000);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
