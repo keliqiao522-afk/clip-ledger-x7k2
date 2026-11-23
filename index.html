@@ -3868,6 +3868,8 @@ function shootWeekRecText() {
   var span = shootSpan(), start = ymd(span.s), end = ymd(span.e);
   var days = Math.round((span.e - span.s) / 86400000) + 1;
   var planShot = 0, planEdit = 0, codes = 0, codeQty = 0, filled = 0;
+  var planQty = 0;
+  plans.forEach(function (p) { if (p.date >= start && p.date <= end) planQty += num(p.qty); });
   var cur = new Date(span.s);
   while (cur <= span.e) {
     var ds = ymd(cur), me = shootPlan[ds] || {};
@@ -3883,9 +3885,11 @@ function shootWeekRecText() {
     TYPES.forEach(function (t) { var it = r.items[t]; if (it) { doneLink += (it.link || 0); doneNoLink += (it.nolink || 0); } });
   });
   done = doneLink + doneNoLink;
-  var pct = planEdit > 0 ? Math.round(Math.min(100, done / planEdit * 100)) : 0;
-  var tail = planEdit > done ? "　还差 <b>" + (planEdit - done) + "</b> 条没剪" : (planEdit > 0 ? "　已剪满计划" : "");
+  var base = planEdit > 0 ? planEdit : planQty;
+  var pct = base > 0 ? Math.round(Math.min(100, done / base * 100)) : 0;
+  var tail = base > done ? "　还差 <b>" + (base - done) + "</b> 条没剪" : (base > 0 ? "　已剪满计划" : "");
   el.innerHTML = "🗓 " + (span.ranged ? ("这一周（" + start + " ~ " + end + "，共 " + days + " 天）") : ("本月（" + start + " ~ " + end + "，共 " + days + " 天）")) + "：已排 " + filled + " 天"
+    + (planQty ? "　文案计划 <b>" + planQty + "</b> 条" : "")
     + "　计划拍摄 <b>" + planShot + "</b> 条 · 计划剪辑 <b>" + planEdit + "</b> 条"
     + "　款号 <b>" + codes + "</b> 个 / <b>" + codeQty + "</b> 条　｜　台账实际已剪 <b>" + done + "</b> 条"
     + "（挂链 " + doneLink + " / 不挂链 " + doneNoLink + "）　完成 <b>" + pct + "%</b>" + tail;
