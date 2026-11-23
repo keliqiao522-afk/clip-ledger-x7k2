@@ -172,22 +172,45 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
 #cloudChip.fail{background:#b42318}
 </style>
 <script>
-/* ===== 云端同步层：数据存 Supabase，电脑和手机共用同一份 ===== */
+/* ===== 云端同步层 v2：Supabase 存储 + 未登录只读预览 / 登录后可编辑 ===== */
 (function () {
   var SB_URL = "https://pgcwhsirjmntwbqwzomu.supabase.co";
   var SB_KEY = "sb_publishable_tbvdFyg9_xlmQ-wlF9bH-Q_40ASN_Kc";
   var FULL   = SB_URL + "/rest/v1/app_state";
-  var HDR    = { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY, "Content-Type": "application/json" };
-  var LOCAL_ONLY = { "clipBackupV1": 1, "clipUndoV1": 1 };
+  var AUTHK  = "clipCloudAuthV1";
+  var LASTEM = "cloudLastEmail";
+  var LOCAL_ONLY = { "clipBackupV1": 1, "clipUndoV1": 1, "clipCloudAuthV1": 1 };
 
   function synced(k) { return !!k && k.indexOf("clip") === 0 && !LOCAL_ONLY[k]; }
 
-  var hydrating = true, pending = {}, timer = null, chip = null, pulledOK = false;
+  /* ---------- 登录态 ---------- */
+  var sess = null;
+  try { sess = JSON.parse(localStorage.getItem(AUTHK) || "null"); } catch (e) { sess = null; }
+  function saveSess(s) { try { localStorage.setItem(AUTHK, JSON.stringify(s)); } catch (e) {} sess = s; }
+  function clearSess() { try { localStorage.removeItem(AUTHK); } catch (e) {} sess = null; }
+  function logged() { return !!(sess && sess.access_token && sess.email); }
+
+  function ensureToken() {
+    if (!logged()) return Promise.reject(new Error("NOT_LOGGED_IN"));
+    if (sess.expires_at && sess.expires_at > Date.now() + 60000) return Promise.resolve(sess.access_token);
+    if (!sess.refresh_token) return Promise.reject(new Error("NO_REFRESH"));
+    return fetch(SB_URL + "/auth/v1/token?grant_type=refresh_token", {
+      method: "POST",
+      headers: { "apikey": SB_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: sess.refresh_token })
+    }).then(function (r) { if (!r.ok) throw new Error("REFRESH_FAIL"); return r.json(); })
+      .then(function (j) {
+        saveSess({ access_token: j.access_token, refresh_token: j.refresh_token, email: (sess && sess.email) || "", expires_at: Date.now() + ((j.expires_in || 3600) * 1000) });
+        return j.access_token;
+      });
+  }
+
+  var hydrating = true, pending = {}, timer = null, chip = null, pulledOK = false, isFirstUpload = false;
 
   function setChip(text, cls) { if (chip) { chip.textContent = text; chip.className = "cloudChip " + (cls || ""); } }
-  function hm() { var d = new Date(); return ("0"+d.getHours()).slice(-2) + ":" + ("0"+d.getMinutes()).slice(-2); }
+  function hm() { var d = new Date(); return ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); }
 
-  /* ---------- 1) 打开先拉云端 ---------- */
+  /* ---------- 1) 打开先拉云端（匿名可读） ---------- */
   var forcePull = false;
   try { forcePull = sessionStorage.getItem("clipCloudForcePull") === "1"; sessionStorage.removeItem("clipCloudForcePull"); } catch (e) {}
 
@@ -202,7 +225,7 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
   var cloud = {};
   for (var i = 0; i < rows.length; i++) if (synced(rows[i].key)) cloud[rows[i].key] = (rows[i].value == null ? "" : rows[i].value);
 
-  var isFirstUpload = (pulledOK && rows.length === 0);   /* 云端空：把本机数据先传上去 */
+  isFirstUpload = (pulledOK && rows.length === 0);
   if (pulledOK && (forcePull || !isFirstUpload)) {
     if (forcePull) {
       var ks = [];
@@ -217,7 +240,7 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
   }
   hydrating = false;
 
-  /* ---------- 2) 之后的写入自动推云端 ---------- */
+  /* ---------- 2) 写入自动推云端（必须登录） ---------- */
   var origSet = Storage.prototype.setItem;
   var origRemove = Storage.prototype.removeItem;
 
@@ -242,13 +265,17 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
     var keys = [], k;
     for (k in pending) { if (Object.prototype.hasOwnProperty.call(pending, k)) keys.push(k); }
     if (!keys.length) return;
+    if (!logged()) { setChip("🔒 只读预览", "fail"); return; }
     var payload = [], sending = {};
     for (var i = 0; i < keys.length; i++) { payload.push({ key: keys[i], value: pending[keys[i]] }); sending[keys[i]] = pending[keys[i]]; }
     pending = {};
-    fetch(FULL + "?on_conflict=key", {
-      method: "POST",
-      headers: { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates" },
-      body: JSON.stringify(payload)
+    setChip("☁ 同步中…", "doing");
+    ensureToken().then(function (tk) {
+      return fetch(FULL + "?on_conflict=key", {
+        method: "POST",
+        headers: { "apikey": SB_KEY, "Authorization": "Bearer " + tk, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates" },
+        body: JSON.stringify(payload)
+      });
     }).then(function (r) {
       if (!r.ok) throw new Error("HTTP " + r.status);
       setChip("☁ 已同步 " + hm(), "ok");
@@ -259,6 +286,7 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
   }
 
   function uploadLocalAll() {
+    if (!logged()) { setChip("🔒 只读预览", "fail"); return; }
     var up = [];
     for (var i = 0; i < localStorage.length; i++) {
       var k = localStorage.key(i);
@@ -266,40 +294,150 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
     }
     if (!up.length) { setChip("☁ 云端为空", "ok"); return; }
     setChip("☁ 首次上传中…", "doing");
-    fetch(FULL + "?on_conflict=key", {
-      method: "POST",
-      headers: { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates" },
-      body: JSON.stringify(up)
+    ensureToken().then(function (tk) {
+      return fetch(FULL + "?on_conflict=key", {
+        method: "POST",
+        headers: { "apikey": SB_KEY, "Authorization": "Bearer " + tk, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates" },
+        body: JSON.stringify(up)
+      });
     }).then(function (r) {
       if (!r.ok) throw new Error("HTTP " + r.status);
       setChip("☁ 已同步 " + hm(), "ok");
     }).catch(function () { setChip("⚠ 首次上传失败，点这里重试", "fail"); });
   }
 
+  /* ---------- 3) 登录条 ---------- */
+  function toast(msg) {
+    var t = document.getElementById("cloudToast");
+    if (!t) {
+      t = document.createElement("div");
+      t.id = "cloudToast";
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.className = "show";
+    clearTimeout(t._tm);
+    t._tm = setTimeout(function () { t.className = ""; }, 2600);
+  }
+
+  function doLogin(email, pwd, msgEl) {
+    if (!email || !pwd) { if (msgEl) msgEl.textContent = "请填邮箱和密码"; return; }
+    if (msgEl) msgEl.textContent = "登录中…";
+    fetch(SB_URL + "/auth/v1/token?grant_type=password", {
+      method: "POST",
+      headers: { "apikey": SB_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email, password: pwd })
+    }).then(function (r) {
+      return r.json().then(function (j) { if (!r.ok) throw new Error(j.error_description || j.msg || ("HTTP " + r.status)); return j; });
+    }).then(function (j) {
+      saveSess({ access_token: j.access_token, refresh_token: j.refresh_token, email: (j.user && j.user.email) || email, expires_at: Date.now() + ((j.expires_in || 3600) * 1000) });
+      try { localStorage.setItem(LASTEM, email); } catch (e) {}
+      location.reload();
+    }).catch(function (err) {
+      if (msgEl) msgEl.textContent = "登录失败：" + (err.message || "检查账号密码");
+    });
+  }
+
+  function buildAuthBar() {
+    var bar = document.createElement("div");
+    bar.id = "cloudAuthBar";
+    if (logged()) {
+      var b1 = document.createElement("b"); b1.textContent = "已登录";
+      var em = document.createElement("span"); em.className = "em"; em.textContent = sess.email;
+      var out = document.createElement("button"); out.type = "button"; out.textContent = "退出";
+      out.onclick = function () {
+        if (confirm("退出后网页会变成只读预览，确定退出？")) { clearSess(); location.reload(); }
+      };
+      bar.appendChild(b1); bar.appendChild(em); bar.appendChild(out);
+    } else {
+      var b2 = document.createElement("b"); b2.textContent = "只读预览";
+      var hint = document.createElement("span"); hint.className = "hint"; hint.textContent = "登录后可编辑";
+      var em2 = document.createElement("input"); em2.type = "email"; em2.placeholder = "邮箱"; em2.id = "caEmail";
+      var pw = document.createElement("input"); pw.type = "password"; pw.placeholder = "密码"; pw.id = "caPwd";
+      var btn = document.createElement("button"); btn.type = "button"; btn.id = "caIn"; btn.textContent = "登录";
+      var msg = document.createElement("span"); msg.id = "caMsg";
+      try { var last = localStorage.getItem(LASTEM); if (last) em2.value = last; } catch (e) {}
+      btn.onclick = function () { doLogin(em2.value.trim(), pw.value, msg); };
+      pw.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); doLogin(em2.value.trim(), pw.value, msg); } });
+      bar.appendChild(b2); bar.appendChild(hint); bar.appendChild(em2); bar.appendChild(pw); bar.appendChild(btn); bar.appendChild(msg);
+      document.body.classList.add("ro");
+    }
+    document.body.appendChild(bar);
+  }
+
+  /* ---------- 4) 只读拦截 ---------- */
+  function guardEdits() {
+    var inBar = function (el) { return el && el.closest && el.closest("#cloudAuthBar,#cloudChip,#cloudToast"); };
+    ["mousedown", "click", "dblclick", "touchstart"].forEach(function (ev) {
+      document.addEventListener(ev, function (e) {
+        if (logged()) return;
+        if (inBar(e.target)) return;
+        e.preventDefault(); e.stopPropagation();
+        toast("只读预览：点右上角登录后才能修改");
+      }, true);
+    });
+    document.addEventListener("keydown", function (e) {
+      if (logged()) return;
+      if (inBar(e.target)) return;
+      if (e.ctrlKey && (e.key === "c" || e.key === "a")) return;
+      e.preventDefault(); e.stopPropagation();
+      toast("只读预览：点右上角登录后才能修改");
+    }, true);
+    document.addEventListener("paste", function (e) { if (!logged()) { e.preventDefault(); } }, true);
+  }
+
   function buildChip() {
     chip = document.createElement("div");
     chip.id = "cloudChip";
     chip.className = "cloudChip";
-    chip.textContent = pulledOK ? (isFirstUpload ? "☁ 准备上传本机数据" : "☁ 已同步") : "⚠ 云端未连接";
+    chip.textContent = pulledOK ? (logged() ? "☁ 已同步" : "🔒 只读预览") : "⚠ 云端未连接";
     chip.title = "点一下：重试未同步的数据；再从云端重新拉取会弹确认";
     chip.onclick = function () {
-      if (!pulledOK || isFirstUpload) { uploadLocalAll(); isFirstUpload = false; return; }
+      if (!pulledOK) { location.reload(); return; }
       var n = 0; for (var k in pending) n++;
       if (n) { flush(); return; }
+      if (!logged()) { location.reload(); return; }
       if (confirm("要从云端重新拉取吗？\n\n会用云端数据刷新这个浏览器里的缓存（云端为空则改为上传本机）。\n确定后页面自动重新加载。")) {
         try { sessionStorage.setItem("clipCloudForcePull", "1"); } catch (e) {}
         location.reload();
       }
     };
     document.body.appendChild(chip);
-    if (pulledOK && isFirstUpload) uploadLocalAll();
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", buildChip);
-  } else { buildChip(); }
+  function boot() {
+    buildAuthBar();
+    buildChip();
+    if (!logged()) guardEdits();
+    if (pulledOK && isFirstUpload && logged()) uploadLocalAll();
+    if (!pulledOK) setChip("⚠ 云端未连接，点这里重试", "fail");
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
 })();
 </script>
+<style>
+#cloudAuthBar{position:fixed;top:0;left:0;right:0;z-index:99998;display:flex;align-items:center;gap:8px;
+  padding:7px 14px;background:#fff;border-bottom:1px solid #e5e9ef;box-shadow:0 1px 6px rgba(16,24,40,.07);
+  font:13px -apple-system,"Microsoft YaHei",sans-serif;color:#374151;flex-wrap:wrap}
+#cloudAuthBar b{color:#15734a}
+#cloudAuthBar b.ro{color:#b45309}
+#cloudAuthBar .hint{color:#9ca3af;font-size:12px}
+#cloudAuthBar input{font:13px inherit;padding:5px 9px;border:1px solid #dfe3e8;border-radius:7px;outline:none;width:170px}
+#cloudAuthBar input#caPwd{width:130px}
+#cloudAuthBar button{font:13px inherit;padding:6px 14px;border:none;border-radius:7px;background:#15734a;color:#fff;cursor:pointer}
+#cloudAuthBar button:hover{filter:brightness(1.05)}
+#cloudAuthBar .em{color:#6b7280;font-size:12px}
+#caMsg{font-size:12px;color:#b42318}
+body{padding-top:44px}
+body.ro > *:not(#cloudAuthBar):not(#cloudChip):not(#cloudToast){pointer-events:none;user-select:none}
+#cloudToast{position:fixed;left:50%;top:56px;transform:translateX(-50%) translateY(-12px);z-index:99999;
+  background:#111827;color:#fff;font:13px -apple-system,"Microsoft YaHei",sans-serif;padding:9px 16px;border-radius:8px;
+  opacity:0;transition:.22s;pointer-events:none}
+#cloudToast.show{opacity:.94;transform:translateX(-50%) translateY(0)}
+</style>
+
 </head>
 <body>
 
