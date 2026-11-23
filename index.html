@@ -68,6 +68,7 @@ button:active{transform:scale(.98)}
 .rec th{font-size:12px;color:#6b7280;font-weight:600;padding:9px 6px;background:#fbfcfd;border-bottom:1px solid #eef1f4;text-align:center;white-space:nowrap}
 .rec th:first-child{text-align:left}
 .rec td{padding:9px 6px;border-bottom:1px solid #f5f7f9;text-align:center;vertical-align:middle}
+#planBody td:nth-child(2),#planBody td:nth-child(3),#planBody td:nth-child(5),#planBody td:nth-child(6),#planBody td:nth-child(7),#planBody td:nth-child(12){white-space:nowrap}
 .rec td:first-child{text-align:left;font-weight:600}
 .rec td.note{text-align:left;white-space:normal;max-width:150px;color:#6b7280;font-size:12px}
 .pair{font-size:12px}
@@ -981,9 +982,28 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
         <button class="mini green" onclick="exportScriptImage()">批量导出文案图片</button>
       </div>
     </div>
+    <div class="pbtools" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0;padding:8px 10px;background:#f8fafc;border:1px solid #e8ecf0;border-radius:8px;font-size:12px;color:#4b5563">
+      <span>已勾选 <b id="pSelCount" style="color:#2563eb">0</b> 项</span>
+      <button class="mini" onclick="planSelAll()">全选本页</button>
+      <button class="mini" onclick="planSelNone()">清空勾选</button>
+      <span style="color:#cbd5e1">｜</span>
+      <span>整体顺延</span>
+      <input type="number" id="pbDays" value="1" style="width:56px;padding:4px 6px;font-size:12px">
+      <span>天</span>
+      <button class="mini blue" onclick="batchShiftDays(1)">往后移</button>
+      <button class="mini blue" onclick="batchShiftDays(-1)">往前移</button>
+      <span style="color:#cbd5e1">｜</span>
+      <span>统一改到</span>
+      <input type="date" id="pbDate" style="padding:4px 6px;font-size:12px">
+      <button class="mini" onclick="batchSetDate()">改到这天</button>
+      <span style="color:#cbd5e1">｜</span>
+      <span>依次排开（每天 1 条）从</span>
+      <input type="date" id="pbSeq" style="padding:4px 6px;font-size:12px">
+      <button class="mini green" onclick="batchSeqDates()">开始排</button>
+    </div>
     <div class="scroll">
-      <table class="rec">
-        <thead><tr><th>日期</th><th>周次</th><th>计划</th><th>类型</th><th>数量</th><th>状态</th><th>文案</th><th>图片</th><th>链接</th><th>产出</th><th>操作</th></tr></thead>
+      <table class="rec" style="min-width:1000px">
+        <thead><tr><th style="width:30px"><input type="checkbox" id="pAllChk" onchange="planSelAllChk(this.checked)"></th><th>日期</th><th>周次</th><th>计划</th><th>类型</th><th>数量</th><th>状态</th><th>文案</th><th>图片</th><th>链接</th><th>产出</th><th>操作</th></tr></thead>
         <tbody id="planBody"></tbody>
       </table>
     </div>
@@ -2590,7 +2610,7 @@ function renderPlans() {
   }).sort(function (a, b) { return b.date.localeCompare(a.date); });
 
   if (!list.length) {
-    $("planBody").innerHTML = '<tr><td colspan="11"><div class="empty">还没有周计划，先在上面加一条</div></td></tr>';
+    $("planBody").innerHTML = '<tr><td colspan="12"><div class="empty">还没有周计划，先在上面加一条</div></td></tr>';
     if ($("planStatText")) $("planStatText").textContent = "该时间段没有计划";
     return;
   }
@@ -2608,7 +2628,7 @@ function renderPlans() {
       results.forEach(function (r) { if (r.planId === p.id) gdone += (r.qty || 0); });
     });
     statPlans += gr.items.length; statQty += gq; statDone += gdone;
-    html.push('<tr class="wkweek"><td colspan="11">' + gr.date + " " + wd(gr.date)
+    html.push('<tr class="wkweek"><td colspan="12">' + gr.date + " " + wd(gr.date)
       + " · " + gr.items.length + " 项 · 计划 " + gq + " 条 · 已产出 " + gdone + " 条</td></tr>");
     gr.items.forEach(function (p) {
       var rs = results.filter(function (r) { return r.planId === p.id; });
@@ -2621,7 +2641,8 @@ function renderPlans() {
         ? '<div class="copycell">' + esc(lines[0].slice(0, 32)) + (lines[0].length > 32 ? "…" : "") + "</div>"
           + '<span class="wd">共 ' + lines.length + " 句台词</span>"
         : '<span class="zero">—</span>';
-      html.push("<tr><td>" + p.date + wdHtml(p.date) + "</td>"
+      html.push('<tr><td><input type="checkbox" class="pchk" value="' + p.id + '"' + (planSelSet[p.id] ? ' checked' : '') + ' onchange="planIdOn(' + p.id + ',this.checked)"></td>'
+        + "<td>" + p.date + wdHtml(p.date) + "</td>"
         + "<td>" + esc(p.week) + "</td>"
         + "<td>" + esc(p.name) + "</td>"
         + "<td>" + esc(p.type) + "</td>"
@@ -2638,10 +2659,82 @@ function renderPlans() {
     });
   });
   $("planBody").innerHTML = html.join("");
+  if (typeof updatePlanSelBar === "function") updatePlanSelBar();
   if ($("planStatText")) {
     $("planStatText").textContent = "共 " + statPlans + " 项，分布在 " + groups.length + " 天（日均 "
       + (statPlans / groups.length).toFixed(1) + " 项）｜ 计划 " + statQty + " 条 ｜ 已产出 " + statDone + " 条";
   }
+}
+
+/* ---- 批量改日期（勾选若干条计划，统一平移/改成同一天/按天排开） ---- */
+var planSelSet = {};
+function planIdOn(id, on) { if (on) planSelSet[id] = 1; else delete planSelSet[id]; updatePlanSelBar(); }
+function checkedPlanIds() {
+  var out = [];
+  for (var k in planSelSet) if (planSelSet[k]) out.push(Number(k));
+  return out;
+}
+function updatePlanSelBar() {
+  if ($("pSelCount")) $("pSelCount").textContent = checkedPlanIds().length;
+  var cs = document.querySelectorAll("#planBody .pchk");
+  if ($("pAllChk")) {
+    var all = cs.length > 0;
+    for (var i = 0; i < cs.length; i++) if (!cs[i].checked) { all = false; break; }
+    $("pAllChk").checked = all;
+  }
+}
+function planSelAll() {
+  var cs = document.querySelectorAll("#planBody .pchk");
+  for (var i = 0; i < cs.length; i++) { cs[i].checked = true; planSelSet[Number(cs[i].value)] = 1; }
+  updatePlanSelBar();
+}
+function planSelNone() {
+  var cs = document.querySelectorAll("#planBody .pchk");
+  for (var i = 0; i < cs.length; i++) { cs[i].checked = false; delete planSelSet[Number(cs[i].value)]; }
+  planSelSet = {};
+  updatePlanSelBar();
+}
+function planSelAllChk(v) { if (v) planSelAll(); else planSelNone(); }
+function shiftDateStr(ds, n) {
+  var d = new Date(ds + "T00:00:00"); d.setDate(d.getDate() + n); return ymd(d);
+}
+function applyBatchPlanDate(mapFn) {
+  var ids = checkedPlanIds();
+  if (!ids.length) { alert("先勾选要改的计划（最左边的小方框）"); return 0; }
+  undoSnapshot("批量改计划日期");
+  var changed = 0;
+  for (var i = 0; i < plans.length; i++) {
+    var p = plans[i];
+    if (ids.indexOf(p.id) < 0) continue;
+    var nd = mapFn(p);
+    if (!nd || nd === p.date) continue;
+    p.date = nd;
+    p.week = weekLabel(nd);
+    changed++;
+  }
+  savePlans(); renderPlans();
+  try { toast(changed ? "已批量改日期 " + changed + " 条" : "日期没变化"); } catch (e) { }
+  return changed;
+}
+function batchShiftDays(sign) {
+  var n = Math.abs(num($("pbDays").value)) || 1;
+  applyBatchPlanDate(function (p) { return shiftDateStr(p.date, sign * n); });
+}
+function batchSetDate() {
+  var d = $("pbDate") ? $("pbDate").value : "";
+  if (!d) { alert("先在「统一改到」里选一个目标日期"); return; }
+  applyBatchPlanDate(function () { return d; });
+}
+function batchSeqDates() {
+  var s = $("pbSeq") ? $("pbSeq").value : "";
+  if (!s) { alert("先在「依次排开」里选起始日期"); return; }
+  var ids = checkedPlanIds();
+  var sel = plans.filter(function (p) { return ids.indexOf(p.id) >= 0; })
+    .sort(function (a, b) { return a.date.localeCompare(b.date); });
+  applyBatchPlanDate(function (p) {
+    var i = sel.indexOf(p);
+    return shiftDateStr(s, i < 0 ? 0 : i);
+  });
 }
 
 /* ---- 导出台词表 ---- */
