@@ -873,7 +873,7 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
       <button class="add" id="saveBtn" onclick="saveDay()">保存当天记录</button>
       <button class="ghost" onclick="resetForm(true)">清空重填</button>
       <button class="green" onclick="exportCsv()">导出 CSV</button>
-      <span class="hint" id="dupHint">该日期已有记录，保存会覆盖</span>
+      <span class="hint" id="dupHint">这天已有记录：填另一个账号会再记一条，同账号保存则覆盖</span>
     </div>
   </div>
 
@@ -1756,11 +1756,16 @@ function saveDay() {
     for (var j = 0; j < data.length; j++) if (data[j].id === editingId) rec = data[j];
     if (rec) { rec.date = date; rec.note = note; rec.items = items; rec.owner = owner; rec.account = account; rec.codes = codes; }
   } else {
-    var dup = null;
-    for (var k = 0; k < data.length; k++) if (data[k].date === date) dup = data[k];
-    if (dup) {
+    var sameDate = data.filter(function (r) { return r.date === date; });
+    var accNow = account;
+    var allHaveAcc = sameDate.length > 0 && sameDate.every(function (r) { return String(r.account || "").trim() !== ""; });
+    var accUsed = sameDate.some(function (r) { return String(r.account || "").trim() === accNow; });
+    if (sameDate.length && accNow && allHaveAcc && !accUsed) {
+      /* 同一天、不同账号 → 再记一条，不覆盖 */
+    } else if (sameDate.length) {
       if (!confirm(date + " 已有一条记录，覆盖为当前填写吗？")) return;
-      data = data.filter(function (r) { return r.id !== dup.id; });
+      var keepIds = sameDate.map(function (r) { return r.id; });
+      data = data.filter(function (r) { return keepIds.indexOf(r.id) < 0; });
     }
     data.push({ id: Date.now(), date: date, note: note, items: items, owner: owner, account: account, codes: codes });
   }
