@@ -5892,7 +5892,7 @@ function renderSheetList() {
       + '<div class="ops">'
       + '<button class="mini blue" onclick="autoFillWeek(' + i + ')">按一周总量自动分</button>'
       + '<button class="mini blue" onclick="exportWeekSheet(\'plan\',\'img\',\'' + rec.ws + '\',\'A\')" title="只出总量＋项目 YH/XC">导出A·总量(分项目)</button>'
-      + '<button class="mini blue" onclick="exportWeekSheet(\'plan\',\'img\',\'' + rec.ws + '\',\'B\')" title="总量＋我自己的量">导出B·总量+我</button>'
+      + '<button class="mini blue" onclick="exportWeekSheet(\'plan\',\'img\',\'' + rec.ws + '\',\'B\')" title="我的量按 YH/XC 拆，剩下的就是 A剪辑要剪的">导出B·我按项目 / 其余A剪辑</button>'
       + '<button class="mini" onclick="exportWeekSheet(\'plan\',\'img\',\'' + rec.ws + '\',\'full\')" title="含我、A剪辑、YH/XC">导出C·完整</button>'
       + '<button class="mini" onclick="exportWeekSheet(\'plan\',\'csv\',\'' + rec.ws + '\',\'A\')">导出CSV</button>'
       + '<button class="mini" onclick="jumpMonthTgt()">去改月度目标</button>'
@@ -5933,38 +5933,54 @@ function exportWeekSheet(mode, fmt, wsOpt, variant) {
   if (mode === "done") return weekSheetLegacy(mode, fmt, wsOpt);
   var p = weekPlanPayload(wsOpt || mondayOf(today()));
   var V = variant || "full";
-  /* A：只出总量＋项目（不出我/A剪辑）；B：总量＋我；full：全出 */
+  /* A：总量＋项目（不出我/A剪辑）；B：我按项目拆，剩下的就是 A剪辑要剪的；full：全出 */
   var defs = {
     A: [
       { k: "l", w: 130, t: "挂链（条）" }, { k: "n", w: 145, t: "不挂链（条）" }, { k: "q", w: 130, t: "合计（条）" },
       { k: "yh", w: 115, t: "YH（条）" }, { k: "xc", w: 115, t: "XC（条）" }
     ],
     B: [
-      { k: "l", w: 130, t: "挂链（条）" }, { k: "n", w: 145, t: "不挂链（条）" }, { k: "q", w: 130, t: "合计（条）" },
-      { k: "me", w: 130, t: "我（条）" }
+      { k: "q", w: 120, t: "合计（条）" },
+      { k: "yh", w: 110, t: "YH（条）" }, { k: "xc", w: 110, t: "XC（条）" },
+      { k: "meY", w: 126, t: "我剪·YH" }, { k: "meX", w: 126, t: "我剪·XC" }, { k: "me", w: 132, t: "我剪合计" },
+      { k: "subY", w: 136, t: "A剪辑·YH" }, { k: "subX", w: 136, t: "A剪辑·XC" }, { k: "sub", w: 142, t: "A剪辑合计" }
     ],
     full: [
       { k: "l", w: 128, t: "挂链（条）" }, { k: "n", w: 142, t: "不挂链（条）" }, { k: "q", w: 130, t: "合计（条）" },
       { k: "me", w: 120, t: "我（条）" }, { k: "sub", w: 140, t: "A剪辑（条）" }, { k: "yh", w: 105, t: "YH" }, { k: "xc", w: 105, t: "XC" }
     ]
   };
+  /* 我剪按项目拆：我剪YH = 我的量×YH占比，我剪XC = 我剪 − 我剪YH；A剪辑 = 该类型剩下的项目量 */
+  function splitProj(r) {
+    var q = num(r.q), me = num(r.me), yh = num(r.yh), xc = num(r.xc), sub = num(r.sub);
+    var meY = q > 0 ? Math.round(me * yh / q) : 0;
+    r.meY = meY; r.meX = me - meY;
+    r.subY = Math.max(0, yh - meY); r.subX = Math.max(0, xc - r.meX);
+    if (r.sub === undefined || r.sub === null || r.sub === "") r.sub = r.subY + r.subX;
+    return r;
+  }
+  var rows2 = p.rows.map(function (r0) {
+    var r = {}; for (var kk in r0) r[kk] = r0[kk];
+    splitProj(r); return r;
+  });
+  var tot2 = splitProj({ q: p.tot.q, me: p.tot.me, yh: p.tot.yh, xc: p.tot.xc, sub: p.tot.sub, l: p.tot.l, n: p.tot.n });
   var vals = defs[V] || defs.full;
-  var title = "周计划表_" + (V === "A" ? "总量分项目_" : V === "B" ? "总量加我_" : "") + p.ws;
+  var title = "周计划表_" + (V === "A" ? "总量分项目_" : V === "B" ? "我剪按项目-其余A剪辑_" : "") + p.ws;
   if (fmt === "csv") {
     var head = ["周期/周次", "主推品", "周主目标", "内容形式"].concat(vals.map(function (v) { return v.t; }));
     var out = [head];
     var period = mds(p.ws) + " ~ " + mds(p.we) + " · " + weekLabel(p.ws);
-    p.rows.forEach(function (r) {
+    rows2.forEach(function (r) {
       out.push([period, p.rec.name || "", p.rec.goal || "", r.t].concat(vals.map(function (v) { return r[v.k]; })));
     });
-    out.push([period, p.rec.name || "", p.rec.goal || "", "合计（本周）"].concat(vals.map(function (v) { return p.tot[v.k]; })));
+    out.push([period, p.rec.name || "", p.rec.goal || "", "合计（本周）"].concat(vals.map(function (v) { return tot2[v.k]; })));
     csvDownload(out, title + "_" + today() + ".csv");
     return;
   }
   var FONT = "'Microsoft YaHei','PingFang SC','Hiragino Sans GB',sans-serif";
   var cols = [{ w: 215, t: "周期 / 周次" }, { w: 230, t: "主推品 / 活动" }, { w: 320, t: "周主目标" }, { w: 175, t: "内容形式" }].concat(vals);
   var W = 0; cols.forEach(function (c) { W += c.w; });
-  var nRows = p.rows.length;
+  var nRows = rows2.length;
   var HDR = 88, RH = 74, TOTR = 80, H = HDR + RH * nRows + TOTR;
   var S = 2;
   var cv = document.createElement("canvas");
@@ -6005,7 +6021,7 @@ function exportWeekSheet(mode, fmt, wsOpt, variant) {
   var bodyH = RH * nRows;
   var y = HDR;
   ctx.strokeStyle = "#222"; ctx.lineWidth = 1;
-  p.rows.forEach(function (r) {
+  rows2.forEach(function (r) {
     ctx.fillStyle = "#f3f4f6"; ctx.fillRect(tX, y, c3, RH);
     cell(r.t, c3, tX, y, RH, 22, false, "#111827", 1);
     ctx.font = "bold 22px " + FONT; ctx.fillStyle = "#111827";
@@ -6032,7 +6048,7 @@ function exportWeekSheet(mode, fmt, wsOpt, variant) {
   cell(TYPES.length + " 类内容形式", c3, tX, y, TOTR, 22, true, "#ffffff", 1);
   var nx2 = tX + c3;
   vals.forEach(function (v, ci) {
-    ctx.fillText(String(p.tot[v.k]), nx2 + cols[4 + ci].w / 2, y + TOTR / 2);
+    ctx.fillText(String(tot2[v.k]), nx2 + cols[4 + ci].w / 2, y + TOTR / 2);
     nx2 += cols[4 + ci].w;
   });
   ctx.strokeStyle = "#0f1720"; ctx.lineWidth = 2;
