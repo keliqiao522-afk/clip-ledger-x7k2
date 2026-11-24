@@ -97,6 +97,7 @@ td,th{word-break:break-word;overflow-wrap:break-word}
 .wk .sumcell{font-weight:700;color:#2563eb}
 .wk .tgcell{background:#f8fafc;color:#475569}
 .wk .leftcell{font-weight:700;color:#dc2626}
+.wk .subcell{color:#7c3aed;font-weight:600}
 .wkweek td{background:#eff6ff;font-weight:700;color:#1d4ed8;text-align:left;padding:8px 12px;border-top:2px solid #dbeafe}
 .wkweek .wkrow{display:flex;justify-content:space-between;align-items:center;gap:10px;font-weight:700;color:#1d4ed8}
 .wkweek .wkrow button{border:1px solid #bfdbfe;background:#fff;color:#1d4ed8;border-radius:7px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
@@ -764,11 +765,14 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
       <div class="card"><div class="k">今日我剪目标</div><div class="v" id="dTgt">0<small>条</small></div></div>
       <div class="card"><div class="k">今日我剪已完成</div><div class="v" id="dDone">0<small>条</small></div></div>
       <div class="card"><div class="k">今日我剪剩余</div><div class="v" id="dLeft">0<small>条</small></div></div>
+      <div class="card"><div class="k">本周下属剪目标</div><div class="v" id="wkSubTgt">0<small>条</small></div></div>
+      <div class="card"><div class="k">本周下属剪已完成</div><div class="v" id="wkSubDone">0<small>条</small></div></div>
+      <div class="card"><div class="k">本周下属剪剩余</div><div class="v" id="wkSubLeft">0<small>条</small></div></div>
     </div>
     <div class="scroll">
       <table class="wk">
-        <thead><tr><th rowspan="2">产出形式</th><th colspan="3">周目标（月度目标自动分）</th><th colspan="3">本周已完成（台账）</th><th rowspan="2">剩余<br><span style="font-weight:400">（目标−已完成）</span></th></tr>
-        <tr><th>挂链</th><th>不挂链</th><th>小计</th><th>挂链</th><th>不挂链</th><th>小计</th></tr></thead>
+        <thead><tr><th rowspan="2">产出形式</th><th colspan="4">周目标（月度目标自动分）</th><th colspan="4">本周已完成（台账）</th><th rowspan="2">剩余<br><span style="font-weight:400">（目标−已完成）</span></th></tr>
+        <tr><th>挂链</th><th>不挂链</th><th>下属剪</th><th>小计</th><th>挂链</th><th>不挂链</th><th>下属剪</th><th>小计</th></tr></thead>
         <tbody id="weekDoneBody"></tbody>
       </table>
     </div>
@@ -3614,6 +3618,20 @@ function weekCounts(ws, we) {
   return c;
 }
 
+function weekCountsBy(ws, we) {
+  var me = {}, sub = {};
+  TYPES.forEach(function (t) { me[t] = { l: 0, n: 0 }; sub[t] = { l: 0, n: 0 }; });
+  data.forEach(function (r) {
+    if (r.date < ws || r.date > we) return;
+    var box = (r.owner === "sub") ? sub : me;
+    TYPES.forEach(function (t) {
+      var it = r.items[t];
+      if (it) { box[t].l += (it.link || 0); box[t].n += (it.nolink || 0); }
+    });
+  });
+  return { me: me, sub: sub };
+}
+
 /* ---- 周目标：由「月度目标」按月内天数自动分摊到这一周 ---- */
 function daysInMonthOf(y, m) { return new Date(y, m, 0).getDate(); }
 function mds(ds) { return ds.slice(5, 7) + "/" + ds.slice(8, 10); }
@@ -3667,28 +3685,38 @@ function renderWeekDone() {
     + "　发布账号：" + (esc(rec.account) || "—")
     + "　<b>本周目标（按月度目标自动分）：拍摄 " + wt.shoot + " 条 ｜ 剪辑 " + wt.edit + " 条（挂链 " + wt.link + " / 不挂链 " + wt.nolink + " / 下属剪 " + wt.sub + "）</b>"
     + "　累计拍摄：<b>" + weekCodesCount(ws) + "</b> 款";
-  var c = weekCounts(ws, we), tl = 0, tn = 0, dl = 0, dn = 0, html = "";
-  TYPES.forEach(function (t, ti) {
-    var g = wg.byType[t], cc = c[t];
-    tl += g.link; tn += g.nolink; dl += cc.l; dn += cc.n;
-    var left = Math.max(0, g.sum - (cc.l + cc.n));
+  var split = weekCountsBy(ws, we), c = weekCounts(ws, we);
+  var tl = 0, tn = 0, ts = 0, dl = 0, dn = 0, ds = 0, html = "";
+  TYPES.forEach(function (t) {
+    var g = wg.byType[t], cm = split.me[t], cs = split.sub[t];
+    tl += g.link; tn += g.nolink; ts += g.sub;
+    dl += cm.l; dn += cm.n; ds += cs.l + cs.n;
+    var gsum = g.link + g.nolink + g.sub;
+    var dsum = cm.l + cm.n + cs.l + cs.n;
+    var left = Math.max(0, gsum - dsum);
     html += "<tr><td>" + t + "</td>"
       + '<td class="tgcell">' + g.link + "</td>"
       + '<td class="tgcell">' + g.nolink + "</td>"
-      + '<td class="tgcell">' + g.sum + "</td>"
-      + "<td>" + cc.l + "</td><td>" + cc.n + "</td>"
-      + '<td class="sumcell">' + (cc.l + cc.n) + "</td>"
+      + '<td class="tgcell subcell">' + g.sub + "</td>"
+      + '<td class="tgcell">' + gsum + "</td>"
+      + "<td>" + cm.l + "</td><td>" + cm.n + "</td>"
+      + '<td class="subcell">' + (cs.l + cs.n) + "</td>"
+      + '<td class="sumcell">' + dsum + "</td>"
       + '<td class="' + (left > 0 ? "leftcell" : "sumcell") + '">' + left + "</td></tr>";
   });
+  var gtSum = tl + tn + ts, dtSum = dl + dn + ds;
   html += '<tr class="tot"><td>合计（本周）</td>'
-    + "<td>" + tl + "</td><td>" + tn + "</td><td>" + (tl + tn) + "</td>"
-    + "<td>" + dl + "</td><td>" + dn + "</td><td>" + (dl + dn) + "</td>"
-    + "<td>" + Math.max(0, (tl + tn) - (dl + dn)) + "</td></tr>";
+    + "<td>" + tl + "</td><td>" + tn + '</td><td class="subcell">' + ts + "</td><td>" + gtSum + "</td>"
+    + "<td>" + dl + "</td><td>" + dn + '</td><td class="subcell">' + ds + '</td><td class="sumcell">' + dtSum + "</td>"
+    + "<td>" + Math.max(0, gtSum - dtSum) + "</td></tr>";
   $("weekDoneBody").innerHTML = html;
   var doneSum = dl + dn;
   if ($("wkTgt")) $("wkTgt").innerHTML = wt.sum + "<small>条</small>";
   if ($("wkDone")) $("wkDone").innerHTML = doneSum + "<small>条</small>";
   if ($("wkLeft")) $("wkLeft").innerHTML = Math.max(0, wt.sum - doneSum) + "<small>条</small>";
+  if ($("wkSubTgt")) $("wkSubTgt").innerHTML = wt.sub + "<small>条</small>";
+  if ($("wkSubDone")) $("wkSubDone").innerHTML = ds + "<small>条</small>";
+  if ($("wkSubLeft")) $("wkSubLeft").innerHTML = Math.max(0, wt.sub - ds) + "<small>条</small>";
   /* 今日：按今天所在那一周的目标 ÷ 7 */
   var wsT = mondayOf(today()), dag = null, dsum = 0;
   var cToday = weekCounts(today(), today());
@@ -3930,15 +3958,17 @@ function renderSheetList() {
   if (!weekTables.length) { wrap.innerHTML = '<div class="empty">还没有周计划表，点右上角「+ 新增一周」</div>'; return; }
   var html = "";
   weekTables.forEach(function (rec, i) {
-    var tl = 0, tn = 0;
+    var tl = 0, tn = 0, ts = 0;
+    var wgt = weekTargetOf(rec.ws);
     var rows = "";
     TYPES.forEach(function (t, ti) {
       var r = rec.rows[t] || { l: 0, n: 0, style: "" };
-      tl += r.l || 0; tn += r.n || 0;
+      tl += r.l || 0; tn += r.n || 0; ts += wgt[t].sub || 0;
       rows += "<tr><td>" + t + "</td>"
         + '<td><input type="number" min="0" value="' + (r.l || 0) + '" oninput="setWeekNum(' + i + ",'" + t + "','l',this.value)\"></td>"
         + '<td><input type="number" min="0" value="' + (r.n || 0) + '" oninput="setWeekNum(' + i + ",'" + t + "','n',this.value)\"></td>"
-        + '<td class="sumcell" id="sk' + i + "_" + ti + '">' + ((r.l || 0) + (r.n || 0)) + "</td></tr>";
+        + '<td class="sumcell" id="sk' + i + "_" + ti + '">' + ((r.l || 0) + (r.n || 0)) + "</td>"
+        + '<td class="subcell" style="text-align:center" title="下属剪目标＝月度目标自动分">' + (wgt[t].sub || 0) + "</td></tr>";
     });
     html += '<div class="wkcard">'
       + '<div class="listhead">'
@@ -3956,9 +3986,9 @@ function renderSheetList() {
       + '<button class="mini red" onclick="delWeekTable(' + i + ')">删除</button>'
       + "</div></div>"
       + '<div class="flds" style="margin-bottom:10px"><div class="fld grow" style="flex:1;min-width:260px"><label>周度目标</label><textarea style="min-height:56px" oninput="setWeekField(' + i + ',\'goal\',this.value)" placeholder="例：稳定成交素材供给，验证3个可复用选题方向">' + esc(rec.goal) + '</textarea></div></div>'
-      + '<div class="scroll"><table class="wk"><thead><tr><th>产出形式</th><th>挂链（条）</th><th>不挂链（条）</th><th>小计（条）</th></tr></thead><tbody>'
+      + '<div class="scroll"><table class="wk"><thead><tr><th>产出形式</th><th>挂链（条）</th><th>不挂链（条）</th><th>小计（条）</th><th>下属剪（自动）</th></tr></thead><tbody>'
       + rows
-      + '<tr class="tot"><td>合计（本周）</td><td id="st' + i + '_l">' + tl + '</td><td id="st' + i + '_n">' + tn + '</td><td id="st' + i + '_s" class="sumcell">' + (tl + tn) + '</td></tr>'
+      + '<tr class="tot"><td>合计（本周）</td><td id="st' + i + '_l">' + tl + '</td><td id="st' + i + '_n">' + tn + '</td><td id="st' + i + '_s" class="sumcell">' + (tl + tn) + '</td><td class="subcell">' + ts + '</td></tr>'
       + "</tbody></table></div>"
       + '<div class="wkdist" id="wd' + i + '">' + weekDistText(rec) + "</div>"
       + '<div class="wkfoot" id="wf' + i + '">' + weekFootText(rec.ws) + "</div>"
@@ -4172,39 +4202,39 @@ function exportWeekCsv(mode, idx) {
 function weekSheetPayload(mode, wsOpt) {
   var ws = wsOpt || mondayOf(weekDoneDay || today()), we = weekEndOf(ws);
   var rec = findWeekTable(ws) || { ws: ws, name: "", account: "", goal: "" };
-  var wg = weekTargetTotals(ws), c = weekCounts(ws, we);
-  var data = [], tl = 0, tn = 0;
+  var wg = weekTargetTotals(ws), split = weekCountsBy(ws, we);
+  var data = [], tl = 0, tn = 0, ts = 0;
   TYPES.forEach(function (t) {
-    var l, n;
-    if (mode === "plan") { l = wg.byType[t].link; n = wg.byType[t].nolink; }
-    else { l = c[t].l; n = c[t].n; }
-    tl += l; tn += n;
-    data.push({ t: t, l: l, n: n, s: l + n });
+    var l, n, su;
+    if (mode === "plan") { l = wg.byType[t].link; n = wg.byType[t].nolink; su = wg.byType[t].sub; }
+    else { l = split.me[t].l; n = split.me[t].n; su = split.sub[t].l + split.sub[t].n; }
+    tl += l; tn += n; ts += su;
+    data.push({ t: t, l: l, n: n, sub: su, s: l + n + su });
   });
   var cap = {
     period: mds(ws) + " ~ " + mds(we) + " · " + weekLabel(ws),
     product: rec.name || "—",
     goal: rec.goal || ("拍摄 " + wg.tot.shoot + " 条 ｜ 剪辑 " + wg.tot.edit + " 条"),
-    shoot: wg.tot.shoot, edit: wg.tot.sum,
+    shoot: wg.tot.shoot, edit: wg.tot.edit,
     account: rec.account || ""
   };
-  return { ws: ws, we: we, rec: rec, rows: data, tl: tl, tn: tn, cap: cap, mode: mode, wg: wg };
+  return { ws: ws, we: we, rec: rec, rows: data, tl: tl, tn: tn, ts: ts, cap: cap, mode: mode, wg: wg };
 }
 function exportWeekSheet(mode, fmt, wsOpt) {
   var p = weekSheetPayload(mode, wsOpt);
   var title = (mode === "plan" ? "周计划表_" : "周完成量_") + p.ws;
   if (fmt === "csv") {
-    var rows = [["周期/周次", "主推品", "周主目标", "内容形式", "挂链（条）", "不挂链（条）", "小计（条）"]];
-    p.rows.forEach(function (r) { rows.push([p.cap.period, p.cap.product, p.cap.goal, r.t, r.l, r.n, r.s]); });
-    rows.push([p.cap.period, p.cap.product, p.cap.goal, "合计（本周）", p.tl, p.tn, p.tl + p.tn]);
-    rows.push([p.cap.period, p.cap.product, p.cap.goal, "拍摄", "", "", p.cap.shoot]);
+    var rows = [["周期/周次", "主推品", "周主目标", "内容形式", "挂链（条）", "不挂链（条）", "下属剪（条）", "小计（条）"]];
+    p.rows.forEach(function (r) { rows.push([p.cap.period, p.cap.product, p.cap.goal, r.t, r.l, r.n, r.sub, r.s]); });
+    rows.push([p.cap.period, p.cap.product, p.cap.goal, "合计（本周）", p.tl, p.tn, p.ts, p.tl + p.tn + p.ts]);
+    rows.push([p.cap.period, p.cap.product, p.cap.goal, "拍摄", p.cap.shoot, "", "", p.cap.shoot]);
     csvDownload(rows, title + "_" + today() + ".csv");
     return;
   }
   var FONT = "'Microsoft YaHei','PingFang SC','Hiragino Sans GB',sans-serif";
   var cols = [
-    { w: 235, t: "周期 / 周次" }, { w: 290, t: "主推品" }, { w: 330, t: "周主目标" },
-    { w: 190, t: "内容形式" }, { w: 150, t: "挂链（条）" }, { w: 150, t: "不挂链（条）" }, { w: 140, t: "小计（条）" }
+    { w: 230, t: "周期 / 周次" }, { w: 275, t: "主推品" }, { w: 320, t: "周主目标" },
+    { w: 180, t: "内容形式" }, { w: 135, t: "挂链（条）" }, { w: 135, t: "不挂链（条）" }, { w: 135, t: "下属剪（条）" }, { w: 130, t: "小计（条）" }
   ];
   var W = 0; cols.forEach(function (c) { W += c.w; });
   var HDR = 92, RH = 70, TOT = 74, SHOOT = 74, H = HDR + RH * p.rows.length + TOT + SHOOT;
@@ -4273,7 +4303,9 @@ function exportWeekSheet(mode, fmt, wsOpt) {
     nx += cols[4].w;
     ctx.fillText(String(r.n), nx + cols[5].w / 2, y + RH / 2);
     nx += cols[5].w;
-    ctx.fillText(String(r.s), nx + cols[6].w / 2, y + RH / 2);
+    ctx.fillText(String(r.sub), nx + cols[6].w / 2, y + RH / 2);
+    nx += cols[6].w;
+    ctx.fillText(String(r.s), nx + cols[7].w / 2, y + RH / 2);
   });
   /* 合计行 */
   var ty = HDR + bodyH;
@@ -4283,14 +4315,15 @@ function exportWeekSheet(mode, fmt, wsOpt) {
   ctx.fillText(TYPES.length + " 类内容形式", tX + cols[3].w / 2, ty + TOT / 2);
   ctx.fillText(String(p.tl), tX + cols[3].w + cols[4].w / 2, ty + TOT / 2);
   ctx.fillText(String(p.tn), tX + cols[3].w + cols[4].w + cols[5].w / 2, ty + TOT / 2);
-  ctx.fillText(String(p.tl + p.tn), tX + cols[3].w + cols[4].w + cols[5].w + cols[6].w / 2, ty + TOT / 2);
+  ctx.fillText(String(p.ts), tX + cols[3].w + cols[4].w + cols[5].w + cols[6].w / 2, ty + TOT / 2);
+  ctx.fillText(String(p.tl + p.tn + p.ts), tX + cols[3].w + cols[4].w + cols[5].w + cols[6].w + cols[7].w / 2, ty + TOT / 2);
   /* 拍摄行 */
   var sy = ty + TOT;
   ctx.fillStyle = "#0f1720"; ctx.fillRect(0, sy, W, SHOOT);
   ctx.fillStyle = "#ffffff"; ctx.font = "bold 24px " + FONT;
   ctx.fillText("拍摄", (c0 + c1 + c2 + cols[3].w) / 2, sy + SHOOT / 2);
-  ctx.fillText("拍" + p.cap.shoot + " + 我剪" + p.cap.edit, tX + cols[3].w + (cols[4].w + cols[5].w) / 2, sy + SHOOT / 2);
-  ctx.fillText(String(p.cap.shoot + p.cap.edit), tX + cols[3].w + cols[4].w + cols[5].w + cols[6].w / 2, sy + SHOOT / 2);
+  ctx.fillText("拍" + p.cap.shoot + " + 剪" + p.cap.edit, tX + cols[3].w + (cols[4].w + cols[5].w + cols[6].w) / 2, sy + SHOOT / 2);
+  ctx.fillText(String(p.cap.shoot + p.cap.edit), tX + cols[3].w + cols[4].w + cols[5].w + cols[6].w + cols[7].w / 2, sy + SHOOT / 2);
   /* 外框 */
   ctx.strokeStyle = "#0f1720"; ctx.lineWidth = 2;
   ctx.strokeRect(1, 1, W - 2, H - 2);
