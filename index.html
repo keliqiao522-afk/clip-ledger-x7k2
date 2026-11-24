@@ -39,7 +39,7 @@ input:focus,select:focus,textarea:focus{border-color:#2563eb;box-shadow:0 0 0 3p
 input[type=number]{width:78px;text-align:center}
 textarea{resize:vertical;min-height:64px;width:100%;line-height:1.7}
 .scroll{overflow-x:auto}
-.shootscroll{height:calc(100vh - 250px);min-height:340px;max-height:calc(100vh - 250px);overflow:auto;border:1px solid #eef1f4;border-radius:10px;background:#fff}
+.shootscroll{height:auto;max-height:none;min-height:0;overflow:visible;border:1px solid #eef1f4;border-radius:10px;background:#fff}
 .shootscroll table.wk{border-collapse:separate;border-spacing:0;table-layout:fixed;width:100%;min-width:880px}
 .shootscroll td input,.shootscroll td textarea{width:100%;box-sizing:border-box}
 .shootscroll thead th{position:sticky;top:0;z-index:20;background:#f7f9fc;padding:9px 8px;text-align:center;font-size:12px;color:#4b5563;font-weight:600;white-space:nowrap;box-shadow:inset 0 -1px 0 #dfe4ec,0 2px 5px rgba(16,24,40,.06)}
@@ -688,8 +688,8 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
 <div class="tabs">
   <button class="tab on" data-pane="prog" onclick="switchTab('prog')">进度总览</button>
   <button class="tab" data-pane="ledger" onclick="switchTab('ledger')">剪辑登记</button>
-  <button class="tab" data-pane="shoot" onclick="switchTab('shoot')">每日计划</button>
-  <button class="tab" data-pane="plan" onclick="switchTab('plan')">周计划</button>
+  <button class="tab" data-pane="shoot" onclick="switchTab('shoot')">拍摄每日计划</button>
+  <button class="tab" data-pane="plan" onclick="switchTab('plan')">拍摄周计划</button>
   <button class="tab" data-pane="sheet" onclick="switchTab('sheet')">周计划表</button>
   <button class="tab" data-pane="result" onclick="switchTab('result')">执行结果</button>
 </div>
@@ -1170,14 +1170,12 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
         <button class="mini red" onclick="clearShootMonth()">清空本月</button>
       </div>
       <div class="legend" style="flex-basis:100%;margin:2px 0 0;line-height:1.9">
-        填写示例（只在这里举例一次）：<b>场地</b> 公司室内 ｜ <b>拍摄明细</b> 测评 1 ✅自剪 + 口播 2 ✅自剪 ｜ <b>当日拍摄</b> 3 ｜ <b>当日剪辑</b> 2 ｜ <b>拍摄款号</b> 7988 × 3（可加多个款号，周计划表和进度总览会自动汇总）
+        填写示例（只在这里举例一次）：<b>场地</b> 公司室内 ｜ <b>拍摄明细</b> 口播 1 + 随拍 8 ｜ <b>当日拍摄</b> 9 ｜ <b>拍摄款号</b> 7988 × 1、6549 × 5（可加多个款号；周计划表和进度总览会自动汇总）
       </div>
     </div>
     <div class="grandline" id="weekGoalLine"></div>
-    <div class="secttl">① 每日剪辑记录 <span>剪辑类型 × 我 / A剪辑（A剪辑＝下属），合计再按项目分 YH / XC；目标自动跟本周周计划走</span></div>
-    <div id="dayEditBox"></div>
-    <div class="secttl">② 拍摄安排 <span>场地 / 拍什么 / 拍几条 / 款号</span></div>
-    <div class="scroll shootscroll" style="height:auto;max-height:300px;min-height:0">
+    <div class="secttl">本周拍摄安排 <span>场地 / 拍什么 / 拍几条 / 款号，往后排到整月，页面整体滚动，不再卡小滚轮</span></div>
+    <div class="scroll shootscroll">
       <table class="wk" style="min-width:0">
         <colgroup><col style="width:58px"><col style="width:96px"><col style="width:130px"><col><col style="width:84px"><col style="width:160px"></colgroup>
         <thead><tr><th>星期</th><th>日期</th><th>场地</th><th>拍摄明细</th><th>当日拍摄</th><th>拍摄款号</th></tr></thead>
@@ -4625,20 +4623,10 @@ function shootWeekRecText() {
     for (var i = 0; i < cs.length; i++) { if (String(cs[i].c || "").trim()) { codes++; codeQty += num(cs[i].q); } }
     cur.setDate(cur.getDate() + 1);
   }
-  var done = 0, doneLink = 0, doneNoLink = 0;
-  data.forEach(function (r) {
-    if (r.date < start || r.date > end) return;
-    TYPES.forEach(function (t) { var it = r.items[t]; if (it) { doneLink += (it.link || 0); doneNoLink += (it.nolink || 0); } });
-  });
-  done = doneLink + doneNoLink;
-  var base = planEdit > 0 ? planEdit : planQty;
-  var pct = base > 0 ? Math.round(Math.min(100, done / base * 100)) : 0;
-  var tail = base > done ? "　还差 <b>" + (base - done) + "</b> 条没剪" : (base > 0 ? "　已剪满计划" : "");
-  el.innerHTML = "🗓 " + (span.ranged ? ("这一周（" + start + " ~ " + end + "，共 " + days + " 天）") : ("本月（" + start + " ~ " + end + "，共 " + days + " 天）")) + "：已排 " + filled + " 天"
+  el.innerHTML = "🗓 " + (span.ranged ? ("这一周（" + start + " ~ " + end + "，共 " + days + " 天）") : ("本月（" + start + " ~ " + end + "，共 " + days + " 天）"))
+    + "：已排 <b>" + filled + "</b> 天 · 排了 <b>" + planShot + "</b> 条"
     + (planQty ? "　文案计划 <b>" + planQty + "</b> 条" : "")
-    + "　计划拍摄 <b>" + planShot + "</b> 条 · 计划剪辑 <b>" + planEdit + "</b> 条"
-    + "　款号 <b>" + codes + "</b> 个 / <b>" + codeQty + "</b> 条　｜　台账实际已剪 <b>" + done + "</b> 条"
-    + "（挂链 " + doneLink + " / 不挂链 " + doneNoLink + "）　完成 <b>" + pct + "%</b>" + tail;
+    + "　款号 <b>" + codes + "</b> 个 / <b>" + codeQty + "</b> 条";
 }
 function selShootWeek() {  var mon = mondayOf(today());
   var d = new Date(mon + "T00:00:00");
@@ -4881,13 +4869,20 @@ function renderShootPlan() {
   var wdd = start.getDay() || 7;
   start.setDate(start.getDate() - wdd + 1);
 
-  /* 顶部一行：本周总目标（自动跟着周计划/月度目标走） */
-  var wt0 = weekPlanTargets(mondayOf(today()));
+  /* 顶部一行：本周拍摄目标（自动跟月度目标 / 拍摄周计划走） */
+  var wsNow = mondayOf(today());
+  var shootTgt = weekTargetTotals(wsNow).tot.shoot;
+  var shootArr = 0;
+  for (var qi = 0; qi < 7; qi++) {
+    var dqi = new Date(wsNow + "T00:00:00"); dqi.setDate(dqi.getDate() + qi);
+    var rqi = shootPlan[ymd(dqi)] || {};
+    shootArr += num(rqi.shot);
+  }
   var line = document.getElementById("weekGoalLine");
   if (line) {
-    line.innerHTML = "本周总目标（自动跟周计划走）：我 <b>" + wt0.me + "</b> ｜ A剪辑（下属）<b>" + wt0.sub + "</b> ｜ 合计 <b>"
-      + (wt0.me + wt0.sub) + "</b> ｜ YH <b>" + wt0.yh + "</b> · XC <b>" + wt0.xc + "</b>"
-      + '　<span style="color:#8792a2">改周计划或月度目标，这里和下面每天的目标都会自动变</span>';
+    line.innerHTML = "本周拍摄目标（自动跟月度目标走）：要拍 <b>" + shootTgt + "</b> 条 ｜ 已排 <b>" + shootArr
+      + "</b> 条 ｜ 还差 <b style='color:" + ((shootTgt - shootArr) > 0 ? "#dc2626" : "#16a34a") + "'>" + (shootTgt - shootArr) + "</b> 条"
+      + '　<span style="color:#8792a2">本周期：' + mds(wsNow) + " ~ " + mds(weekEndOf(wsNow)) + '；改月度目标这里自动跟着变</span>';
   }
 
   var hShot = "", hEdit = "";
@@ -4902,7 +4897,6 @@ function renderShootPlan() {
       + " – " + (he.getMonth() + 1) + "/" + he.getDate() + "）</div>";
     hShot += '<tr class="wkweek"><td colspan="6"><div class="wkrow"><span>第 ' + weekLabel(wkStart) + ' 周（' + (hs.getMonth() + 1) + "/" + hs.getDate() + " – " + (he.getMonth() + 1) + "/" + he.getDate() + "）</span>"
       + '<button onclick="exportShootImage(\'' + wkStart + '\')" title="只导出这一周的图片">⬇ 导出这一周图片</button></div></td></tr>';
-    hEdit += wkLine;
     for (var i = 0; i < 7; i++) {
       var d = new Date(ws2);
       d.setDate(d.getDate() + i);
@@ -4914,25 +4908,6 @@ function renderShootPlan() {
       var ws = mondayOf(ds), tg = dayTgtOf(ws, ds), done = dayDoneOf(ds);
       var tq = tg.me + tg.sub;
       var rows = "";
-      TYPES.forEach(function (t, ti) {
-        var q = dayEdOf(ds, t, "me") + dayEdOf(ds, t, "sub");
-        var left = (tg.byType[t].me + tg.byType[t].sub) - q;
-        rows += "<tr><td>" + t + "</td>"
-          + '<td><input type="number" min="0" style="width:56px" value="' + (dayEdOf(ds, t, "me") || "") + '" placeholder="0" oninput="setDayEd(\'' + ds + '\',\'' + t + '\',\'me\',this.value)"></td>'
-          + '<td class="subcell"><input type="number" min="0" class="subin" style="width:56px" value="' + (dayEdOf(ds, t, "sub") || "") + '" placeholder="0" oninput="setDayEd(\'' + ds + '\',\'' + t + '\',\'sub\',this.value)"></td>'
-          + '<td class="sumcell" data-q="' + ti + '">' + q + "</td>"
-          + '<td data-yh="' + ti + '">' + Math.round(q / 2) + "</td>"
-          + '<td class="subcell" data-xc="' + ti + '">' + (q - Math.round(q / 2)) + "</td></tr>";
-      });
-      hEdit += '<div class="daycard' + selCls + '" data-day="' + ds + '">'
-        + '<div class="daytitle"><span class="dd">' + WDS[d.getDay()] + " · " + (d.getMonth() + 1) + "/" + d.getDate() + "</span>"
-        + '<span class="daydone">今日目标：我 <b>' + tg.me + "</b> · A剪辑 <b>" + tg.sub + "</b> · 合计 <b>" + tq + "</b>"
-        + " ｜ 已记：我 <b>" + done.me + "</b> · A剪辑 <b>" + done.sub + "</b> · 合计 <b>" + (done.me + done.sub) + "</b>"
-        + " ｜ 剩余 <b style='color:" + ((tq - done.me - done.sub) > 0 ? "#dc2626" : "#16a34a") + "'>" + (tq - done.me - done.sub) + "</b></span></div>"
-        + '<table class="wk" style="min-width:0"><thead><tr><th>剪辑类型</th><th>我剪（条）</th><th>A剪辑（条）<br><span style="font-weight:400">（下属）</span></th><th>合计（条）</th><th>YH（条）</th><th>XC（条）<br><span style="font-weight:400">（＝合计−YH）</span></th></tr></thead><tbody>'
-        + rows
-        + '<tr class="tot"><td>合计</td><td>' + done.me + '</td><td class="subcell">' + done.sub + '</td><td class="sumcell">' + (done.me + done.sub) + '</td><td>' + Math.round((done.me + done.sub) / 2) + '</td><td class="subcell">' + ((done.me + done.sub) - Math.round((done.me + done.sub) / 2)) + "</td></tr>"
-        + "</tbody></table></div>";
       /* 拍摄表那一行 */
       hShot += "<tr" + (inSel ? ' class="selday"' : "") + ' id="sd-' + ds + '">'
         + "<td>" + WDS[d.getDay()] + "</td><td>" + ds + "</td>"
@@ -4981,13 +4956,11 @@ function shootSummaryText() {
     sEdit += subTxt ? guessEditN(subTxt) : num(oldSub.editN);
     cur.setDate(cur.getDate() + 1);
   }
-  editN += sEdit;
-  var byPerson = "　｜ 我：拍 " + mShot + " / 剪 " + mEdit + "　A（下属）：剪 " + sEdit;
   var txt = "";
   if (span.ranged) {
-    txt = "已选中 " + n + " 天（" + ymd(span.s) + " ~ " + ymd(span.e) + "），已填写 " + filled + " 格，拍摄 " + shot + " 条 / 剪辑 " + editN + " 条" + byPerson;
+    txt = "已选中 " + n + " 天（" + ymd(span.s) + " ~ " + ymd(span.e) + "），已填 " + filled + " 天，这次拍摄共 " + shot + " 条";
   } else {
-    txt = span.s.getFullYear() + "年" + (span.s.getMonth() + 1) + "月共 " + n + " 天，已填写 " + filled + " 格，拍摄 " + shot + " 条 / 剪辑 " + editN + " 条" + byPerson;
+    txt = span.s.getFullYear() + "年" + (span.s.getMonth() + 1) + "月共 " + n + " 天，已填 " + filled + " 天，拍摄共 " + shot + " 条";
   }
   $("shootSummary").textContent = txt;
 }
