@@ -5733,28 +5733,26 @@ function rowMe(rec, t) {
   return Math.max(0, Math.min(q, num(r.me)));
 }
 function rowSub(rec, t) { return Math.max(0, rowQ(rec, t) - rowMe(rec, t)); }
-/* 我·YH 取值范围：0 ~ min(我, YH)，且 我·XC≤XC（即 我YH ≥ 我−XC）。这样 A 的 YH/XC 都不会变成负数 */
-function meYRange(rec, t) {
-  var me = rowMe(rec, t), yh = rowYh(rec, t), xc = rowXc(rec, t);
-  var lo = Math.max(0, me - xc), hi = Math.min(me, yh);
-  if (lo > hi) lo = hi;
-  return { lo: lo, hi: hi };
-}
+/* 关系：我·XC＝我−我·YH；A剪辑＝小计−我；A·XC＝A剪辑−A·YH；项目 YH＝我·YH＋A·YH，XC＝小计−YH */
 function rowMeY(rec, t) {
-  var r = rowOf(rec, t), q = rowQ(rec, t), me = rowMe(rec, t), yh = rowYh(rec, t), rg = meYRange(rec, t);
-  var v = (r.meY === null || r.meY === "" || r.meY === undefined) ? (q > 0 ? Math.round(me * yh / q) : 0) : num(r.meY);
-  if (v < rg.lo) v = rg.lo;
-  if (v > rg.hi) v = rg.hi;
+  var r = rowOf(rec, t), q = rowQ(rec, t), me = rowMe(rec, t);
+  var base = (r.yh === null || r.yh === "" || r.yh === undefined) ? Math.round(q / 2) : num(r.yh);
+  var v = (r.meY === null || r.meY === "" || r.meY === undefined) ? (q > 0 ? Math.round(me * base / q) : 0) : num(r.meY);
+  if (v < 0) v = 0;
+  if (v > me) v = me;
   return v;
 }
 function rowMeX(rec, t) { return Math.max(0, rowMe(rec, t) - rowMeY(rec, t)); }
-function rowSubY(rec, t) { return Math.max(0, rowYh(rec, t) - rowMeY(rec, t)); }
-function rowSubX(rec, t) { return Math.max(0, rowSub(rec, t) - rowSubY(rec, t)); }
-function rowYh(rec, t) {
-  var r = rowOf(rec, t), q = rowQ(rec, t);
-  if (r.yh === null || r.yh === "" || r.yh === undefined) return Math.round(q / 2);
-  return Math.max(0, Math.min(q, num(r.yh)));
+function rowSubY(rec, t) {
+  var r = rowOf(rec, t), q = rowQ(rec, t), meY = rowMeY(rec, t), sub = rowSub(rec, t);
+  var base = (r.yh === null || r.yh === "" || r.yh === undefined) ? Math.round(q / 2) : num(r.yh);
+  var v = (r.subY === null || r.subY === "" || r.subY === undefined) ? Math.max(0, base - meY) : num(r.subY);
+  if (v < 0) v = 0;
+  if (v > sub) v = sub;
+  return v;
 }
+function rowSubX(rec, t) { return Math.max(0, rowSub(rec, t) - rowSubY(rec, t)); }
+function rowYh(rec, t) { return Math.min(rowQ(rec, t), rowMeY(rec, t) + rowSubY(rec, t)); }
 function rowXc(rec, t) { return Math.max(0, rowQ(rec, t) - rowYh(rec, t)); }
 function weekRowTotals(rec) {
   var o = { l: 0, n: 0, q: 0, me: 0, sub: 0, yh: 0, xc: 0, meY: 0, meX: 0, subY: 0, subX: 0 };
@@ -5795,9 +5793,9 @@ function refreshWeekTable(i) {
     box.innerHTML = "一周总量 <b>" + (W || "—") + "</b> ｜ 小计合计 <b>" + g.q + "</b>"
       + (okW ? " ✅" : ' <span style="color:#dc2626">（差 ' + (W - g.q) + "）</span>")
       + " ｜ 我 <b>" + g.me + "</b> ＋ A剪辑 <b>" + g.sub + "</b> ＝ <b>" + (g.me + g.sub) + "</b>" + (okMS ? " ✅" : ' <span style="color:#dc2626">✗</span>')
-      + " ｜ YH <b>" + g.yh + "</b> ＋ XC <b>" + g.xc + "</b> ＝ <b>" + (g.yh + g.xc) + "</b>" + (okYX ? " ✅" : ' <span style="color:#dc2626">✗</span>')
-      + " ｜ 我 YH <b>" + g.meY + "</b> ＋ 我 XC <b>" + g.meX + "</b> ＝ <b>" + (g.meY + g.meX) + "</b>" + ((g.meY + g.meX) === g.me ? " ✅" : ' <span style="color:#dc2626">✗</span>')
-      + " ｜ A剪辑 YH <b>" + g.subY + "</b> ＋ A XC <b>" + g.subX + "</b> ＝ <b>" + (g.subY + g.subX) + "</b>" + ((g.subY + g.subX) === g.sub ? " ✅" : ' <span style="color:#dc2626">✗</span>');
+      + " ｜ 我·YH <b>" + g.meY + "</b> ＋ 我·XC <b>" + g.meX + "</b> ＝ 我（条）<b>" + g.me + "</b>" + ((g.meY + g.meX) === g.me ? " ✅" : ' <span style="color:#dc2626">✗</span>')
+      + " ｜ A·YH <b>" + g.subY + "</b> ＋ A·XC <b>" + g.subX + "</b> ＝ A剪辑（条）<b>" + g.sub + "</b>" + ((g.subY + g.subX) === g.sub ? " ✅" : ' <span style="color:#dc2626">✗</span>')
+      + " ｜ 项目 YH <b>" + g.yh + "</b> ＋ XC <b>" + g.xc + "</b> ＝ 小计 <b>" + (g.yh + g.xc) + "</b>" + (okYX ? " ✅" : ' <span style="color:#dc2626">✗</span>');
   }
   saveWeekTables(true);
 }
@@ -5844,22 +5842,23 @@ function setRowXc(i, t, v) {
 }
 function setRowMeY(i, t, v) {
   var rec = weekTables[i]; if (!rec) return;
-  var r = rowOf(rec, t), rg = meYRange(rec, t);
-  var v2 = (String(v).trim() === "") ? rg.hi : num(v);
-  if (v2 < rg.lo) v2 = rg.lo;
-  if (v2 > rg.hi) v2 = rg.hi;
+  var r = rowOf(rec, t), me = rowMe(rec, t);
+  var v2 = (String(v).trim() === "") ? 0 : num(v);
+  if (v2 > me) v2 = me;
   r.meY = v2;
+  r.yh = rowMeY(rec, t) + rowSubY(rec, t);
+  r.xc = Math.max(0, rowQ(rec, t) - r.yh);
   refreshWeekRow(i, t);
   refreshWeekTable(i);
 }
 function setRowSubY(i, t, v) {
   var rec = weekTables[i]; if (!rec) return;
-  var r = rowOf(rec, t), q = rowQ(rec, t), meY = rowMeY(rec, t), sub = rowSub(rec, t);
-  var v2 = (String(v).trim() === "") ? Math.max(0, sub - Math.round((q - sub) * 0)) : num(v);
-  if (v2 < 0) v2 = 0;
+  var r = rowOf(rec, t), sub = rowSub(rec, t);
+  var v2 = (String(v).trim() === "") ? 0 : num(v);
   if (v2 > sub) v2 = sub;
-  r.yh = Math.min(q, meY + v2);
-  r.xc = q - r.yh;
+  r.subY = v2;
+  r.yh = rowMeY(rec, t) + rowSubY(rec, t);
+  r.xc = Math.max(0, rowQ(rec, t) - r.yh);
   refreshWeekRow(i, t);
   refreshWeekTable(i);
 }
@@ -6009,7 +6008,7 @@ function exportWeekSheet(mode, fmt, wsOpt, variant) {
     var meY = (r.meY === undefined || r.meY === null || r.meY === "") ? (q > 0 ? Math.round(me * yh / q) : 0) : Math.min(me, num(r.meY));
     r.meY = meY; r.meX = Math.max(0, me - meY);
     /* A 的 YH＝YH总量−我YH；A 的 XC＝A总量−A的YH（跟你给的公式一致） */
-    r.subY = Math.max(0, yh - meY);
+    r.subY = (r.subY === undefined || r.subY === null || r.subY === "") ? Math.max(0, yh - meY) : Math.min(num(r.sub), num(r.subY));
     r.sub = (r.sub === undefined || r.sub === null || r.sub === "") ? Math.max(0, q - me) : num(r.sub);
     r.subX = Math.max(0, r.sub - r.subY);
     r.compY = meY + r.subY; r.compX = r.meX + r.subX;
