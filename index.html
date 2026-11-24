@@ -1161,6 +1161,7 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
         填写示例（只在这里举例一次）：<b>场地</b> 公司室内 ｜ <b>拍摄明细</b> 测评 1 ✅自剪 + 口播 2 ✅自剪 ｜ <b>当日拍摄</b> 3 ｜ <b>当日剪辑</b> 2 ｜ <b>拍摄款号</b> 7988 × 3（可加多个款号，周计划表和进度总览会自动汇总）
       </div>
     </div>
+      <div id="dayTgtBox" style="margin:4px 0 12px"></div>
     <div class="scroll shootscroll">
       <table class="wk">
         <colgroup><col style="width:58px"><col style="width:94px"><col style="width:100px"><col><col style="width:72px"><col style="width:72px"><col style="width:120px"><col style="width:120px"><col style="width:140px"></colgroup>
@@ -4750,6 +4751,60 @@ function refreshUrlChips(ta) {
   box.setAttribute("data-sig", sig);
   box.innerHTML = urlChips(urls, "🔗 打开");
 }
+function round1(x) { return Math.round(x * 10) / 10; }
+function weekDailyTargets(ws) {
+  var wg = weekTargetTotals(ws), w = wg.byType, out = [];
+  for (var k = 0; k < 7; k++) out.push({ me: 0, sub: 0 });
+  TYPES.forEach(function (t) {
+    var me = w[t].sum || 0, sub = w[t].sub || 0;
+    var meB = Math.floor(me / 7), meR = me % 7, subB = Math.floor(sub / 7), subR = sub % 7;
+    for (var i = 0; i < 7; i++) {
+      out[i].me += meB + (i < meR ? 1 : 0);
+      out[i].sub += subB + (i < subR ? 1 : 0);
+    }
+  });
+  return out;
+}
+function renderDayTargets() {
+  var box = $("dayTgtBox"); if (!box) return;
+  var ws = mondayOf(shootFrom || today()), we = weekEndOf(ws);
+  var wg = weekTargetTotals(ws), wt = wg.tot, w = wg.byType;
+  var days = weekDailyTargets(ws);
+  var html = "";
+  html += '<div class="listhead"><h2>本周剪辑目标（按类型 · 我 / A剪辑）</h2>'
+    + '<span class="legend" style="margin:0">' + mds(ws) + " ~ " + mds(we) + " ｜ 合计就是本周的周计划量</span></div>";
+  html += '<div class="scroll"><table class="wk"><thead><tr><th>内容形式</th><th>我剪（本周）</th><th>A剪辑（本周）</th><th>合计</th><th>每天均分（我 / A）</th></tr></thead><tbody>';
+  TYPES.forEach(function (t) {
+    var g = w[t];
+    html += "<tr><td>" + t + '</td><td class="sumcell">' + g.sum + '</td><td class="subcell">' + g.sub
+      + "</td><td>" + (g.sum + g.sub) + '</td><td class="legend" style="text-align:center">' + round1((g.sum || 0) / 7) + " / " + round1((g.sub || 0) / 7) + "</td></tr>";
+  });
+  html += '<tr class="tot"><td>合计（本周）</td><td>' + wt.sum + '</td><td class="subcell">' + wt.sub + "</td><td>" + (wt.sum + wt.sub)
+    + '</td><td class="legend" style="text-align:center">' + round1(wt.sum / 7) + " / " + round1(wt.sub / 7) + "</td></tr></tbody></table></div>";
+
+  html += '<div class="scroll" style="margin-top:12px"><table class="wk"><thead><tr><th>日期</th><th>我剪目标</th><th>A剪辑目标</th><th>目标合计</th><th>我已完成</th><th>A已完成</th><th>剩余</th></tr></thead><tbody>';
+  var tm = 0, tsub = 0, dm = 0, dsub = 0;
+  for (var i = 0; i < 7; i++) {
+    var d = new Date(ws + "T00:00:00");
+    d.setDate(d.getDate() + i);
+    var ds = ymd(d), c = weekCountsBy(ds, ds);
+    var cMe = 0, cSub = 0;
+    TYPES.forEach(function (t) { cMe += c.me[t].l + c.me[t].n; cSub += c.sub[t].l + c.sub[t].n; });
+    var tmI = days[i].me, tsI = days[i].sub, sum = tmI + tsI;
+    tm += tmI; tsub += tsI; dm += cMe; dsub += cSub;
+    var left = Math.max(0, sum - cMe - cSub);
+    html += "<tr><td>" + ds + wdHtml(ds) + "</td>"
+      + '<td class="tgcell">' + tmI + '</td><td class="tgcell subcell">' + tsI + '</td><td class="tgcell">' + sum + "</td>"
+      + "<td>" + cMe + '</td><td class="subcell">' + cSub + "</td>"
+      + '<td class="' + (left > 0 ? "leftcell" : "sumcell") + '">' + left + "</td></tr>";
+  }
+  html += '<tr class="tot"><td>合计（本周）</td><td>' + tm + '</td><td class="subcell">' + tsub + "</td><td>" + (tm + tsub)
+    + "</td><td>" + dm + '</td><td class="subcell">' + dsub + "</td><td>" + Math.max(0, (tm + tsub) - (dm + dsub)) + "</td></tr>"
+    + "</tbody></table></div>";
+  html += '<p class="legend" style="margin:8px 0 0">规则：周的「我剪 / A剪辑」= 月度目标按当月天数摊到本周（周计划表里手改过下属剪的以手改为准），再按 7 天均分（除不尽的零头排在周一~）；已完成按剪辑登记的真实条数；剩余＝目标−已完成。</p>';
+  box.innerHTML = html;
+}
+
 function renderShootPlan() {
   var first = shootMonthBase(), y = first.getFullYear(), m = first.getMonth();
   $("shootMonthPick").value = shootMonthStr;
@@ -4813,6 +4868,7 @@ function renderShootPlan() {
     var row = document.getElementById("sd-" + shootFrom);
     if (row && row.scrollIntoView) row.scrollIntoView({ block: "center" });
   }
+  renderDayTargets();
 }
 function shootSummaryText() {
   var span = shootSpan(), n = 0, filled = 0, shot = 0, editN = 0;
