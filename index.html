@@ -5733,10 +5733,19 @@ function rowMe(rec, t) {
   return Math.max(0, Math.min(q, num(r.me)));
 }
 function rowSub(rec, t) { return Math.max(0, rowQ(rec, t) - rowMe(rec, t)); }
+/* 我·YH 取值范围：0 ~ min(我, YH)，且 我·XC≤XC（即 我YH ≥ 我−XC）。这样 A 的 YH/XC 都不会变成负数 */
+function meYRange(rec, t) {
+  var me = rowMe(rec, t), yh = rowYh(rec, t), xc = rowXc(rec, t);
+  var lo = Math.max(0, me - xc), hi = Math.min(me, yh);
+  if (lo > hi) lo = hi;
+  return { lo: lo, hi: hi };
+}
 function rowMeY(rec, t) {
-  var r = rowOf(rec, t), q = rowQ(rec, t), me = rowMe(rec, t), yh = rowYh(rec, t);
-  if (r.meY === null || r.meY === "" || r.meY === undefined) return q > 0 ? Math.min(me, Math.round(me * yh / q)) : 0;
-  return Math.max(0, Math.min(me, num(r.meY)));
+  var r = rowOf(rec, t), q = rowQ(rec, t), me = rowMe(rec, t), yh = rowYh(rec, t), rg = meYRange(rec, t);
+  var v = (r.meY === null || r.meY === "" || r.meY === undefined) ? (q > 0 ? Math.round(me * yh / q) : 0) : num(r.meY);
+  if (v < rg.lo) v = rg.lo;
+  if (v > rg.hi) v = rg.hi;
+  return v;
 }
 function rowMeX(rec, t) { return Math.max(0, rowMe(rec, t) - rowMeY(rec, t)); }
 function rowSubY(rec, t) { return Math.max(0, rowYh(rec, t) - rowMeY(rec, t)); }
@@ -5785,7 +5794,8 @@ function refreshWeekTable(i) {
       + (okW ? " ✅" : ' <span style="color:#dc2626">（差 ' + (W - g.q) + "）</span>")
       + " ｜ 我 <b>" + g.me + "</b> ＋ A剪辑 <b>" + g.sub + "</b> ＝ <b>" + (g.me + g.sub) + "</b>" + (okMS ? " ✅" : ' <span style="color:#dc2626">✗</span>')
       + " ｜ YH <b>" + g.yh + "</b> ＋ XC <b>" + g.xc + "</b> ＝ <b>" + (g.yh + g.xc) + "</b>" + (okYX ? " ✅" : ' <span style="color:#dc2626">✗</span>')
-      + " ｜ 我 YH <b>" + g.meY + "</b> ＋ 我 XC <b>" + g.meX + "</b> ＝ <b>" + (g.meY + g.meX) + "</b>" + ((g.meY + g.meX) === g.me ? " ✅" : ' <span style="color:#dc2626">✗</span>');
+      + " ｜ 我 YH <b>" + g.meY + "</b> ＋ 我 XC <b>" + g.meX + "</b> ＝ <b>" + (g.meY + g.meX) + "</b>" + ((g.meY + g.meX) === g.me ? " ✅" : ' <span style="color:#dc2626">✗</span>')
+      + " ｜ A剪辑 YH <b>" + g.subY + "</b> ＋ A XC <b>" + g.subX + "</b> ＝ <b>" + (g.subY + g.subX) + "</b>" + ((g.subY + g.subX) === g.sub ? " ✅" : ' <span style="color:#dc2626">✗</span>');
   }
   saveWeekTables(true);
 }
@@ -5832,9 +5842,10 @@ function setRowXc(i, t, v) {
 }
 function setRowMeY(i, t, v) {
   var rec = weekTables[i]; if (!rec) return;
-  var r = rowOf(rec, t), me = rowMe(rec, t);
-  var v2 = (String(v).trim() === "") ? me : num(v);
-  if (v2 > me) v2 = me;
+  var r = rowOf(rec, t), rg = meYRange(rec, t);
+  var v2 = (String(v).trim() === "") ? rg.hi : num(v);
+  if (v2 < rg.lo) v2 = rg.lo;
+  if (v2 > rg.hi) v2 = rg.hi;
   r.meY = v2;
   refreshWeekRow(i, t);
   refreshWeekTable(i);
@@ -5948,7 +5959,7 @@ function renderSheetList() {
 /* ===== 导出 ===== */
 function weekPlanPayload(ws) {
   var rec = findWeekTable(ws) || { ws: ws, name: "", account: "", goal: "", rows: {} };
-  var rows = [], tot = { l: 0, n: 0, q: 0, me: 0, sub: 0, yh: 0, xc: 0 };
+  var rows = [], tot = { l: 0, n: 0, q: 0, me: 0, sub: 0, yh: 0, xc: 0, meY: 0, meX: 0, subY: 0, subX: 0 };
   TYPES.forEach(function (t) {
     var r = rowOf(rec, t);
     var o = { t: t, l: r.l || 0, n: r.n || 0, q: rowQ(rec, t), me: rowMe(rec, t), sub: rowSub(rec, t), yh: rowYh(rec, t), xc: rowXc(rec, t),
@@ -5984,9 +5995,11 @@ function exportWeekSheet(mode, fmt, wsOpt, variant) {
     var q = num(r.q), me = num(r.me), yh = num(r.yh), xc = num(r.xc);
     var meY = (r.meY === undefined || r.meY === null || r.meY === "") ? (q > 0 ? Math.round(me * yh / q) : 0) : Math.min(me, num(r.meY));
     r.meY = meY; r.meX = Math.max(0, me - meY);
-    r.subY = (r.subY === undefined || r.subY === null || r.subY === "") ? Math.max(0, yh - meY) : num(r.subY);
-    r.subX = (r.subX === undefined || r.subX === null || r.subX === "") ? Math.max(0, xc - r.meX) : num(r.subX);
-    r.sub = r.subY + r.subX;
+    /* A 的 YH＝YH总量−我YH；A 的 XC＝A总量−A的YH（跟你给的公式一致） */
+    r.subY = Math.max(0, yh - meY);
+    r.sub = (r.sub === undefined || r.sub === null || r.sub === "") ? Math.max(0, q - me) : num(r.sub);
+    r.subX = Math.max(0, r.sub - r.subY);
+    r.compY = meY + r.subY; r.compX = r.meX + r.subX;
     r.xc = xc;
     return r;
   }
