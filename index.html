@@ -85,6 +85,8 @@ td,th{word-break:break-word;overflow-wrap:break-word}
 .mini.red{background:#fef2f2;color:#dc2626}
 .mini.blue{background:#eff6ff;color:#2563eb}
 .mini.green{background:#ecfdf3;color:#059669}
+.secttl{margin:14px 0 6px;font-size:13.5px;font-weight:700;color:#0f1720;padding-left:8px;border-left:3px solid #2563eb}
+.secttl span{font-weight:400;color:#8792a2;font-size:12px;margin-left:6px}
 .grandline{margin:2px 0 8px;padding:8px 10px;background:#f5f8ff;border:1px solid #dfe8ff;border-radius:8px;font-size:12.5px;color:#374151}
 .prblock{margin:8px 0 14px;border:1px solid #e6eaf1;border-radius:10px;padding:8px 10px;background:#fbfcfe}
 .prhead{display:flex;align-items:center;gap:8px;font-size:12px;color:#374151;font-weight:600;margin:2px 0 6px}
@@ -1167,11 +1169,28 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
       </div>
     </div>
       <div id="dayTgtBox" style="margin:4px 0 12px"></div>
-    <div class="scroll shootscroll">
-      <table class="wk">
-        <colgroup><col style="width:58px"><col style="width:94px"><col style="width:100px"><col><col style="width:72px"><col style="width:72px"><col style="width:120px"><col style="width:120px"><col style="width:140px"></colgroup>
-        <thead><tr><th>星期</th><th>日期</th><th>场地</th><th>拍摄明细</th><th>当日拍摄</th><th>当日剪辑</th><th>当日剪辑任务</th><th>A剪辑任务</th><th title="款号 × 条数，可点「＋ 加款号」加多个">拍摄款号</th></tr></thead>
-        <tbody id="shootBody"></tbody>
+    <div class="secttl">① 拍摄板块 <span>场地 / 拍什么 / 拍几条 / 款号</span></div>
+    <div class="scroll shootscroll" style="height:auto;max-height:320px;min-height:0">
+      <table class="wk" style="min-width:0">
+        <colgroup><col style="width:58px"><col style="width:94px"><col style="width:120px"><col><col style="width:84px"><col style="width:150px"></colgroup>
+        <thead><tr><th>星期</th><th>日期</th><th>场地</th><th>拍摄明细</th><th>当日拍摄</th><th title="款号 × 条数，可点「＋ 加款号」加多个">拍摄款号</th></tr></thead>
+        <tbody id="shootBodyShot"></tbody>
+      </table>
+    </div>
+    <div class="secttl">② 剪辑板块 <span>我剪几条 / A剪辑几条 / 剪什么</span></div>
+    <div class="scroll shootscroll" style="height:auto;max-height:320px;min-height:0">
+      <table class="wk" style="min-width:0">
+        <colgroup><col style="width:58px"><col style="width:94px"><col style="width:92px"><col style="width:92px"><col><col></colgroup>
+        <thead><tr><th>星期</th><th>日期</th><th>我剪（条）</th><th>A剪辑（条）</th><th>剪辑任务（我）</th><th>A剪辑任务</th></tr></thead>
+        <tbody id="shootBodyEdit"></tbody>
+      </table>
+    </div>
+    <div class="secttl">③ 我的个人每日计划 <span>拍什么、剪什么，一天一行</span></div>
+    <div class="scroll" style="max-height:none">
+      <table class="wk" style="min-width:0">
+        <colgroup><col style="width:58px"><col style="width:96px"><col><col style="width:78px"><col style="width:78px"><col style="width:78px"></colgroup>
+        <thead><tr><th>星期</th><th>日期</th><th>拍摄安排</th><th>拍几条</th><th>我剪几条</th><th>A剪几条</th></tr></thead>
+        <tbody id="shootBodyMine"></tbody>
       </table>
     </div>
   </div>
@@ -4422,9 +4441,33 @@ function saveShoot(now) {  clearTimeout(shootTimer);
 }
 function shootSet(date, k, v) {
   if (!shootPlan[date]) shootPlan[date] = { place: "", detail: "", shot: 0, edit: "", editN: 0 };
-  shootPlan[date][k] = v;
+  var rec = shootPlan[date];
+  if (k === "subN") {
+    rec.subN = (String(v).trim() === "" ? null : num(v));
+    saveShoot();
+    refreshMineRow(date);
+    return;
+  }
+  rec[k] = v;
+  if (k === "subEdit") rec.subN = (String(v).trim() === "" ? null : guessEditN(v));
   saveShoot();
-  if (k === "shot" || k === "editN") { shootSummaryText(); shootWeekRecText(); }
+  if (k === "shot" || k === "editN" || k === "subEdit" || k === "place" || k === "detail") {
+    shootSummaryText(); shootWeekRecText(); refreshMineRow(date);
+  }
+}
+/* 我＋A 这一行改了，同步「我的个人每日计划」那一行 */
+function refreshMineRow(ds) {
+  var rec = shootPlan[ds] || {};
+  var oldSub = shootPlan[ds + "#sub"] || {};
+  var subTxt = (rec.subEdit != null && rec.subEdit !== "") ? rec.subEdit : (oldSub.edit || "");
+  var subN = (rec.subN != null && rec.subN !== "") ? num(rec.subN) : (subTxt ? guessEditN(subTxt) : num(oldSub.editN));
+  var tr = document.querySelector('#shootBodyMine tr[data-d="' + ds + '"]');
+  if (!tr) return;
+  var planTxt = ((rec.place || "").trim() + (rec.place && rec.detail ? " · " : "") + (rec.detail || "").trim()) || "—";
+  tr.children[2].textContent = planTxt;
+  tr.children[3].textContent = num(rec.shot) ? rec.shot : "—";
+  tr.children[4].textContent = num(rec.editN) ? rec.editN : "—";
+  tr.children[5].textContent = subN ? subN : "—";
 }
 
 /* ===== 每日计划里的「拍摄款号」（款号 × 条数），原来在周计划表填，现在按天填 ===== */
@@ -4768,7 +4811,7 @@ function renderShootPlan() {
   var start = new Date(span.s);
   var wdd = start.getDay() || 7;
   start.setDate(start.getDate() - wdd + 1);
-  var html = "", n = 0, filled = 0, weekNo = 1;
+  var hShot = "", hEdit = "", hMine = "", weekNo = 1;
   var cur = new Date(start);
   while (cur <= span.e) {
     var ws2 = new Date(cur), we2 = new Date(cur);
@@ -4776,11 +4819,12 @@ function renderShootPlan() {
     var hs = new Date(Math.max(ws2.getTime(), span.s.getTime()));
     var he = new Date(Math.min(we2.getTime(), span.e.getTime()));
     var wkStart = ymd(ws2);
-    html += '<tr class="wkweek"><td colspan="9"><div class="wkrow"><span>第 ' + weekNo + ' 周（' + (hs.getMonth() + 1) + "/" + hs.getDate()
+    var wh = '<div class="wkrow"><span>第 ' + weekNo + ' 周（' + (hs.getMonth() + 1) + "/" + hs.getDate()
       + " – " + (he.getMonth() + 1) + "/" + he.getDate() + "）"
       + (weekNo === 1 && !span.ranged ? " · " + y + "年" + (m + 1) + "月" : "") + "</span>"
-      + '<button onclick="exportShootImage(\'' + wkStart + '\')" title="只导出这一周的表格图片">⬇ 导出这一周图片</button>'
-      + "</div></td></tr>";
+      + '<button onclick="exportShootImage(\'' + wkStart + '\')" title="只导出这一周的表格图片">⬇ 导出这一周图片</button></div>';
+    var wrow = '<tr class="wkweek"><td colspan="6">' + wh + "</td></tr>";
+    hShot += wrow; hEdit += wrow; hMine += wrow;
     for (var i = 0; i < 7; i++) {
       var d = new Date(ws2);
       d.setDate(d.getDate() + i);
@@ -4791,31 +4835,49 @@ function renderShootPlan() {
       var rec = shootPlan[ds] || { place: "", detail: "", shot: 0, edit: "", editN: 0 };
       var oldSub = shootPlan[ds + "#sub"] || {};
       var subTxt = (rec.subEdit != null && rec.subEdit !== "") ? rec.subEdit : (oldSub.edit || "");
-      n++;
-      if ((rec.detail || "").trim() || (rec.place || "").trim() || (subTxt || "").trim()) filled++;
-      html += "<tr" + selCls + ' id="sd-' + ds + '">'
+      var subN = (rec.subN != null && rec.subN !== "") ? num(rec.subN) : (subTxt ? guessEditN(subTxt) : num(oldSub.editN));
+      /* ① 拍摄板块 */
+      hShot += "<tr" + selCls + ' id="sd-' + ds + '">'
         + "<td>" + WDS[d.getDay()] + "</td><td>" + ds + "</td>"
         + '<td><input type="text" value="' + esc(rec.place) + '" oninput="shootSet(\'' + ds + '\',\'place\',this.value)"></td>'
-        + '<td><textarea style="min-height:40px" oninput="shootSet(\'' + ds + '\',\'detail\',this.value)">' + esc(rec.detail) + "</textarea></td>"
+        + '<td><textarea style="min-height:38px" oninput="shootSet(\'' + ds + '\',\'detail\',this.value)">' + esc(rec.detail) + "</textarea></td>"
         + '<td><input type="number" min="0" value="' + (num(rec.shot) ? rec.shot : "") + '" oninput="shootSet(\'' + ds + '\',\'shot\',this.value)"></td>'
-        + '<td><input type="number" min="0" value="' + (num(rec.editN) ? rec.editN : "") + '" oninput="shootSet(\'' + ds + '\',\'editN\',this.value)"></td>'
-        + '<td><textarea style="min-height:40px" oninput="shootSet(\'' + ds + '\',\'edit\',this.value)">' + esc(rec.edit) + "</textarea></td>"
-        + '<td><textarea style="min-height:40px" oninput="shootSet(\'' + ds + '\',\'subEdit\',this.value)">' + esc(subTxt) + "</textarea></td>"
         + "<td>" + dayCodeCell(ds) + "</td></tr>";
+      /* ② 剪辑板块 */
+      hEdit += "<tr" + selCls + ' id="ed-' + ds + '">'
+        + "<td>" + WDS[d.getDay()] + "</td><td>" + ds + "</td>"
+        + '<td><input type="number" min="0" value="' + (num(rec.editN) ? rec.editN : "") + '" oninput="shootSet(\'' + ds + '\',\'editN\',this.value)"></td>'
+        + '<td class="subcell"><input type="number" min="0" class="subin" value="' + (subN ? subN : "") + '" placeholder="0" oninput="shootSet(\'' + ds + '\',\'subN\',this.value)" title="A（下属）这天要剪的条数"></td>'
+        + '<td><textarea style="min-height:38px" oninput="shootSet(\'' + ds + '\',\'edit\',this.value)">' + esc(rec.edit) + "</textarea></td>"
+        + '<td><textarea style="min-height:38px" oninput="shootSet(\'' + ds + '\',\'subEdit\',this.value)">' + esc(subTxt) + "</textarea></td></tr>";
+      /* ③ 我的个人每日计划 */
+      var planTxt = ((rec.place || "").trim() + (rec.place && rec.detail ? " · " : "") + (rec.detail || "").trim()) || "—";
+      hMine += "<tr data-d=\"" + ds + "\"" + selCls + ">"
+        + "<td>" + WDS[d.getDay()] + "</td><td>" + ds + "</td>"
+        + '<td style="text-align:left;padding-left:10px">' + esc(planTxt) + "</td>"
+        + '<td class="sumcell">' + (num(rec.shot) ? rec.shot : "—") + "</td>"
+        + '<td class="sumcell">' + (num(rec.editN) ? rec.editN : "—") + "</td>"
+        + '<td style="color:#7c3aed;font-weight:600">' + (subN ? subN : "—") + "</td></tr>";
     }
     cur.setDate(cur.getDate() + 7);
     weekNo++;
   }
-  $("shootBody").innerHTML = html;
+  $("shootBodyShot").innerHTML = hShot;
+  $("shootBodyEdit").innerHTML = hEdit;
+  $("shootBodyMine").innerHTML = hMine;
   $("shootFromPick").value = shootFrom || "";
   $("shootToPick").value = shootTo || "";
   $("shootMonthPick").value = shootMonthStr;
-  var tas = $("shootBody").querySelectorAll("textarea");
-  for (var k = 0; k < tas.length; k++) {
-    autoGrow(tas[k]);
-    refreshUrlChips(tas[k]);
-    tas[k].addEventListener("input", function () { autoGrow(this); refreshUrlChips(this); });
-  }
+  var bodies = [$("shootBodyShot"), $("shootBodyEdit")];
+  bodies.forEach(function (b) {
+    if (!b) return;
+    var tas = b.querySelectorAll("textarea");
+    for (var k = 0; k < tas.length; k++) {
+      autoGrow(tas[k]);
+      refreshUrlChips(tas[k]);
+      tas[k].addEventListener("input", function () { autoGrow(this); refreshUrlChips(this); });
+    }
+  });
   shootSummaryText();
   shootWeekRecText();
   fillShootExpWeek();
