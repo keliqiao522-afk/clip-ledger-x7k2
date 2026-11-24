@@ -131,6 +131,10 @@ td,th{word-break:break-word;overflow-wrap:break-word}
 .codewrap .cc i{font-size:11px;color:#9ca3af;font-style:normal}
 .codewrap .codeadd{grid-column:1/-1;justify-self:start;border:1px dashed #cbd5e1;background:#fff;color:#2563eb;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer}
 .codewrap .codeadd:hover{background:#eff6ff;border-color:#93c5fd}
+/* 周计划表卡片：列多，单元格收紧，避免横向滚动 */
+.wkcard table.wk th{padding:7px 3px;font-size:11px;line-height:1.3}
+.wkcard table.wk td{padding:6px 3px}
+.wkcard table.wk input[type=number]{padding:5px 3px}
 /* 每日计划表格里的款号格子（宽度受限，单独收窄） */
 .shootscroll td .codewrap{grid-template-columns:1fr;gap:3px}
 .shootscroll td .codewrap .cc{background:#f8fafc;border:1px solid #e5e9ef;border-radius:6px;padding:2px 3px}
@@ -5760,35 +5764,20 @@ function refreshWeekRow(i, t) {
   var ti = TYPES.indexOf(t), q = rowQ(rec, t);
   var el = document.getElementById("rq" + i + "_" + ti);
   if (el) el.textContent = q;
-  ["me", "sub", "yh", "xc"].forEach(function (k) {
+  ["me", "meY", "sub", "yh", "xc"].forEach(function (k) {
     var e = document.getElementById("r" + k + i + "_" + ti);
-    if (e) e.value = (k === "me" ? rowMe(rec, t) : k === "sub" ? rowSub(rec, t) : k === "yh" ? rowYh(rec, t) : rowXc(rec, t));
+    if (e) e.value = (k === "me" ? rowMe(rec, t) : k === "meY" ? rowMeY(rec, t) : k === "sub" ? rowSub(rec, t) : k === "yh" ? rowYh(rec, t) : rowXc(rec, t));
   });
-  /* 拆分区（我剪 / A剪辑 按 YH·XC） */
-  var sy = document.getElementById("dmey" + i + "_" + ti);
-  if (sy) sy.value = rowMeY(rec, t);
-  var sx = document.getElementById("dmex" + i + "_" + ti);
-  if (sx) sx.textContent = rowMeX(rec, t);
-  var ay = document.getElementById("dsuby" + i + "_" + ti);
-  if (ay) ay.textContent = rowSubY(rec, t);
-  var ax = document.getElementById("dsubx" + i + "_" + ti);
-  if (ax) ax.textContent = rowSubX(rec, t);
-  var asum = document.getElementById("dsub" + i + "_" + ti);
-  if (asum) asum.textContent = rowSub(rec, t);
+  var mxe = document.getElementById("rmeX" + i + "_" + ti);
+  if (mxe) mxe.textContent = rowMeX(rec, t);
 }
 function refreshWeekTable(i) {
   var rec = weekTables[i]; if (!rec) return;
   var g = weekRowTotals(rec);
-  ["l", "n", "q", "me", "sub", "yh", "xc"].forEach(function (k) {
+  ["l", "n", "q", "me", "meY", "meX", "sub", "yh", "xc"].forEach(function (k) {
     var el = document.getElementById("rt" + i + "_" + k);
     if (el) el.textContent = g[k];
   });
-  ["meY", "meX", "subY", "subX"].forEach(function (k) {
-    var el2 = document.getElementById("dt" + i + "_" + k);
-    if (el2) el2.textContent = g[k];
-  });
-  var dsum = document.getElementById("dt" + i + "_sub");
-  if (dsum) dsum.textContent = g.sub;
   var box = document.getElementById("gw" + i);
   if (box) {
     var W = num(rec.wtot), okW = (W ? (W === g.q) : true), okMS = (g.me + g.sub === g.q), okYX = (g.yh + g.xc === g.q);
@@ -5796,7 +5785,7 @@ function refreshWeekTable(i) {
       + (okW ? " ✅" : ' <span style="color:#dc2626">（差 ' + (W - g.q) + "）</span>")
       + " ｜ 我 <b>" + g.me + "</b> ＋ A剪辑 <b>" + g.sub + "</b> ＝ <b>" + (g.me + g.sub) + "</b>" + (okMS ? " ✅" : ' <span style="color:#dc2626">✗</span>')
       + " ｜ YH <b>" + g.yh + "</b> ＋ XC <b>" + g.xc + "</b> ＝ <b>" + (g.yh + g.xc) + "</b>" + (okYX ? " ✅" : ' <span style="color:#dc2626">✗</span>')
-      + " ｜ 我剪 YH <b>" + g.meY + "</b> ／ XC <b>" + g.meX + "</b>　A剪辑 YH <b>" + g.subY + "</b> ／ XC <b>" + g.subX + "</b>";
+      + " ｜ 我 YH <b>" + g.meY + "</b> ＋ 我 XC <b>" + g.meX + "</b> ＝ <b>" + (g.meY + g.meX) + "</b>" + ((g.meY + g.meX) === g.me ? " ✅" : ' <span style="color:#dc2626">✗</span>');
   }
   saveWeekTables(true);
 }
@@ -5909,22 +5898,15 @@ function renderSheetList() {
     TYPES.forEach(function (t, ti) {
       var r = rowOf(rec, t);
       rows += "<tr><td>" + t + "</td>"
-        + '<td><input type="number" min="0" style="width:58px" value="' + (r.l || 0) + '" oninput="setRowNum(' + i + ",'" + t + "','l',this.value)\"></td>"
-        + '<td><input type="number" min="0" style="width:58px" value="' + (r.n || 0) + '" oninput="setRowNum(' + i + ",'" + t + "','n',this.value)\"></td>"
+        + '<td><input type="number" min="0" style="width:46px" value="' + (r.l || 0) + '" oninput="setRowNum(' + i + ",'" + t + "','l',this.value)\"></td>"
+        + '<td><input type="number" min="0" style="width:46px" value="' + (r.n || 0) + '" oninput="setRowNum(' + i + ",'" + t + "','n',this.value)\"></td>"
         + '<td class="sumcell" id="rq' + i + "_" + ti + '">' + rowQ(rec, t) + "</td>"
-        + '<td><input type="number" min="0" style="width:54px" id="rme' + i + "_" + ti + '" value="' + rowMe(rec, t) + '" oninput="setRowMe(' + i + ",'" + t + "',this.value)\"></td>"
-        + '<td class="subcell"><input type="number" min="0" style="width:54px" class="subin" id="rsub' + i + "_" + ti + '" value="' + rowSub(rec, t) + '" oninput="setRowSub(' + i + ",'" + t + "',this.value)\"></td>"
-        + '<td><input type="number" min="0" style="width:54px" id="ryh' + i + "_" + ti + '" value="' + rowYh(rec, t) + '" oninput="setRowYh(' + i + ",'" + t + "',this.value)\"></td>"
-        + '<td class="subcell"><input type="number" min="0" style="width:54px" class="subin" id="rxc' + i + "_" + ti + '" value="' + rowXc(rec, t) + '" oninput="setRowXc(' + i + ",'" + t + "',this.value)\"></td></tr>";
-    });
-    var dRows = "";
-    TYPES.forEach(function (t, ti) {
-      dRows += "<tr><td>" + t + "</td>"
-        + '<td><input type="number" min="0" style="width:58px" id="dmey' + i + "_" + ti + '" value="' + rowMeY(rec, t) + '" oninput="setRowMeY(' + i + ",'" + t + "',this.value)\"></td>"
-        + '<td class="subcell" id="dmex' + i + "_" + ti + '">' + rowMeX(rec, t) + "</td>"
-        + '<td class="subcell" id="dsuby' + i + "_" + ti + '">' + rowSubY(rec, t) + "</td>"
-        + '<td class="subcell" id="dsubx' + i + "_" + ti + '">' + rowSubX(rec, t) + "</td>"
-        + '<td class="sumcell" id="dsub' + i + "_" + ti + '">' + rowSub(rec, t) + "</td></tr>";
+        + '<td><input type="number" min="0" style="width:44px" id="rme' + i + "_" + ti + '" value="' + rowMe(rec, t) + '" oninput="setRowMe(' + i + ",'" + t + "',this.value)\"></td>"
+        + '<td class="subcell"><input type="number" min="0" style="width:40px" id="rmeY' + i + "_" + ti + '" value="' + rowMeY(rec, t) + '" oninput="setRowMeY(' + i + ",'" + t + "',this.value)\"></td>"
+        + '<td class="subcell" id="rmeX' + i + "_" + ti + '">' + rowMeX(rec, t) + "</td>"
+        + '<td class="subcell"><input type="number" min="0" style="width:40px" class="subin" id="rsub' + i + "_" + ti + '" value="' + rowSub(rec, t) + '" oninput="setRowSub(' + i + ",'" + t + "',this.value)\"></td>"
+        + '<td><input type="number" min="0" style="width:42px" id="ryh' + i + "_" + ti + '" value="' + rowYh(rec, t) + '" oninput="setRowYh(' + i + ",'" + t + "',this.value)\"></td>"
+        + '<td class="subcell"><input type="number" min="0" style="width:42px" class="subin" id="rxc' + i + "_" + ti + '" value="' + rowXc(rec, t) + '" oninput="setRowXc(' + i + ",'" + t + "',this.value)\"></td></tr>";
     });
     html += '<div class="wkcard">'
       + '<div class="listhead">'
@@ -5946,16 +5928,11 @@ function renderSheetList() {
       + "</div></div>"
       + '<div class="flds" style="margin-bottom:10px"><div class="fld grow" style="flex:1;min-width:260px"><label>周度目标</label><textarea style="min-height:48px" oninput="setWeekField(' + i + ',\'goal\',this.value)" placeholder="例：稳定成交素材供给，验证3个可复用选题方向">' + esc(rec.goal) + '</textarea></div></div>'
       + '<div class="grandline" id="gw' + i + '"></div>'
-      + '<div class="secttl" style="margin:10px 0 6px">我剪按项目拆 → 剩下的就是 A剪辑要剪的 <span>「我剪·YH」可手改，其余自动算：我剪·XC＝我剪−我剪·YH；A剪辑·YH＝YH−我剪·YH；A剪辑·XC＝XC−我剪·XC</span></div>'
-      + '<div class="scroll"><table class="wk"><thead><tr><th>内容形式</th><th>我剪·YH</th><th>我剪·XC</th><th>A剪辑·YH</th><th>A剪辑·XC</th><th>A剪辑合计</th></tr></thead><tbody>'
-      + dRows
-      + '<tr class="tot"><td>合计（本周）</td><td id="dt' + i + '_meY"></td><td id="dt' + i + '_meX"></td><td id="dt' + i + '_subY"></td><td id="dt' + i + '_subX"></td><td id="dt' + i + '_sub"></td></tr>'
-      + "</tbody></table></div>"
-      + '<div class="scroll" style="margin-top:14px"><table class="wk"><thead><tr><th>内容形式</th><th>挂链（条）</th><th>不挂链（条）</th><th>小计<br><span style="font-weight:400">（条）</span></th><th>我（条）</th><th>A剪辑（条）<br><span style="font-weight:400">（＝小计−我）</span></th><th>YH（条）</th><th>XC（条）<br><span style="font-weight:400">（＝小计−YH）</span></th></tr></thead><tbody>'
+      + '<div class="scroll"><table class="wk"><thead><tr><th>内容形式</th><th>挂链（条）</th><th>不挂链（条）</th><th>小计<br><span style="font-weight:400">（条）</span></th><th>我（条）</th><th>我·YH<br><span style="font-weight:400">（手填）</span></th><th>我·XC<br><span style="font-weight:400">（＝我−YH）</span></th><th>A剪辑（条）<br><span style="font-weight:400">（＝小计−我）</span></th><th>YH（条）</th><th>XC（条）<br><span style="font-weight:400">（＝小计−YH）</span></th></tr></thead><tbody>'
       + rows
-      + '<tr class="tot"><td>合计（本周）</td><td id="rt' + i + '_l"></td><td id="rt' + i + '_n"></td><td class="sumcell" id="rt' + i + '_q"></td><td class="sumcell" id="rt' + i + '_me"></td><td class="subcell" id="rt' + i + '_sub"></td><td class="sumcell" id="rt' + i + '_yh"></td><td class="subcell" id="rt' + i + '_xc"></td></tr>'
+      + '<tr class="tot"><td>合计（本周）</td><td id="rt' + i + '_l"></td><td id="rt' + i + '_n"></td><td class="sumcell" id="rt' + i + '_q"></td><td class="sumcell" id="rt' + i + '_me"></td><td class="subcell" id="rt' + i + '_meY"></td><td class="subcell" id="rt' + i + '_meX"></td><td class="subcell" id="rt' + i + '_sub"></td><td class="sumcell" id="rt' + i + '_yh"></td><td class="subcell" id="rt' + i + '_xc"></td></tr>'
       + "</tbody></table></div>"
-      + '<p class="legend" style="margin:8px 0 0">规则：一周总量 ÷ 2＝YH 和 XC 各一半（单数 YH 多 1）；项目内按「月度目标」各类型占比分；再按月度目标里「我剪 / 下属剪」比例拆「我」和「A剪辑」。任一格都能手改，改完相关的自动补（小计＝挂链＋不挂链、A剪辑＝小计−我、XC＝小计−YH）。</p>'
+      + '<p class="legend" style="margin:8px 0 0">规则：一周总量 ÷ 2＝YH 和 XC 各一半（单数 YH 多 1）；项目内按「月度目标」各类型占比分；再按月度目标里「我剪 / 下属剪」比例拆「我」和「A剪辑」。任一格都能手改，改完相关的自动补（小计＝挂链＋不挂链、A剪辑＝小计−我、XC＝小计−YH、我·XC＝我−我·YH）。「我·YH」只填我在 YH 剪几条，剩下的我·XC 自动算。</p>'
       + '<div class="wkdist" id="wd' + i + '">' + weekDistText(rec) + "</div>"
       + '<div class="wkfoot" id="wf' + i + '">' + weekFootText(rec.ws) + "</div>"
       + '<div class="flds" style="margin-top:12px">'
