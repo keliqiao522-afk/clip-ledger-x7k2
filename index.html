@@ -3854,7 +3854,6 @@ function fillWeekFromMonth(i) {
     var old = rec.rows[t] || {};
     rec.rows[t] = { l: w[t].link, n: w[t].nolink, sub: null, style: old.style || "", codes: old.codes || [] };
   });
-  rec.pr = null;
   saveWeekTables(true);
   renderSheetList();
   renderWeekDone();
@@ -5598,200 +5597,184 @@ $("pasteText").addEventListener("keydown", function (e) {
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); doPaste(); }
 });
 
-/* ===== 周计划表 v3 ===== */
-/* ===== 周计划表 v3：一周总量 → 对半分两项目 → 按类型分 → 我 / A剪辑 ===== */
-function prOf(rec) {
-  if (!rec.pr || !rec.pr.length) {
-    var pr = [{ name: "YH", rows: {} }, { name: "XC", rows: {} }];
-    TYPES.forEach(function (t) {
-      var r0 = (rec.rows && rec.rows[t]) ? rec.rows[t] : {};
-      pr[0].rows[t] = { l: r0.l || 0, n: r0.n || 0, me: null, sub: null };
-      pr[1].rows[t] = { l: 0, n: 0, me: null, sub: null };
-    });
-    rec.pr = pr;
-  }
-  rec.pr.forEach(function (pr) {
-    if (!pr.rows) pr.rows = {};
-    TYPES.forEach(function (t) {
-      if (!pr.rows[t]) pr.rows[t] = { l: 0, n: 0, me: null, sub: null };
-      var r = pr.rows[t];
-      if (r.me === undefined) r.me = null;
-      if (r.sub === undefined) r.sub = null;
-    });
-  });
-  return rec.pr;
+/* ===== 周计划表 v4 ===== */
+/* ===== 周计划表 v4：一张表 · 挂链/不挂链/小计 + 我/A剪辑 + YH/XC ===== */
+function rowOf(rec, t) {
+  if (!rec.rows) rec.rows = {};
+  if (!rec.rows[t]) rec.rows[t] = { l: 0, n: 0, me: null, sub: null, yh: null, xc: null };
+  var r = rec.rows[t];
+  if (r.me === undefined) r.me = null;
+  if (r.sub === undefined) r.sub = null;
+  if (r.yh === undefined) r.yh = null;
+  if (r.xc === undefined) r.xc = null;
+  return r;
 }
-function prRow(rec, p, t) { return prOf(rec)[p].rows[t]; }
-function prQ(rec, p, t) { var r = prRow(rec, p, t); return (r.l || 0) + (r.n || 0); }
-function prMeVal(rec, p, t) {
-  var r = prRow(rec, p, t), q = prQ(rec, p, t);
+function rowQ(rec, t) { var r = rowOf(rec, t); return (r.l || 0) + (r.n || 0); }
+function rowMe(rec, t) {
+  var r = rowOf(rec, t), q = rowQ(rec, t);
   if (r.me === null || r.me === "" || r.me === undefined) return q;
   return Math.max(0, Math.min(q, num(r.me)));
 }
-function prSubVal(rec, p, t) {
-  var r = prRow(rec, p, t);
-  if (r.sub === null || r.sub === "" || r.sub === undefined) return Math.max(0, prQ(rec, p, t) - prMeVal(rec, p, t));
-  return Math.max(0, Math.min(prQ(rec, p, t), num(r.sub)));
+function rowSub(rec, t) { return Math.max(0, rowQ(rec, t) - rowMe(rec, t)); }
+function rowYh(rec, t) {
+  var r = rowOf(rec, t), q = rowQ(rec, t);
+  if (r.yh === null || r.yh === "" || r.yh === undefined) return Math.round(q / 2);
+  return Math.max(0, Math.min(q, num(r.yh)));
 }
-function prProjTotals(rec, p) {
-  var o = { l: 0, n: 0, q: 0, me: 0, sub: 0 };
+function rowXc(rec, t) { return Math.max(0, rowQ(rec, t) - rowYh(rec, t)); }
+function weekRowTotals(rec) {
+  var o = { l: 0, n: 0, q: 0, me: 0, sub: 0, yh: 0, xc: 0 };
   TYPES.forEach(function (t) {
-    var r = prRow(rec, p, t);
-    o.l += r.l || 0; o.n += r.n || 0; o.q += prQ(rec, p, t);
-    o.me += prMeVal(rec, p, t); o.sub += prSubVal(rec, p, t);
+    var r = rowOf(rec, t);
+    o.l += r.l || 0; o.n += r.n || 0; o.q += rowQ(rec, t);
+    o.me += rowMe(rec, t); o.sub += rowSub(rec, t);
+    o.yh += rowYh(rec, t); o.xc += rowXc(rec, t);
   });
   return o;
 }
-function prRefresh(rec, p) {
-  var t = prProjTotals(rec, p);
-  var pre = "pt" + weekTables.indexOf(rec) + "_" + p + "_";
-  ["l", "n", "q", "me", "sub"].forEach(function (k) {
-    var el = document.getElementById(pre + k);
-    if (el) el.textContent = t[k];
+function refreshWeekRow(i, t) {
+  var rec = weekTables[i]; if (!rec) return;
+  var ti = TYPES.indexOf(t), q = rowQ(rec, t);
+  var el = document.getElementById("rq" + i + "_" + ti);
+  if (el) el.textContent = q;
+  ["me", "sub", "yh", "xc"].forEach(function (k) {
+    var e = document.getElementById("r" + k + i + "_" + ti);
+    if (e) e.value = (k === "me" ? rowMe(rec, t) : k === "sub" ? rowSub(rec, t) : k === "yh" ? rowYh(rec, t) : rowXc(rec, t));
   });
 }
-function prWeekTotals(rec) {
-  var a = prProjTotals(rec, 0), b = prProjTotals(rec, 1);
-  return { q: a.q + b.q, me: a.me + b.me, sub: a.sub + b.sub, l: a.l + b.l, n: a.n + b.n, wtot: num(rec.wtot) };
-}
-function setPrName(i, p, v) {
+function refreshWeekTable(i) {
   var rec = weekTables[i]; if (!rec) return;
-  prOf(rec)[p].name = v;
-  saveWeekTables();
-}
-function syncPrRow(rec, p, t) {
-  var r = prRow(rec, p, t);
-  var q = (r.l || 0) + (r.n || 0);
-  var me = (r.me === null || r.me === "" || r.me === undefined) ? q : num(r.me);
-  if (me > q) me = q;
-  r.me = me; r.sub = q - me;
-}
-function setPrNum(i, p, t, k, v) {
-  var rec = weekTables[i]; if (!rec) return;
-  var r = prRow(rec, p, t);
-  r[k] = num(v);
-  syncPrRow(rec, p, t);
-  var ti = TYPES.indexOf(t), q = (r.l || 0) + (r.n || 0);
-  var qEl = document.getElementById("pq" + i + "_" + p + "_" + ti);
-  if (qEl) qEl.textContent = q;
-  var meEl = document.getElementById("pm" + i + "_" + p + "_" + ti);
-  if (meEl) meEl.value = prMeVal(rec, p, t);
-  var subEl = document.getElementById("psu" + i + "_" + p + "_" + ti);
-  if (subEl) subEl.value = prSubVal(rec, p, t);
-  prRefresh(rec, p);
-  refreshWeekGrand(i);
+  var g = weekRowTotals(rec);
+  ["l", "n", "q", "me", "sub", "yh", "xc"].forEach(function (k) {
+    var el = document.getElementById("rt" + i + "_" + k);
+    if (el) el.textContent = g[k];
+  });
+  var box = document.getElementById("gw" + i);
+  if (box) {
+    var W = num(rec.wtot), okW = (W ? (W === g.q) : true), okMS = (g.me + g.sub === g.q), okYX = (g.yh + g.xc === g.q);
+    box.innerHTML = "一周总量 <b>" + (W || "—") + "</b> ｜ 小计合计 <b>" + g.q + "</b>"
+      + (okW ? " ✅" : ' <span style="color:#dc2626">（差 ' + (W - g.q) + "）</span>")
+      + " ｜ 我 <b>" + g.me + "</b> ＋ A剪辑 <b>" + g.sub + "</b> ＝ <b>" + (g.me + g.sub) + "</b>" + (okMS ? " ✅" : ' <span style="color:#dc2626">✗</span>')
+      + " ｜ YH <b>" + g.yh + "</b> ＋ XC <b>" + g.xc + "</b> ＝ <b>" + (g.yh + g.xc) + "</b>" + (okYX ? " ✅" : ' <span style="color:#dc2626">✗</span>');
+  }
   saveWeekTables(true);
 }
-function setPrMe(i, p, t, v) {
+function setRowNum(i, t, k, v) {
   var rec = weekTables[i]; if (!rec) return;
-  var r = prRow(rec, p, t), q = prQ(rec, p, t);
+  var r = rowOf(rec, t);
+  r[k] = num(v);
+  if (r.me !== null && num(r.me) > (rowQ(rec, t))) { r.me = rowQ(rec, t); }
+  if (r.yh !== null && num(r.yh) > (rowQ(rec, t))) { r.yh = rowQ(rec, t); }
+  refreshWeekRow(i, t);
+  refreshWeekTable(i);
+}
+function setRowMe(i, t, v) {
+  var rec = weekTables[i]; if (!rec) return;
+  var r = rowOf(rec, t), q = rowQ(rec, t);
   var me = (String(v).trim() === "") ? q : num(v);
   if (me > q) me = q;
   r.me = me; r.sub = q - me;
-  var ti = TYPES.indexOf(t), subEl = document.getElementById("psu" + i + "_" + p + "_" + ti);
-  if (subEl) subEl.value = r.sub;
-  prRefresh(rec, p); refreshWeekGrand(i); saveWeekTables(true);
+  refreshWeekRow(i, t); refreshWeekTable(i);
 }
-function setPrSub(i, p, t, v) {
+function setRowSub(i, t, v) {
   var rec = weekTables[i]; if (!rec) return;
-  var r = prRow(rec, p, t), q = prQ(rec, p, t);
-  var sub = (String(v).trim() === "") ? (q - prMeVal(rec, p, t)) : num(v);
+  var r = rowOf(rec, t), q = rowQ(rec, t);
+  var sub = (String(v).trim() === "") ? (q - rowMe(rec, t)) : num(v);
   if (sub > q) sub = q;
   r.sub = sub; r.me = q - sub;
-  var ti = TYPES.indexOf(t), meEl = document.getElementById("pm" + i + "_" + p + "_" + ti);
-  if (meEl) meEl.value = r.me;
-  prRefresh(rec, p); refreshWeekGrand(i); saveWeekTables(true);
+  refreshWeekRow(i, t); refreshWeekTable(i);
+}
+function setRowYh(i, t, v) {
+  var rec = weekTables[i]; if (!rec) return;
+  var r = rowOf(rec, t), q = rowQ(rec, t);
+  var yh = (String(v).trim() === "") ? Math.round(q / 2) : num(v);
+  if (yh > q) yh = q;
+  r.yh = yh; r.xc = q - yh;
+  refreshWeekRow(i, t); refreshWeekTable(i);
+}
+function setRowXc(i, t, v) {
+  var rec = weekTables[i]; if (!rec) return;
+  var r = rowOf(rec, t), q = rowQ(rec, t);
+  var xc = (String(v).trim() === "") ? (q - rowYh(rec, t)) : num(v);
+  if (xc > q) xc = q;
+  r.xc = xc; r.yh = q - xc;
+  refreshWeekRow(i, t); refreshWeekTable(i);
 }
 function setWeekWtot(i, v) {
   var rec = weekTables[i]; if (!rec) return;
   rec.wtot = num(v);
-  refreshWeekGrand(i);
-  saveWeekTables(true);
+  refreshWeekTable(i);
 }
-function refreshWeekGrand(i) {
-  var rec = weekTables[i]; if (!rec) return;
-  var g = prWeekTotals(rec);
-  var el = document.getElementById("gw" + i);
-  if (!el) return;
-  var okQ = (g.wtot ? (g.q === g.wtot) : true);
-  var okMS = (g.me + g.sub === g.q);
-  el.innerHTML = "一周总量 <b>" + g.wtot + "</b> ｜ 两项目合计 <b>" + g.q + "</b>"
-    + (okQ ? " ✅" : ' <span style="color:#dc2626">（差 ' + (g.wtot - g.q) + "）</span>")
-    + " ｜ 我 <b>" + g.me + "</b> ＋ A剪辑 <b>" + g.sub + "</b> ＝ <b>" + (g.me + g.sub) + "</b>"
-    + (okMS ? " ✅" : ' <span style="color:#dc2626">（差 ' + (g.q - g.me - g.sub) + "）</span>");
-}
-/* 按「一周总量」自动分：对半给两个项目 → 按月度目标的类型比例分条数 → 按月度目标的我/下属比例拆人和挂链 */
+/* 按一周总量自动分：总量 → 各类型（按月度目标条数占比）→ 挂链/不挂链（按月比例）→ 我/A剪辑（按月人比例）→ YH/XC（尽量对半，零头给 YH） */
 function autoFillWeek(i) {
   var rec = weekTables[i]; if (!rec) return;
-  var prs = prOf(rec);
   var W = num(rec.wtot);
-  if (!W) { W = (weekTargetTotals(rec.ws).tot.edit || 0); rec.wtot = W; }
-  var mk = rec.ws.slice(0, 7), mt = monthTgtData(mk), wTotal = 0;
-  var mtv = {};
+  if (!W) { W = (weekTargetOf(rec.ws) && 0) || 0; }
+  if (!W) { W = weekTargetTotals(rec.ws).tot.edit || 0; rec.wtot = W; }
+  var mk = rec.ws.slice(0, 7), mt = monthTgtData(mk), tot = 0, mtv = {};
   TYPES.forEach(function (t) {
     var m = mt[t] || {};
     mtv[t] = { l: num(m.link), n: num(m.nolink), s: num(m.sub) };
-    wTotal += mtv[t].l + mtv[t].n + mtv[t].s;
+    tot += mtv[t].l + mtv[t].n;
   });
-  var pT = [Math.ceil(W / 2), Math.floor(W / 2)];
-  prs.forEach(function (pr, pi) {
-    var tgt = pT[pi] || 0;
-    var wts = TYPES.map(function (t) { return wTotal ? (mtv[t].l + mtv[t].n + mtv[t].s) : 1; });
-    var sum = wts.reduce(function (a, b) { return a + b; }, 0) || 1;
-    var vals = [], used = 0;
-    TYPES.forEach(function (t, k) { var v = Math.floor(tgt * wts[k] / sum); vals.push(v); used += v; });
-    var left = tgt - used, idx = 0;
-    while (left > 0) { vals[idx % vals.length]++; left--; idx++; }
-    TYPES.forEach(function (t, k) {
-      var q = vals[k], r = pr.rows[t];
-      var mn = mtv[t].l + mtv[t].n;
-      r.n = mn > 0 ? Math.round(q * mtv[t].n / mn) : q;
-      r.l = q - r.n;
-      if (r.l < 0) r.l = 0;
-      var ms = mtv[t].s, mm = mn;
-      var meN = (ms + mm) > 0 ? Math.round(q * mm / (ms + mm)) : q;
-      if (meN > q) meN = q;
-      r.me = meN; r.sub = q - meN;
-    });
+  var vals = [], sum = 0, used = 0;
+  TYPES.forEach(function (t) { sum += mtv[t].l + mtv[t].n; });
+  if (!sum) { TYPES.forEach(function () { sum += 1; }); TYPES.forEach(function (t) { mtv[t].l = 0; mtv[t].n = 1; }); }
+  TYPES.forEach(function (t) { var v = Math.floor(W * (mtv[t].l + mtv[t].n) / sum); vals.push(v); used += v; });
+  var left = W - used, idx = 0;
+  while (left > 0) { vals[idx % vals.length]++; left--; idx++; }
+  var yhSum = 0;
+  TYPES.forEach(function (t, k) {
+    var r = rowOf(rec, t), q = vals[k];
+    var mn = mtv[t].l + mtv[t].n;
+    r.n = mn > 0 ? Math.round(q * mtv[t].n / mn) : q;
+    r.l = q - r.n; if (r.l < 0) r.l = 0;
+    var s = mtv[t].s, mm = mn;
+    var meN = (s + mm) > 0 ? Math.round(q * mm / (s + mm)) : q;
+    if (meN > q) meN = q;
+    r.me = meN; r.sub = q - meN;
+    r.yh = Math.round(q / 2); r.xc = q - r.yh;
+    yhSum += r.yh;
   });
-  saveWeekTables(true);
+  /* YH 总对齐到 round(W/2) */
+  var target = Math.round(W / 2);
+  var diff = target - yhSum;
+  TYPES.forEach(function (t) {
+    if (!diff) return;
+    var r = rowOf(rec, t), q = rowQ(rec, t);
+    var step = Math.min(Math.abs(diff), q);
+    if (diff > 0) { var add = Math.min(diff, q - r.yh); r.yh += add; r.xc = q - r.yh; diff -= add; }
+    else { var cut = Math.min(-diff, r.yh); r.yh -= cut; r.xc = q - r.yh; diff += cut; }
+  });
+  refreshWeekTable(i);
   renderSheetList();
-  try { toast("已按一周总量 " + W + " 分好（YH " + pT[0] + " / XC " + pT[1] + "）"); } catch (e) { }
+  try { toast("已按一周总量 " + W + " 分好（YH " + target + " / XC " + (W - target) + "）"); } catch (e) { }
 }
 function renderSheetList() {
   var wrap = $("sheetList");
   if (!weekTables.length) { wrap.innerHTML = '<div class="empty">还没有周计划表，点右上角「+ 新增一周」</div>'; return; }
   var html = "";
   weekTables.forEach(function (rec, i) {
-    var prs = prOf(rec);
-    if (rec.wtot === undefined || rec.wtot === null) rec.wtot = (weekTargetTotals(rec.ws).tot.edit || 0);
-    var blocks = "";
-    prs.forEach(function (pr, pi) {
-      var rows = "", tot = prProjTotals(rec, pi);
-      TYPES.forEach(function (t, ti) {
-        var r = prRow(rec, pi, t);
-        rows += "<tr><td>" + t + "</td>"
-          + '<td><input type="number" min="0" value="' + (r.l || 0) + '" oninput="setPrNum(' + i + "," + pi + ",'" + t + "','l',this.value)\"></td>"
-          + '<td><input type="number" min="0" value="' + (r.n || 0) + '" oninput="setPrNum(' + i + "," + pi + ",'" + t + "','n',this.value)\"></td>"
-          + '<td class="sumcell" id="pq' + i + "_" + pi + "_" + ti + '">' + ((r.l || 0) + (r.n || 0)) + "</td>"
-          + '<td><input type="number" min="0" id="pm' + i + "_" + pi + "_" + ti + '" value="' + prMeVal(rec, pi, t) + '" oninput="setPrMe(' + i + "," + pi + ",'" + t + "',this.value)\"></td>"
-          + '<td class="subcell"><input type="number" min="0" class="subin" id="psu' + i + "_" + pi + "_" + ti + '" value="' + prSubVal(rec, pi, t) + '" oninput="setPrSub(' + i + "," + pi + ",'" + t + "',this.value)\"></td></tr>";
-      });
-      blocks += '<div class="prblock">'
-        + '<div class="prhead">项目 <input class="pri" value="' + esc(pr.name) + '" oninput="setPrName(' + i + ',' + pi + ',this.value)">'
-        + '<span class="prtip">这一块只算这个项目；条数＝挂链＋不挂链；我＋A剪辑＝条数</span></div>'
-        + '<div class="scroll"><table class="wk"><thead><tr><th>内容形式</th><th>挂链（条）</th><th>不挂链（条）</th><th>条数<br><span style="font-weight:400">（自动＝挂链+不挂链）</span></th><th>我（条）<br><span style="font-weight:400">（可填）</span></th><th>A剪辑（条）<br><span style="font-weight:400">（自动＝条数−我）</span></th></tr></thead><tbody>'
-        + rows
-        + '<tr class="tot"><td>合计（' + esc(pr.name || "本项目") + '）</td><td id="pt' + i + '_' + pi + '_l">' + tot.l + '</td><td id="pt' + i + '_' + pi + '_n">' + tot.n + '</td><td class="sumcell" id="pt' + i + '_' + pi + '_q">' + tot.q + '</td><td class="sumcell" id="pt' + i + '_' + pi + '_me">' + tot.me + '</td><td class="subcell" id="pt' + i + '_' + pi + '_sub">' + tot.sub + '</td></tr>'
-        + "</tbody></table></div></div>";
+    if (rec.wtot === undefined || rec.wtot === null || rec.wtot === "") rec.wtot = (weekTargetTotals(rec.ws).tot.edit || 0);
+    var rows = "";
+    TYPES.forEach(function (t, ti) {
+      var r = rowOf(rec, t);
+      rows += "<tr><td>" + t + "</td>"
+        + '<td><input type="number" min="0" style="width:58px" value="' + (r.l || 0) + '" oninput="setRowNum(' + i + ",'" + t + "','l',this.value)\"></td>"
+        + '<td><input type="number" min="0" style="width:58px" value="' + (r.n || 0) + '" oninput="setRowNum(' + i + ",'" + t + "','n',this.value)\"></td>"
+        + '<td class="sumcell" id="rq' + i + "_" + ti + '">' + rowQ(rec, t) + "</td>"
+        + '<td><input type="number" min="0" style="width:54px" id="rme' + i + "_" + ti + '" value="' + rowMe(rec, t) + '" oninput="setRowMe(' + i + ",'" + t + "',this.value)\"></td>"
+        + '<td class="subcell"><input type="number" min="0" style="width:54px" class="subin" id="rsub' + i + "_" + ti + '" value="' + rowSub(rec, t) + '" oninput="setRowSub(' + i + ",'" + t + "',this.value)\"></td>"
+        + '<td><input type="number" min="0" style="width:54px" id="ryh' + i + "_" + ti + '" value="' + rowYh(rec, t) + '" oninput="setRowYh(' + i + ",'" + t + "',this.value)\"></td>"
+        + '<td class="subcell"><input type="number" min="0" style="width:54px" class="subin" id="rxc' + i + "_" + ti + '" value="' + rowXc(rec, t) + '" oninput="setRowXc(' + i + ",'" + t + "',this.value)\"></td></tr>";
     });
     html += '<div class="wkcard">'
       + '<div class="listhead">'
-      + '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;font-size:12px;color:#6b7280">'
-      + '<div class="fld"><label>周次名称</label><input type="text" style="width:170px" value="' + esc(rec.name) + '" placeholder="例：2026年11月第一周" oninput="setWeekField(' + i + ',\'name\',this.value)"></div>'
+      + '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;font-size:12px;color:#6b7280">'
+      + '<div class="fld"><label>周次名称</label><input type="text" style="width:150px" value="' + esc(rec.name) + '" placeholder="例：11月第1周" oninput="setWeekField(' + i + ',\'name\',this.value)"></div>'
       + '<div class="fld"><label>周一起</label><input type="date" value="' + rec.ws + '" onchange="setWeekDate(' + i + ',this.value)"></div>'
-      + '<div class="fld"><label>发布账号</label><input type="text" style="width:160px" value="' + esc(rec.account) + '" placeholder="例：GZX ZEROTOX" oninput="setWeekField(' + i + ',\'account\',this.value)"></div>'
-      + '<div class="fld"><label>一周总量（条）</label><input type="number" min="0" style="width:100px" value="' + (rec.wtot || "") + '" placeholder="填这一周要交几条" oninput="setWeekWtot(' + i + ',this.value)"></div>'
+      + '<div class="fld"><label>发布账号</label><input type="text" style="width:150px" value="' + esc(rec.account) + '" placeholder="例：GZX ZEROTOX" oninput="setWeekField(' + i + ',\'account\',this.value)"></div>'
+      + '<div class="fld"><label>一周总量（条）</label><input type="number" min="0" style="width:96px" value="' + (rec.wtot || "") + '" placeholder="这一周要交几条" oninput="setWeekWtot(' + i + ',this.value)"></div>'
       + "</div>"
       + '<div class="ops">'
       + '<button class="mini blue" onclick="autoFillWeek(' + i + ')">按一周总量自动分</button>'
@@ -5801,62 +5784,57 @@ function renderSheetList() {
       + '<button class="mini green" onclick="saveWeekCard(' + i + ')">保存</button>'
       + '<button class="mini red" onclick="delWeekTable(' + i + ')">删除</button>'
       + "</div></div>"
-      + '<div class="flds" style="margin-bottom:10px"><div class="fld grow" style="flex:1;min-width:260px"><label>周度目标</label><textarea style="min-height:52px" oninput="setWeekField(' + i + ',\'goal\',this.value)" placeholder="例：稳定成交素材供给，验证3个可复用选题方向">' + esc(rec.goal) + '</textarea></div></div>'
+      + '<div class="flds" style="margin-bottom:10px"><div class="fld grow" style="flex:1;min-width:260px"><label>周度目标</label><textarea style="min-height:48px" oninput="setWeekField(' + i + ',\'goal\',this.value)" placeholder="例：稳定成交素材供给，验证3个可复用选题方向">' + esc(rec.goal) + '</textarea></div></div>'
       + '<div class="grandline" id="gw' + i + '"></div>'
-      + blocks
-      + '<p class="legend" style="margin:8px 0 0">规则：一周总量 ÷ 2 ＝ 每个项目的条数（单数时 YH 多 1 条）；项目内按「月度目标」各类型的占比分条数；再按月度目标里该类「我剪 / 下属剪」的比例拆成「我」和「A剪辑」；挂链、不挂链按月度目标的比例拆。「我」可手改，A剪辑自动＝条数−我。</p>'
+      + '<div class="scroll"><table class="wk"><thead><tr><th>内容形式</th><th>挂链（条）</th><th>不挂链（条）</th><th>小计<br><span style="font-weight:400">（条）</span></th><th>我（条）</th><th>A剪辑（条）<br><span style="font-weight:400">（＝小计−我）</span></th><th>YH（条）</th><th>XC（条）<br><span style="font-weight:400">（＝小计−YH）</span></th></tr></thead><tbody>'
+      + rows
+      + '<tr class="tot"><td>合计（本周）</td><td id="rt' + i + '_l"></td><td id="rt' + i + '_n"></td><td class="sumcell" id="rt' + i + '_q"></td><td class="sumcell" id="rt' + i + '_me"></td><td class="subcell" id="rt' + i + '_sub"></td><td class="sumcell" id="rt' + i + '_yh"></td><td class="subcell" id="rt' + i + '_xc"></td></tr>'
+      + "</tbody></table></div>"
+      + '<p class="legend" style="margin:8px 0 0">规则：一周总量 ÷ 2＝YH 和 XC 各一半（单数 YH 多 1）；项目内按「月度目标」各类型占比分；再按月度目标里「我剪 / 下属剪」比例拆「我」和「A剪辑」。任一格都能手改，改完相关的自动补（小计＝挂链＋不挂链、A剪辑＝小计−我、XC＝小计−YH）。</p>'
       + '<div class="wkdist" id="wd' + i + '">' + weekDistText(rec) + "</div>"
       + '<div class="wkfoot" id="wf' + i + '">' + weekFootText(rec.ws) + "</div>"
       + '<div class="flds" style="margin-top:12px">'
-      + '<div class="fld grow"><label>是否需要资金申请</label><textarea style="min-height:46px" placeholder="如是，请写明预估金额及用途" oninput="setWeekField(' + i + ',\'fund\',this.value)">' + esc(rec.fund) + '</textarea></div>'
-      + '<div class="fld grow"><label>是否需要模特</label><textarea style="min-height:46px" placeholder="如是，写明人员性质、日期及时长" oninput="setWeekField(' + i + ',\'model\',this.value)">' + esc(rec.model) + '</textarea></div>'
-      + '<div class="fld grow"><label>是否需要其他协助</label><textarea style="min-height:46px" placeholder="场地配合、器材采购等" oninput="setWeekField(' + i + ',\'assist\',this.value)">' + esc(rec.assist) + '</textarea></div>'
+      + '<div class="fld grow"><label>是否需要资金申请</label><textarea style="min-height:44px" placeholder="如是，请写明预估金额及用途" oninput="setWeekField(' + i + ',\'fund\',this.value)">' + esc(rec.fund) + '</textarea></div>'
+      + '<div class="fld grow"><label>是否需要模特</label><textarea style="min-height:44px" placeholder="如是，写明人员性质、日期及时长" oninput="setWeekField(' + i + ',\'model\',this.value)">' + esc(rec.model) + '</textarea></div>'
+      + '<div class="fld grow"><label>是否需要其他协助</label><textarea style="min-height:44px" placeholder="场地配合、器材采购等" oninput="setWeekField(' + i + ',\'assist\',this.value)">' + esc(rec.assist) + '</textarea></div>'
       + "</div></div>";
   });
   wrap.innerHTML = html;
-  weekTables.forEach(function (rec, i) { refreshWeekGrand(i); });
+  weekTables.forEach(function (rec, i) { refreshWeekTable(i); });
 }
-/* ===== 周计划表导出 ===== */
-function weekPlanGroups(ws) {
-  var rec = findWeekTable(ws) || { ws: ws, name: "", account: "", goal: "" };
-  var prs = prOf(rec), gs = [];
-  prs.forEach(function (pr, pi) {
-    var rows = [], tot = prProjTotals(rec, pi);
-    TYPES.forEach(function (t) {
-      var r = prRow(rec, pi, t);
-      rows.push({ t: t, l: r.l || 0, n: r.n || 0, q: prQ(rec, pi, t), me: prMeVal(rec, pi, t), sub: prSubVal(rec, pi, t) });
-    });
-    gs.push({ name: pr.name || ("项目" + (pi + 1)), rows: rows, tot: tot });
+/* ===== 导出 ===== */
+function weekPlanPayload(ws) {
+  var rec = findWeekTable(ws) || { ws: ws, name: "", account: "", goal: "", rows: {} };
+  var rows = [], tot = { l: 0, n: 0, q: 0, me: 0, sub: 0, yh: 0, xc: 0 };
+  TYPES.forEach(function (t) {
+    var r = rowOf(rec, t);
+    var o = { t: t, l: r.l || 0, n: r.n || 0, q: rowQ(rec, t), me: rowMe(rec, t), sub: rowSub(rec, t), yh: rowYh(rec, t), xc: rowXc(rec, t) };
+    rows.push(o);
+    for (var k in tot) { tot[k] += o[k]; }
   });
-  var all = { l: 0, n: 0, q: 0, me: 0, sub: 0 };
-  gs.forEach(function (g) { all.l += g.tot.l; all.n += g.tot.n; all.q += g.tot.q; all.me += g.tot.me; all.sub += g.tot.sub; });
-  return { rec: rec, ws: ws, we: weekEndOf(ws), groups: gs, all: all, wtot: num(rec.wtot) };
+  return { rec: rec, ws: ws, we: weekEndOf(ws), rows: rows, tot: tot, wtot: num(rec.wtot) };
 }
 function exportWeekSheet(mode, fmt, wsOpt) {
   if (mode === "done") return weekSheetLegacy(mode, fmt, wsOpt);
-  var p = weekPlanGroups(wsOpt || mondayOf(today()));
+  var p = weekPlanPayload(wsOpt || mondayOf(today()));
   var title = "周计划表_" + p.ws;
   if (fmt === "csv") {
-    var rows = [["周期/周次", "主推品", "周主目标", "项目", "内容形式", "挂链（条）", "不挂链（条）", "条数（条）", "我（条）", "A剪辑（条）"]];
+    var rows = [["周期/周次", "主推品", "周主目标", "内容形式", "挂链（条）", "不挂链（条）", "小计（条）", "我（条）", "A剪辑（条）", "YH（条）", "XC（条）"]];
     var period = mds(p.ws) + " ~ " + mds(p.we) + " · " + weekLabel(p.ws);
-    p.groups.forEach(function (g) {
-      g.rows.forEach(function (r) { rows.push([period, p.rec.name || "", p.rec.goal || "", g.name, r.t, r.l, r.n, r.q, r.me, r.sub]); });
-      rows.push([period, p.rec.name || "", p.rec.goal || "", g.name, "小计（" + g.name + "）", g.tot.l, g.tot.n, g.tot.q, g.tot.me, g.tot.sub]);
-    });
-    rows.push([period, p.rec.name || "", p.rec.goal || "", "全部", "合计（本周）", p.all.l, p.all.n, p.all.q, p.all.me, p.all.sub]);
+    p.rows.forEach(function (r) { rows.push([period, p.rec.name || "", p.rec.goal || "", r.t, r.l, r.n, r.q, r.me, r.sub, r.yh, r.xc]); });
+    rows.push([period, p.rec.name || "", p.rec.goal || "", "合计（本周）", p.tot.l, p.tot.n, p.tot.q, p.tot.me, p.tot.sub, p.tot.yh, p.tot.xc]);
     csvDownload(rows, title + "_" + today() + ".csv");
     return;
   }
   var FONT = "'Microsoft YaHei','PingFang SC','Hiragino Sans GB',sans-serif";
   var cols = [
-    { w: 200, t: "周期 / 周次" }, { w: 220, t: "主推品" }, { w: 280, t: "周主目标" }, { w: 100, t: "项目" },
-    { w: 165, t: "内容形式" }, { w: 128, t: "挂链（条）" }, { w: 142, t: "不挂链（条）" }, { w: 130, t: "条数（条）" },
-    { w: 120, t: "我（条）" }, { w: 140, t: "A剪辑（条）" }
+    { w: 215, t: "周期 / 周次" }, { w: 230, t: "主推品 / 活动" }, { w: 320, t: "周主目标" },
+    { w: 175, t: "内容形式" }, { w: 125, t: "挂链（条）" }, { w: 140, t: "不挂链（条）" }, { w: 125, t: "小计（条）" },
+    { w: 115, t: "我（条）" }, { w: 140, t: "A剪辑（条）" }, { w: 105, t: "YH" }, { w: 105, t: "XC" }
   ];
   var W = 0; cols.forEach(function (c) { W += c.w; });
-  var nRows = 0;
-  p.groups.forEach(function (g) { nRows += g.rows.length; });
-  var HDR = 92, RH = 62, GROUPTOT = 64, TOTR = 72, H = HDR + RH * nRows + GROUPTOT * p.groups.length + TOTR;
+  var nRows = p.rows.length;
+  var HDR = 88, RH = 74, TOTR = 78, H = HDR + RH * nRows + TOTR;
   var S = 2;
   var cv = document.createElement("canvas");
   cv.width = W * S; cv.height = H * S;
@@ -5877,7 +5855,7 @@ function exportWeekSheet(mode, fmt, wsOpt) {
   function cell(text, w, x, y, h, size, bold, color, maxLines) {
     ctx.font = (bold ? "bold " : "") + size + "px " + FONT;
     ctx.fillStyle = color;
-    var lines = wrapText(text, size, bold, w - 14);
+    var lines = wrapText(text, size, bold, w - 16);
     if (maxLines && lines.length > maxLines) { lines = lines.slice(0, maxLines); lines[maxLines - 1] = lines[maxLines - 1].slice(0, -1) + "…"; }
     var lh = size * 1.32, start = y + h / 2 - (lines.length - 1) * lh / 2;
     lines.forEach(function (ln, i) { ctx.fillText(ln, x + w / 2, start + i * lh); });
@@ -5885,70 +5863,55 @@ function exportWeekSheet(mode, fmt, wsOpt) {
   ctx.fillStyle = "#0f1720"; ctx.fillRect(0, 0, W, HDR);
   var x = 0;
   cols.forEach(function (c) {
-    ctx.font = "bold 20px " + FONT; ctx.fillStyle = "#ffffff";
-    var lines = wrapText(c.t, 20, true, c.w - 10);
-    var lh = 26, start = HDR / 2 - (lines.length - 1) * lh / 2;
+    ctx.font = "bold 21px " + FONT; ctx.fillStyle = "#ffffff";
+    var lines = wrapText(c.t, 21, true, c.w - 10);
+    var lh = 27, start = HDR / 2 - (lines.length - 1) * lh / 2;
     lines.forEach(function (ln, i) { ctx.fillText(ln, x + c.w / 2, start + i * lh); });
     x += c.w;
   });
-  var c0 = cols[0].w, c1 = cols[1].w, c2 = cols[2].w, c3 = cols[3].w, c4 = cols[4].w;
-  var tX = c0 + c1 + c2 + c3;
-  var bodyH = RH * nRows + GROUPTOT * p.groups.length;
-  var leftDone = false;
-  function drawLeft() {
-    if (leftDone) return; leftDone = true;
-    cell(mds(p.ws) + " ~ " + mds(p.we) + "\n一周总量 " + (p.wtot || p.all.q), c0, 0, HDR + 6, 190, 19, false, "#111827", 8);
-    cell(p.rec.name || "—", c1, c0, HDR + 6, 190, 19, false, "#111827", 8);
-    cell(p.rec.goal || "—", c2, c0 + c1, HDR + 6, 190, 19, false, "#111827", 8);
-  }
+  var c0 = cols[0].w, c1 = cols[1].w, c2 = cols[2].w, c3 = cols[3].w;
+  var tX = c0 + c1 + c2;
+  var bodyH = RH * nRows;
+  /* 类型列底色 + 行 */
   var y = HDR;
-  ctx.strokeStyle = "#c9ced6"; ctx.lineWidth = 1;
-  p.groups.forEach(function (g) {
-    var gTop = y;
-    g.rows.forEach(function (r) {
-      ctx.fillStyle = "#f3f4f6"; ctx.fillRect(tX, y, c4, RH);
-      cell(r.t, c4, tX, y, RH, 20, false, "#111827", 1);
-      ctx.font = "21px " + FONT; ctx.fillStyle = "#111827";
-      var nx = tX + c4;
-      [r.l, r.n, r.q, r.me, r.sub].forEach(function (val, ci) {
-        ctx.fillText(String(val), nx + cols[5 + ci].w / 2, y + RH / 2);
-        nx += cols[5 + ci].w;
-      });
-      ctx.beginPath(); ctx.moveTo(0, y + RH); ctx.lineTo(W, y + RH); ctx.stroke();
-      y += RH;
+  ctx.strokeStyle = "#222"; ctx.lineWidth = 1;
+  p.rows.forEach(function (r) {
+    ctx.fillStyle = "#f3f4f6"; ctx.fillRect(tX, y, c3, RH);
+    cell(r.t, c3, tX, y, RH, 22, false, "#111827", 1);
+    ctx.font = "bold 22px " + FONT; ctx.fillStyle = "#111827";
+    var nx = tX + c3;
+    [r.l, r.n, r.q, r.me, r.sub, r.yh, r.xc].forEach(function (val, ci) {
+      ctx.fillText(String(val), nx + cols[4 + ci].w / 2, y + RH / 2);
+      nx += cols[4 + ci].w;
     });
-    ctx.fillStyle = "#eef4ff"; ctx.fillRect(tX, y, W - tX, GROUPTOT);
-    cell("小计 · " + g.name, c4, tX, y, GROUPTOT, 20, true, "#1d4ed8", 1);
-    [g.tot.l, g.tot.n, g.tot.q, g.tot.me, g.tot.sub].forEach(function (val, ci) {
-      var cx = tX + c4;
-      for (var k = 0; k < ci; k++) cx += cols[5 + k].w;
-      cell(String(val), cols[5 + ci].w, cx, y, GROUPTOT, 20, true, "#1d4ed8", 1);
-    });
-    ctx.beginPath(); ctx.moveTo(0, y + GROUPTOT); ctx.lineTo(W, y + GROUPTOT); ctx.stroke();
-    y += GROUPTOT;
-    var gh = GROUPTOT + RH * g.rows.length;
-    ctx.fillStyle = "#0f1720"; ctx.fillRect(c0 + c1 + c2, gTop, c3, gh);
-    ctx.fillStyle = "#ffffff"; ctx.font = "bold 24px " + FONT;
-    ctx.fillText(g.name, c0 + c1 + c2 + c3 / 2, gTop + gh / 2);
-    ctx.beginPath(); ctx.moveTo(c0 + c1 + c2, gTop); ctx.lineTo(c0 + c1 + c2, y); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(c0 + c1 + c2 + c3, gTop); ctx.lineTo(c0 + c1 + c2 + c3, y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(tX, y); ctx.lineTo(W, y); ctx.stroke();
+    y += RH;
   });
-  drawLeft();
-  ctx.fillStyle = "#374151"; ctx.fillRect(0, y, W, TOTR);
-  ctx.fillStyle = "#ffffff"; ctx.font = "bold 23px " + FONT;
-  ctx.fillText("合计（本周 · 全部项目）", (c0 + c1 + c2 + c3 + c4) / 2, y + TOTR / 2);
-  var nx2 = tX + c4;
-  [p.all.l, p.all.n, p.all.q, p.all.me, p.all.sub].forEach(function (val, ci) {
-    ctx.fillText(String(val), nx2 + cols[5 + ci].w / 2, y + TOTR / 2);
-    nx2 += cols[5 + ci].w;
-  });
+  ctx.beginPath(); ctx.moveTo(tX, y); ctx.lineTo(W, y); ctx.stroke();
+  /* 左侧三列合并 */
+  cell(mds(p.ws) + " ~ " + mds(p.we) + " · " + weekLabel(p.ws) + (p.wtot ? "（一周总量 " + p.wtot + "）" : ""), c0, 0, HDR, bodyH, 19, false, "#111827", 8);
+  cell(p.rec.name || "—", c1, c0, HDR, bodyH, 20, false, "#111827", 8);
+  cell(p.rec.goal || "—", c2, c0 + c1, HDR, bodyH, 20, false, "#111827", 8);
+  /* 竖线 */
   var bx = 0;
   cols.forEach(function (c) {
     ctx.beginPath(); ctx.moveTo(bx, 0); ctx.lineTo(bx, H); ctx.stroke();
     bx += c.w;
   });
+  /* 合计行 */
+  ctx.fillStyle = "#374151"; ctx.fillRect(0, y, W, TOTR);
+  ctx.fillStyle = "#ffffff"; ctx.font = "bold 24px " + FONT;
+  ctx.fillText("合计（本周）", (c0 + c1 + c2) / 2, y + TOTR / 2);
+  cell(TYPES.length + " 类内容形式", c3, tX, y, TOTR, 22, true, "#ffffff", 1);
+  var nx2 = tX + c3;
+  [p.tot.l, p.tot.n, p.tot.q, p.tot.me, p.tot.sub, p.tot.yh, p.tot.xc].forEach(function (val, ci) {
+    ctx.fillText(String(val), nx2 + cols[4 + ci].w / 2, y + TOTR / 2);
+    nx2 += cols[4 + ci].w;
+  });
   ctx.strokeStyle = "#0f1720"; ctx.lineWidth = 2;
   ctx.strokeRect(1, 1, W - 2, H - 2);
+  var dbg = document.getElementById("dbgImg");
+  if (dbg) dbg.setAttribute("data-url", cv.toDataURL("image/png"));
   var a = document.createElement("a");
   a.href = cv.toDataURL("image/png");
   a.download = title + "_" + today() + ".png";
