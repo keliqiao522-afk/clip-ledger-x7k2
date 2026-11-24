@@ -5749,7 +5749,7 @@ function rowMeY(rec, t) {
 }
 function rowMeX(rec, t) { return Math.max(0, rowMe(rec, t) - rowMeY(rec, t)); }
 function rowSubY(rec, t) { return Math.max(0, rowYh(rec, t) - rowMeY(rec, t)); }
-function rowSubX(rec, t) { return Math.max(0, rowXc(rec, t) - rowMeX(rec, t)); }
+function rowSubX(rec, t) { return Math.max(0, rowSub(rec, t) - rowSubY(rec, t)); }
 function rowYh(rec, t) {
   var r = rowOf(rec, t), q = rowQ(rec, t);
   if (r.yh === null || r.yh === "" || r.yh === undefined) return Math.round(q / 2);
@@ -5773,17 +5773,19 @@ function refreshWeekRow(i, t) {
   var ti = TYPES.indexOf(t), q = rowQ(rec, t);
   var el = document.getElementById("rq" + i + "_" + ti);
   if (el) el.textContent = q;
-  ["me", "meY", "sub", "yh", "xc"].forEach(function (k) {
+  ["me", "meY", "sub", "suby"].forEach(function (k) {
     var e = document.getElementById("r" + k + i + "_" + ti);
-    if (e) e.value = (k === "me" ? rowMe(rec, t) : k === "meY" ? rowMeY(rec, t) : k === "sub" ? rowSub(rec, t) : k === "yh" ? rowYh(rec, t) : rowXc(rec, t));
+    if (e) e.value = (k === "me" ? rowMe(rec, t) : k === "meY" ? rowMeY(rec, t) : k === "sub" ? rowSub(rec, t) : rowSubY(rec, t));
   });
   var mxe = document.getElementById("rmeX" + i + "_" + ti);
   if (mxe) mxe.textContent = rowMeX(rec, t);
+  var sxe = document.getElementById("rsubx" + i + "_" + ti);
+  if (sxe) sxe.textContent = rowSubX(rec, t);
 }
 function refreshWeekTable(i) {
   var rec = weekTables[i]; if (!rec) return;
   var g = weekRowTotals(rec);
-  ["l", "n", "q", "me", "meY", "meX", "sub", "yh", "xc"].forEach(function (k) {
+  ["l", "n", "q", "me", "meY", "meX", "sub", "subY", "subX"].forEach(function (k) {
     var el = document.getElementById("rt" + i + "_" + k);
     if (el) el.textContent = g[k];
   });
@@ -5847,6 +5849,17 @@ function setRowMeY(i, t, v) {
   if (v2 < rg.lo) v2 = rg.lo;
   if (v2 > rg.hi) v2 = rg.hi;
   r.meY = v2;
+  refreshWeekRow(i, t);
+  refreshWeekTable(i);
+}
+function setRowSubY(i, t, v) {
+  var rec = weekTables[i]; if (!rec) return;
+  var r = rowOf(rec, t), q = rowQ(rec, t), meY = rowMeY(rec, t), sub = rowSub(rec, t);
+  var v2 = (String(v).trim() === "") ? Math.max(0, sub - Math.round((q - sub) * 0)) : num(v);
+  if (v2 < 0) v2 = 0;
+  if (v2 > sub) v2 = sub;
+  r.yh = Math.min(q, meY + v2);
+  r.xc = q - r.yh;
   refreshWeekRow(i, t);
   refreshWeekTable(i);
 }
@@ -5917,8 +5930,8 @@ function renderSheetList() {
         + '<td class="subcell"><input type="number" min="0" style="width:40px" id="rmeY' + i + "_" + ti + '" value="' + rowMeY(rec, t) + '" oninput="setRowMeY(' + i + ",'" + t + "',this.value)\"></td>"
         + '<td class="subcell" id="rmeX' + i + "_" + ti + '">' + rowMeX(rec, t) + "</td>"
         + '<td class="subcell"><input type="number" min="0" style="width:40px" class="subin" id="rsub' + i + "_" + ti + '" value="' + rowSub(rec, t) + '" oninput="setRowSub(' + i + ",'" + t + "',this.value)\"></td>"
-        + '<td><input type="number" min="0" style="width:42px" id="ryh' + i + "_" + ti + '" value="' + rowYh(rec, t) + '" oninput="setRowYh(' + i + ",'" + t + "',this.value)\"></td>"
-        + '<td class="subcell"><input type="number" min="0" style="width:42px" class="subin" id="rxc' + i + "_" + ti + '" value="' + rowXc(rec, t) + '" oninput="setRowXc(' + i + ",'" + t + "',this.value)\"></td></tr>";
+        + '<td class="subcell"><input type="number" min="0" style="width:40px" class="subin" id="rsuby' + i + "_" + ti + '" value="' + rowSubY(rec, t) + '" oninput="setRowSubY(' + i + ",'" + t + "',this.value)\"></td>"
+        + '<td class="subcell" id="rsubx' + i + "_" + ti + '">' + rowSubX(rec, t) + "</td></tr>";
     });
     html += '<div class="wkcard">'
       + '<div class="listhead">'
@@ -5940,11 +5953,11 @@ function renderSheetList() {
       + "</div></div>"
       + '<div class="flds" style="margin-bottom:10px"><div class="fld grow" style="flex:1;min-width:260px"><label>周度目标</label><textarea style="min-height:48px" oninput="setWeekField(' + i + ',\'goal\',this.value)" placeholder="例：稳定成交素材供给，验证3个可复用选题方向">' + esc(rec.goal) + '</textarea></div></div>'
       + '<div class="grandline" id="gw' + i + '"></div>'
-      + '<div class="scroll"><table class="wk"><thead><tr><th>内容形式</th><th>挂链（条）</th><th>不挂链（条）</th><th>小计<br><span style="font-weight:400">（条）</span></th><th>我（条）</th><th>我·YH<br><span style="font-weight:400">（手填）</span></th><th>我·XC<br><span style="font-weight:400">（＝我−YH）</span></th><th>A剪辑（条）<br><span style="font-weight:400">（＝小计−我）</span></th><th>YH（条）</th><th>XC（条）<br><span style="font-weight:400">（＝小计−YH）</span></th></tr></thead><tbody>'
+      + '<div class="scroll"><table class="wk"><thead><tr><th>内容形式</th><th>挂链（条）</th><th>不挂链（条）</th><th>小计<br><span style="font-weight:400">（条）</span></th><th>我（条）</th><th>我·YH<br><span style="font-weight:400">（手填）</span></th><th>我·XC<br><span style="font-weight:400">（＝我−YH）</span></th><th>A剪辑（条）<br><span style="font-weight:400">（＝小计−我）</span></th><th>A·YH<br><span style="font-weight:400">（手填）</span></th><th>A·XC<br><span style="font-weight:400">（＝A−A·YH）</span></th></tr></thead><tbody>'
       + rows
-      + '<tr class="tot"><td>合计（本周）</td><td id="rt' + i + '_l"></td><td id="rt' + i + '_n"></td><td class="sumcell" id="rt' + i + '_q"></td><td class="sumcell" id="rt' + i + '_me"></td><td class="subcell" id="rt' + i + '_meY"></td><td class="subcell" id="rt' + i + '_meX"></td><td class="subcell" id="rt' + i + '_sub"></td><td class="sumcell" id="rt' + i + '_yh"></td><td class="subcell" id="rt' + i + '_xc"></td></tr>'
+      + '<tr class="tot"><td>合计（本周）</td><td id="rt' + i + '_l"></td><td id="rt' + i + '_n"></td><td class="sumcell" id="rt' + i + '_q"></td><td class="sumcell" id="rt' + i + '_me"></td><td class="subcell" id="rt' + i + '_meY"></td><td class="subcell" id="rt' + i + '_meX"></td><td class="subcell" id="rt' + i + '_sub"></td><td class="subcell" id="rt' + i + '_subY"></td><td class="subcell" id="rt' + i + '_subX"></td></tr>'
       + "</tbody></table></div>"
-      + '<p class="legend" style="margin:8px 0 0">规则：一周总量 ÷ 2＝YH 和 XC 各一半（单数 YH 多 1）；项目内按「月度目标」各类型占比分；再按月度目标里「我剪 / 下属剪」比例拆「我」和「A剪辑」。任一格都能手改，改完相关的自动补（小计＝挂链＋不挂链、A剪辑＝小计−我、XC＝小计−YH、我·XC＝我−我·YH）。「我·YH」只填我在 YH 剪几条，剩下的我·XC 自动算。</p>'
+      + '<p class="legend" style="margin:8px 0 0">规则：一周总量 ÷ 2＝YH 和 XC 各一半（单数 YH 多 1）；项目内按「月度目标」各类型占比分；再按月度目标里「我剪 / 下属剪」比例拆「我」和「A剪辑」。任一格都能手改，改完相关的自动补：小计＝挂链＋不挂链；A剪辑＝小计−我；我·XC＝我−我·YH；A·XC＝A剪辑−A·YH。<b>两个 YH 都由手填</b>：我·YH 填我在 YH 剪几条，A·YH 填下属在 YH 剪几条；项目 YH 合计＝我·YH＋A·YH，XC 合计＝我·XC＋A·XC，核对栏会自己校验。</p>'
       + '<div class="wkdist" id="wd' + i + '">' + weekDistText(rec) + "</div>"
       + '<div class="wkfoot" id="wf' + i + '">' + weekFootText(rec.ws) + "</div>"
       + '<div class="flds" style="margin-top:12px">'
