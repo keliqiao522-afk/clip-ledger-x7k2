@@ -98,6 +98,7 @@ td,th{word-break:break-word;overflow-wrap:break-word}
 .wk .tgcell{background:#f8fafc;color:#475569}
 .wk .leftcell{font-weight:700;color:#dc2626}
 .wk .subcell{color:#7c3aed;font-weight:600}
+.wktag{font-size:10px;color:#9ca3af;margin-top:2px}
 .wkweek td{background:#eff6ff;font-weight:700;color:#1d4ed8;text-align:left;padding:8px 12px;border-top:2px solid #dbeafe}
 .wkweek .wkrow{display:flex;justify-content:space-between;align-items:center;gap:10px;font-weight:700;color:#1d4ed8}
 .wkweek .wkrow button{border:1px solid #bfdbfe;background:#fff;color:#1d4ed8;border-radius:7px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
@@ -867,15 +868,15 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
 <!-- ================= 剪辑登记 ================= -->
 <div id="pane-ledger" class="pane" style="display:none">
   <div class="box" style="padding:10px 16px">
-    <div class="legend" style="margin:0">这里只做<b>登记</b>：选日期 + 谁剪，填当天剪了多少条。所有进度、目标对比、周统计都在第一页「进度总览」看，不在这里混。</div>
+    <div class="legend" style="margin:0">这里只做<b>按天登记</b>：<b>一天一笔</b>（同一天换账号可再记一笔）。你填的是<b>那一天</b>剪了多少条，保存后自动加进<b>本周（周一~周日）</b>、<b>本期（15日~次月14日）</b>、<b>自然月</b>三处统计，不用你算周/月。进度和目标对比只看第一页「进度总览」。</div>
   </div>
   <div class="box">
     <div class="flds">
-      <div class="fld"><label>日期</label><div><input type="date" id="logDate" onchange="checkDup()"><span class="wd on" id="dateWd"></span></div></div>
-      <div class="fld"><label>这批是谁剪的</label><select id="logOwner" style="padding:8px 10px;font-size:13px"><option value="">我</option><option value="sub">下属</option></select></div>
-      <div class="fld grow"><label>当天备注（选填）</label><input type="text" id="note" placeholder="例：上午棚拍，下午外景，模特小杨"></div>
-      <div class="fld"><label>账号（可加新）</label><input type="text" id="logAccount" list="accList" placeholder="例：主号 / 小号2"><datalist id="accList"></datalist></div>
-      <div class="fld" style="flex:1 1 100%"><label>款号（可加多个 · 款号 × 条数）</label>
+      <div class="fld"><label>日期（这条记在哪一天 · 按天）</label><div><input type="date" id="logDate" onchange="checkDup()"><span class="wd on" id="dateWd"></span></div><span class="legend" id="logCtxText" style="margin:4px 0 0;display:block"></span></div>
+      <div class="fld"><label>这批是谁剪的（我 / 下属）</label><select id="logOwner" style="padding:8px 10px;font-size:13px"><option value="">我</option><option value="sub">下属</option></select></div>
+      <div class="fld grow"><label>当天备注（选填 · 只给这一天）</label><input type="text" id="note" placeholder="例：上午棚拍，下午外景，模特小杨"></div>
+      <div class="fld"><label>账号（这一天属于哪个号）</label><input type="text" id="logAccount" list="accList" placeholder="例：主号 / 小号2"><datalist id="accList"></datalist></div>
+      <div class="fld" style="flex:1 1 100%"><label>款号（这一天的款号 · 可加多个 · 款号 × 条数）</label>
         <div id="logCodes" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"></div>
       </div>
     </div>
@@ -895,7 +896,7 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
   </div>
 
   <div class="box">
-    <div class="listhead"><h2>已登记记录</h2><input id="kw" placeholder="搜日期 / 备注 / 素材" oninput="renderRecords()"></div>
+    <div class="listhead"><h2>已登记记录（一天一笔 · 自动进周/月统计）</h2><input id="kw" placeholder="搜日期 / 备注 / 素材" oninput="renderRecords()"></div>
     <div class="scroll"><table class="rec"><thead id="recHead"></thead><tbody id="recBody"></tbody></table></div>
     <p class="legend">单元格为「挂链 / 不挂链」；点「明细」展开当天剪的具体素材。账号和款号也在列表里，导出 CSV 会带上。</p>
   </div>
@@ -1742,6 +1743,13 @@ function calc() {
 function checkDup() {
   var d = $("logDate").value;
   $("dateWd").textContent = wd(d);
+  if ($("logCtxText")) {
+    if (!d) $("logCtxText").textContent = "先选日期";
+    else {
+      var ws0 = mondayOf(d), rg0 = cycleRangeToday();
+      $("logCtxText").innerHTML = "这条记在 <b>" + mds(d) + " " + wd(d) + "</b> ｜ 属 <b>" + weekLabel(d) + " 周</b>（" + mds(ws0) + "~" + mds(weekEndOf(ws0)) + "） ｜ 本期（15日~次月14日）：" + mds(rg0.start) + "~" + mds(rg0.end);
+    }
+  }
   var dup = data.some(function (r) { return r.date === d && r.id !== editingId; });
   $("dupHint").style.display = dup ? "inline" : "none";
 }
@@ -1858,7 +1866,7 @@ function renderRecords() {
       if (!it || (!it.link && !it.nolink)) return '<td><span class="zero">—</span></td>';
       return '<td><span class="pair"><b>' + (it.link || 0) + "</b> / <span>" + (it.nolink || 0) + "</span></span></td>";
     }).join("");
-    return "<tr><td>" + r.date + wdHtml(r.date) + "</td><td>" + (esc(r.account) || '<span class="zero">—</span>') + "</td><td>" + (r.owner === "sub" ? "下属" : "我") + "</td>" + cells + "<td><b>" + sum + '</b></td><td class="prepcell">' + (logCodesText(r.codes) || '<span class="zero">—</span>') + '</td><td class="note">' + (esc(r.note) || "—") + "</td>"
+    return "<tr><td>" + r.date + wdHtml(r.date) + '<div class="wktag">' + weekLabel(r.date) + "</div></td><td>" + (esc(r.account) || '<span class="zero">—</span>') + "</td><td>" + (r.owner === "sub" ? "下属" : "我") + "</td>" + cells + "<td><b>" + sum + '</b></td><td class="prepcell">' + (logCodesText(r.codes) || '<span class="zero">—</span>') + '</td><td class="note">' + (esc(r.note) || "—") + "</td>"
       + '<td><div class="ops">' + (hasDetail ? '<button class="mini blue" onclick="toggleDetail(' + r.id + ')">明细</button>' : "")
       + '<button class="mini" onclick="editRec(' + r.id + ')">编辑</button>'
       + '<button class="mini red" onclick="delRec(' + r.id + ')">删除</button></div></td></tr>'
