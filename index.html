@@ -98,6 +98,7 @@ td,th{word-break:break-word;overflow-wrap:break-word}
 .wk .tgcell{background:#f8fafc;color:#475569}
 .wk .leftcell{font-weight:700;color:#dc2626}
 .wk .subcell{color:#7c3aed;font-weight:600}
+.wk .subcell .subin{width:78px;text-align:center;color:#7c3aed;padding:4px}
 .wktag{font-size:10px;color:#9ca3af;margin-top:2px}
 .wkweek td{background:#eff6ff;font-weight:700;color:#1d4ed8;text-align:left;padding:8px 12px;border-top:2px solid #dbeafe}
 .wkweek .wkrow{display:flex;justify-content:space-between;align-items:center;gap:10px;font-weight:700;color:#1d4ed8}
@@ -3665,7 +3666,20 @@ function weekTargetOf(ws) {
   return acc;
 }
 function weekTargetTotals(ws) {
-  var w = weekTargetOf(ws), tot = { shoot: 0, link: 0, nolink: 0, sub: 0, sum: 0, edit: 0 };
+  var w = weekTargetOf(ws);
+  /* 周计划表里手动改过的下属剪，优先于月度目标自动分 */
+  var rec0 = findWeekTable(ws);
+  if (rec0) {
+    TYPES.forEach(function (t) {
+      var sv = weekSubOf(rec0, t);
+      if (sv !== null) {
+        w[t].sub = sv;
+        w[t].sum = w[t].link + w[t].nolink;
+        w[t].edit = w[t].sum + w[t].sub;
+      }
+    });
+  }
+  var tot = { shoot: 0, link: 0, nolink: 0, sub: 0, sum: 0, edit: 0 };
   TYPES.forEach(function (t) {
     ["shoot", "link", "nolink", "sub", "sum", "edit"].forEach(function (f) { tot[f] += w[t][f] || 0; });
   });
@@ -3818,6 +3832,13 @@ function saveWeekCard(i) {
   try { toast("已保存这一周"); } catch (e) { }
 }
 /* 用「月度目标」自动填这一周的周目标 */
+function jumpMonthTgt() {
+  switchTab("prog");
+  setTimeout(function () {
+    var el = document.getElementById("mtBody");
+    if (el) { var box = el.closest(".box"); if (box) box.scrollIntoView({ block: "center" }); }
+  }, 200);
+}
 function fillWeekFromMonth(i) {
   var rec = weekTables[i];
   if (!rec) return;
@@ -3825,7 +3846,7 @@ function fillWeekFromMonth(i) {
   if (!rec.rows) rec.rows = {};
   TYPES.forEach(function (t) {
     var old = rec.rows[t] || {};
-    rec.rows[t] = { l: w[t].link, n: w[t].nolink, style: old.style || "", codes: old.codes || [] };
+    rec.rows[t] = { l: w[t].link, n: w[t].nolink, sub: null, style: old.style || "", codes: old.codes || [] };
   });
   saveWeekTables(true);
   renderSheetList();
@@ -3844,6 +3865,37 @@ function setWeekDate(i, v) {
   weekTables[i].ws = mondayOf(v);
   saveWeekTables(true);
   renderSheetList(); renderWeekDone();
+}
+function weekSubOf(rec, t) {
+  var r = rec && rec.rows ? rec.rows[t] : null;
+  if (!r) return 0;
+  if (r.sub === undefined || r.sub === null || r.sub === "") return null;
+  return num(r.sub);
+}
+function refreshWeekTotals(i) {
+  var rec = weekTables[i]; if (!rec) return;
+  var wgt = weekTargetOf(rec.ws), tl = 0, tn = 0, ts = 0;
+  TYPES.forEach(function (t) {
+    var r = rec.rows[t] || {};
+    tl += r.l || 0; tn += r.n || 0;
+    var sv = weekSubOf(rec, t);
+    ts += (sv === null ? (wgt[t].sub || 0) : sv);
+  });
+  var f1 = document.getElementById("st" + i + "_l"), f2 = document.getElementById("st" + i + "_n"),
+      f3 = document.getElementById("st" + i + "_s"), f4 = document.getElementById("st" + i + "_sub");
+  if (f1) f1.textContent = tl;
+  if (f2) f2.textContent = tn;
+  if (f3) f3.textContent = tl + tn;
+  if (f4) f4.textContent = ts;
+}
+function setWeekSub(i, t, v) {
+  var rec = weekTables[i];
+  if (!rec) return;
+  if (!rec.rows) rec.rows = {};
+  if (!rec.rows[t]) rec.rows[t] = { l: 0, n: 0, style: "", codes: [] };
+  rec.rows[t].sub = (String(v).trim() === "") ? null : num(v);
+  refreshWeekTotals(i);
+  saveWeekTables();
 }
 function setWeekNum(i, t, k, v) {
   var rec = weekTables[i];
@@ -3971,12 +4023,13 @@ function renderSheetList() {
     var rows = "";
     TYPES.forEach(function (t, ti) {
       var r = rec.rows[t] || { l: 0, n: 0, style: "" };
-      tl += r.l || 0; tn += r.n || 0; ts += wgt[t].sub || 0;
+      var sv = (r.sub === undefined || r.sub === null || r.sub === "") ? (wgt[t].sub || 0) : num(r.sub);
+      tl += r.l || 0; tn += r.n || 0; ts += sv;
       rows += "<tr><td>" + t + "</td>"
         + '<td><input type="number" min="0" value="' + (r.l || 0) + '" oninput="setWeekNum(' + i + ",'" + t + "','l',this.value)\"></td>"
         + '<td><input type="number" min="0" value="' + (r.n || 0) + '" oninput="setWeekNum(' + i + ",'" + t + "','n',this.value)\"></td>"
         + '<td class="sumcell" id="sk' + i + "_" + ti + '">' + ((r.l || 0) + (r.n || 0)) + "</td>"
-        + '<td class="subcell" style="text-align:center" title="下属剪目标＝月度目标自动分">' + (wgt[t].sub || 0) + "</td></tr>";
+        + '<td class="subcell"><input type="number" min="0" class="subin" id="ss' + i + "_" + ti + '" value="' + sv + '" placeholder="自动' + (wgt[t].sub || 0) + '" title="默认＝月度目标自动分，可改；清空＝回到自动" oninput="setWeekSub(' + i + ",'" + t + "',this.value)\"></td></tr>"
     });
     html += '<div class="wkcard">'
       + '<div class="listhead">'
@@ -3988,16 +4041,18 @@ function renderSheetList() {
       + '<div class="ops">'
       + '<button class="mini blue" onclick="exportWeekSheet(\'plan\',\'img\',\'' + rec.ws + '\')">导出周计划（表格图）</button>'
       + '<button class="mini" onclick="fillWeekFromMonth(' + i + ')">按月度目标填周目标</button>'
+      + '<button class="mini" onclick="jumpMonthTgt()">去改月度目标</button>'
       + '<button class="mini blue" onclick="exportWeekImage(\'plan\',' + i + ')">导出表格图片</button>'
       + '<button class="mini" onclick="copyWeekFromDone(' + i + ')">按台账回填</button>'
       + '<button class="mini green" onclick="saveWeekCard(' + i + ')">保存</button>'
       + '<button class="mini red" onclick="delWeekTable(' + i + ')">删除</button>'
       + "</div></div>"
       + '<div class="flds" style="margin-bottom:10px"><div class="fld grow" style="flex:1;min-width:260px"><label>周度目标</label><textarea style="min-height:56px" oninput="setWeekField(' + i + ',\'goal\',this.value)" placeholder="例：稳定成交素材供给，验证3个可复用选题方向">' + esc(rec.goal) + '</textarea></div></div>'
-      + '<div class="scroll"><table class="wk"><thead><tr><th>产出形式</th><th>挂链（条）</th><th>不挂链（条）</th><th>小计（条）</th><th>下属剪（自动）</th></tr></thead><tbody>'
+      + '<div class="scroll"><table class="wk"><thead><tr><th>产出形式</th><th>挂链（条）</th><th>不挂链（条）</th><th>小计（条）</th><th>下属剪<br><span style="font-weight:400">（可改 · 默认自动）</span></th></tr></thead><tbody>'
       + rows
-      + '<tr class="tot"><td>合计（本周）</td><td id="st' + i + '_l">' + tl + '</td><td id="st' + i + '_n">' + tn + '</td><td id="st' + i + '_s" class="sumcell">' + (tl + tn) + '</td><td class="subcell">' + ts + '</td></tr>'
-      + "</tbody></table></div>"
+      + '<tr class="tot"><td>合计（本周）</td><td id="st' + i + '_l">' + tl + '</td><td id="st' + i + '_n">' + tn + '</td><td id="st' + i + '_s" class="sumcell">' + (tl + tn) + '</td><td class="subcell" id="st' + i + '_sub">' + ts + '</td></tr>'
++ "</tbody></table></div>"
+      + '<p class="legend" style="margin:8px 0 0">下属剪默认＝「进度总览 → 月度目标」里每类填的「剪辑目标（下属剪）」按当月天数摊到本周；这一周想单独定，直接改紫色那列数字（清空＝回到自动），改完点「保存」。</p>'
       + '<div class="wkdist" id="wd' + i + '">' + weekDistText(rec) + "</div>"
       + '<div class="wkfoot" id="wf' + i + '">' + weekFootText(rec.ws) + "</div>"
       + '<div class="flds" style="margin-top:12px">'
@@ -4214,7 +4269,11 @@ function weekSheetPayload(mode, wsOpt) {
   var data = [], tl = 0, tn = 0, ts = 0;
   TYPES.forEach(function (t) {
     var l, n, su;
-    if (mode === "plan") { l = wg.byType[t].link; n = wg.byType[t].nolink; su = wg.byType[t].sub; }
+    if (mode === "plan") {
+      l = wg.byType[t].link; n = wg.byType[t].nolink;
+      var sv = weekSubOf(rec, t);
+      su = (sv === null ? wg.byType[t].sub : sv);
+    }
     else { l = split.me[t].l; n = split.me[t].n; su = split.sub[t].l + split.sub[t].n; }
     tl += l; tn += n; ts += su;
     data.push({ t: t, l: l, n: n, sub: su, s: l + n + su });
