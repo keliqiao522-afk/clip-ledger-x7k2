@@ -5836,6 +5836,7 @@ function setRowMeY(i, t, v) {
   var v2 = (String(v).trim() === "") ? me : num(v);
   if (v2 > me) v2 = me;
   r.meY = v2;
+  refreshWeekRow(i, t);
   refreshWeekTable(i);
 }
 function setWeekWtot(i, v) {
