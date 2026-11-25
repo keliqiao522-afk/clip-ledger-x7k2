@@ -1202,6 +1202,7 @@ body.mode-a h1 { font-size: 22px; }
         <button class="mini" onclick="stepWeek(-1)">下一周 ›</button>
         <button class="mini blue" onclick="addWeekTable()">+ 新增一周</button>
         <button class="mini" onclick="exportWeekCsv('plan')">导出全部CSV</button>
+        <button class="mini green" onclick="shareALink()" title="复制的链接发给剪辑，他点开就是自己的登记页">📤 发给剪辑</button>
       </div>
     </div>
     <p class="legend" style="margin:0 0 12px">每周一张表：周次、发布账号、周度目标、各类产出形式（挂链 / 不挂链）+ 资金申请 / 模特 / 协助。款号在「每日计划」里按天填，这里自动汇总。</p>
@@ -6199,6 +6200,40 @@ function renderSheetList() {
   });
   wrap.innerHTML = html;
   weekTables.forEach(function (rec, i) { refreshWeekTable(i); });
+}
+/* ===== 分享给剪辑：一键复制他的专属链接 ===== */
+function aShareUrl() {
+  var base = location.origin + location.pathname;
+  return base + "?a=1";
+}
+function aCopyText(t) {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(function () { try { toast("链接已复制，直接发给剪辑就行"); } catch (e) { } })
+        .catch(function () { aCopyFallback(t); });
+      return;
+    }
+  } catch (e) { }
+  aCopyFallback(t);
+}
+function aCopyFallback(t) {
+  try {
+    var ta = document.createElement("textarea");
+    ta.value = t; ta.style.position = "fixed"; ta.style.left = "-9999px";
+    document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
+    try { toast("链接已复制，直接发给剪辑就行"); } catch (e) { }
+  } catch (e) {
+    try { toast("复制没成功，手抄一下这个链接：" + t); } catch (e2) { }
+  }
+}
+function shareALink() {
+  var u = aShareUrl();
+  if (navigator.share) {
+    navigator.share({ title: "A 剪辑工作台", text: "你的剪辑任务在这里，登记完自动同步：", url: u })
+      .catch(function () { aCopyText(u); });
+    return;
+  }
+  aCopyText(u);
 }
 /* ===== A 剪辑工作台（?a=1）：按「日期 + 内容形式 + 项目YH/XC + 挂链/不挂链 + 条数」逐条登记 ===== */
 var KEY_A = "clipALogV1";
