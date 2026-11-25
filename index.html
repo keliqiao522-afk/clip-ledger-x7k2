@@ -6128,7 +6128,8 @@ var onlyWeekKey = "";
 var onlyWeekTouched = false;
 try {
   var v0 = localStorage.getItem("clipOnlyWeekV1");
-  if (v0 !== null) { onlyWeekKey = v0; onlyWeekTouched = true; }
+  /* 存的是「全部周」也按没选处理 → 打开就只看一周，要全看再手动选 */
+  if (v0 !== null && v0 !== "all") { onlyWeekKey = v0; onlyWeekTouched = true; }
 } catch (e) { }
 function setOnlyWeek(v) {
   onlyWeekKey = v || "";
