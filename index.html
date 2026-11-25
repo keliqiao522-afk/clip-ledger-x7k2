@@ -85,7 +85,7 @@ td,th{word-break:break-word;overflow-wrap:break-word}
 .mini.red{background:#fef2f2;color:#dc2626}
 .mini.blue{background:#eff6ff;color:#2563eb}
 .mini.green{background:#ecfdf3;color:#059669}
-.mini.savebig{background:#059669;color:#fff;font-size:15px;font-weight:700;padding:10px 26px;border-radius:10px;box-shadow:0 2px 8px rgba(5,150,105,.28)}
+.mini.savebig{background:#059669;color:#fff;font-size:19px;font-weight:800;padding:14px 40px;border-radius:12px;letter-spacing:.5px;box-shadow:0 4px 14px rgba(5,150,105,.35)}
 .mini.savebig:hover{background:#047857}
 .daycard{margin:10px 0 14px;border:1px solid #e6eaf1;border-radius:10px;background:#fff;overflow:hidden}
 .daytitle{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:8px 12px;background:#f5f8ff;border-bottom:1px solid #e6eaf1;font-size:12px;color:#475569}
@@ -3521,16 +3521,23 @@ var weekTables = JSON.parse(localStorage.getItem(KEY_WK) || "[]");
     for (var key in src) {
       if (!src.hasOwnProperty(key)) continue;
       var to = pickKey(key) || key;
-      if (!out[to]) out[to] = { l: 0, n: 0, style: "", codes: [] };
+      if (!out[to]) out[to] = { l: 0, n: 0, style: "", codes: [], me: null, sub: null, yh: null, xc: null, meY: null, subY: null, meX: null, subX: null };
       out[to].l = num(out[to].l) + num(src[key].l);
       out[to].n = num(out[to].n) + num(src[key].n);
       if (src[key] && src[key].style && !out[to].style) out[to].style = src[key].style;
       if (src[key] && src[key].codes && src[key].codes.length) out[to].codes = src[key].codes;
+      /* 手填的「我 / 我·YH / 我·XC / A剪辑 / A·YH / A·XC」必须原样带过来，不能被补全逻辑抹成 null */
+      for (var wi = 0; wi < 8; wi++) {
+        var wf = ["me", "sub", "yh", "xc", "meY", "subY", "meX", "subX"][wi];
+        if (src[key] && src[key][wf] !== undefined && src[key][wf] !== null && src[key][wf] !== "") {
+          if (out[to][wf] === null || out[to][wf] === undefined) out[to][wf] = src[key][wf];
+        }
+      }
     }
     rr.rows = out;
     for (var z = 0; z < TYPES.length; z++) {
       var tt = TYPES[z];
-      if (!rr.rows[tt]) rr.rows[tt] = { l: 0, n: 0, style: "", codes: [] };
+      if (!rr.rows[tt]) rr.rows[tt] = { l: 0, n: 0, style: "", codes: [], me: null, sub: null, yh: null, xc: null, meY: null, subY: null, meX: null, subX: null };
       rr.rows[tt].l = num(rr.rows[tt].l);
       rr.rows[tt].n = num(rr.rows[tt].n);
     }
@@ -3543,15 +3550,52 @@ var KEY_WEEK_SEL = "clipWeekDoneSel";
 var weekDoneDay = localStorage.getItem(KEY_WEEK_SEL) || today();
 var wkTimer = null;
 
+function markWeekSaved() {
+  try {
+    var d = new Date();
+    var t = ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2) + ":" + ("0" + d.getSeconds()).slice(-2);
+    for (var i = 0; i < weekTables.length; i++) {
+      var el = document.getElementById("sv" + i);
+      if (el) el.textContent = "✅ 已保存 " + t;
+    }
+  } catch (e) { }
+}
+function weekBakKeep(raw) {
+  try {
+    if (!raw) return;
+    var newRaw = JSON.stringify(weekTables);
+    if (raw === newRaw) return;
+    var ring = [];
+    try { ring = JSON.parse(localStorage.getItem("clipWeekBakV1") || "[]") || []; } catch (e) { ring = []; }
+    if (ring.length && ring[ring.length - 1].raw === raw) return;
+    if (ring.length && (Date.now() - ring[ring.length - 1].t) < 120000) return;
+    ring.push({ t: Date.now(), raw: raw });
+    while (ring.length > 6) ring.shift();
+    localStorage.setItem("clipWeekBakV1", JSON.stringify(ring));
+  } catch (e) { }
+}
+function restoreWeekBak() {
+  var ring = [];
+  try { ring = JSON.parse(localStorage.getItem("clipWeekBakV1") || "[]") || []; } catch (e) { ring = []; }
+  if (!ring.length) { alert("还没有本机备份。"); return; }
+  var last = ring[ring.length - 1];
+  if (!confirm("恢复本机备份（" + new Date(last.t).toLocaleString() + "）？\n会覆盖当前周计划表数据。")) return;
+  try { localStorage.setItem(KEY_WK, last.raw); } catch (e) { }
+  ring.pop();
+  try { localStorage.setItem("clipWeekBakV1", JSON.stringify(ring)); } catch (e) { }
+  location.reload();
+}
 function saveWeekTables(now) {
   clearTimeout(wkTimer);
   refreshProg();
   if (now) {
+    try { weekBakKeep(localStorage.getItem(KEY_WK) || ""); } catch (e) { }
     try { localStorage.setItem(KEY_WK, JSON.stringify(weekTables)); } catch (e) { }
+    markWeekSaved();
     return true;
   }
   wkTimer = setTimeout(function () {
-    try { localStorage.setItem(KEY_WK, JSON.stringify(weekTables)); autoBackup(); } catch (e) { }
+    try { weekBakKeep(localStorage.getItem(KEY_WK) || ""); localStorage.setItem(KEY_WK, JSON.stringify(weekTables)); autoBackup(); markWeekSaved(); } catch (e) { }
   }, 350);
   return true;
 }
@@ -6004,6 +6048,8 @@ function renderSheetList() {
       + '<button class="mini" onclick="exportWeekSheet(\'plan\',\'csv\',\'' + rec.ws + '\',\'A\')" title="同 A 模板的表格文件">CSV</button>'
       + '<button class="mini" onclick="jumpMonthTgt()" title="周目标从月度目标来，去改月度目标">月度目标</button>'
       + '<button class="mini savebig" onclick="saveWeekCard(' + i + ')">保存这一周</button>'
+      + '<button class="mini" onclick="restoreWeekBak()" title="万一数据被覆盖，回到上一份本机备份">恢复上一份</button>'
+      + '<span id="sv' + i + '" style="margin-left:10px;font-size:13px;color:#059669;font-weight:600"></span>'
       + '<button class="mini red" onclick="delWeekTable(' + i + ')">删除</button>'
       + "</div></div>"
       + '<div class="flds" style="margin-bottom:10px"><div class="fld grow" style="flex:1;min-width:260px"><label>周度目标</label><textarea style="min-height:48px" oninput="setWeekField(' + i + ',\'goal\',this.value)" placeholder="例：稳定成交素材供给，验证3个可复用选题方向">' + esc(rec.goal) + '</textarea></div></div>'
