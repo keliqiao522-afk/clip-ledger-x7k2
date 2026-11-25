@@ -718,6 +718,28 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
 
 </head>
 <body>
+<script>
+(function () {
+  var m = location.search.match(/[?&](a|role)=1/);
+  if (m) document.body.className = (document.body.className + " mode-a").trim();
+})();
+</script>
+<style>
+body.mode-a .tabs, body.mode-a .btns, body.mode-a #topLegendWrap { display: none !important; }
+body.mode-a .pane:not(#pane-a) { display: none !important; }
+body.mode-a #pane-a { display: block !important; }
+body.mode-a h1 { font-size: 22px; }
+.a-card { background: #fff; border: 1px solid #e5e9ef; border-radius: 12px; padding: 16px 18px; margin-bottom: 14px; }
+.a-num { display: flex; gap: 26px; flex-wrap: wrap; }
+.a-num div { min-width: 120px; }
+.a-num b { display: block; font-size: 30px; line-height: 1.25; color: #111827; }
+.a-num span { font-size: 12px; color: #6b7280; }
+.a-bar { height: 12px; background: #eef1f5; border-radius: 8px; overflow: hidden; margin-top: 8px; }
+.a-bar i { display: block; height: 100%; background: linear-gradient(90deg,#22c55e,#16a34a); }
+.a-tbl th, .a-tbl td { font-size: 13px; }
+.a-tbl td input { width: 58px; text-align: center; }
+.a-ro { color: #374151; font-weight: 600; }
+</style>
 
 <h1>剪辑素材登记</h1>
 <p class="sub">素材台账 · 周计划 · 执行结果，自动同步到云端</p>
@@ -731,7 +753,7 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
   <button class="tab" data-pane="result" onclick="switchTab('result')">执行结果</button>
 </div>
 
-<div style="display:flex;gap:8px;flex-wrap:wrap;margin:-6px 0 14px">
+<div id="topLegendWrap" style="display:flex;gap:8px;flex-wrap:wrap;margin:-6px 0 14px">
   <span class="legend" style="margin:0;padding:5px 10px;background:#f5f8ff;border:1px solid #dfe8ff;border-radius:8px;color:#1f3b73">📅 <b>本期</b>＝每月 15 日～次月 14 日（<b>半个月</b>，不是周也不是自然月）｜当前本期：<b id="topPeriod">—</b></span>
   <span class="legend" style="margin:0;padding:5px 10px;background:#f7f7fa;border:1px solid #e6e6ef;border-radius:8px">🗓 <b>周</b>＝周一～周日（周计划 / 每日计划 / 周计划表用）</span>
   <span class="legend" style="margin:0;padding:5px 10px;background:#f6f9f5;border:1px solid #e2ece0;border-radius:8px">📆 <b>月</b>＝1 日～月底（只有「月度目标」用）</span>
@@ -1169,6 +1191,20 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
     </div>
     <p class="legend" style="margin:0 0 12px">每周一张表：周次、发布账号、周度目标、各类产出形式（挂链 / 不挂链）+ 资金申请 / 模特 / 协助。款号在「每日计划」里按天填，这里自动汇总。</p>
     <div id="sheetList"></div>
+  </div>
+</div>
+
+<!-- ================= A 剪辑工作台（?a=1 时唯一可见） ================= -->
+<div id="pane-a" class="pane" style="display:none">
+  <div class="box">
+    <div class="listhead">
+      <h2 id="aTitle">A 剪辑工作台</h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span id="aTip" class="legend" style="margin:0"></span>
+        <button class="mini" onclick="renderA()">刷新</button>
+      </div>
+    </div>
+    <div id="aBody"></div>
   </div>
 </div>
 
@@ -6106,6 +6142,7 @@ function renderSheetList() {
       + '<p class="legend" style="margin:8px 0 0">规则：一周总量 ÷ 2＝YH 和 XC 各一半（单数 YH 多 1）；项目内按「月度目标」各类型占比分；再按月度目标里「我剪 / 下属剪」比例拆「我」和「A剪辑」。任一格都能手改，改完相关的自动补：小计＝挂链＋不挂链；A剪辑＝小计−我；我·XC＝我−我·YH；A·XC＝A剪辑−A·YH。<b>两个 YH 都由手填</b>：我·YH 填我在 YH 剪几条，A·YH 填下属在 YH 剪几条；项目 YH 合计＝我·YH＋A·YH，XC 合计＝我·XC＋A·XC，核对栏会自己校验。</p>'
       + '<div class="wkdist" id="wd' + i + '">' + weekDistText(rec) + "</div>"
       + '<div class="wkfoot" id="wf' + i + '">' + weekFootText(rec.ws) + "</div>"
+      + weekAStat(rec.ws)
       + '<div class="flds" style="margin-top:12px">'
       + '<div class="fld grow"><label>是否需要资金申请</label><textarea style="min-height:44px" placeholder="如是，请写明预估金额及用途" oninput="setWeekField(' + i + ',\'fund\',this.value)">' + esc(rec.fund) + '</textarea></div>'
       + '<div class="fld grow"><label>是否需要模特</label><textarea style="min-height:44px" placeholder="如是，写明人员性质、日期及时长" oninput="setWeekField(' + i + ',\'model\',this.value)">' + esc(rec.model) + '</textarea></div>'
@@ -6115,6 +6152,122 @@ function renderSheetList() {
   wrap.innerHTML = html;
   weekTables.forEach(function (rec, i) { refreshWeekTable(i); });
 }
+/* ===== A 剪辑工作台（?a=1） ===== */
+var KEY_A = "clipALogV1";
+function aLogAll() { try { return JSON.parse(localStorage.getItem(KEY_A) || "{}"); } catch (e) { return {}; } }
+function aWeekOfLog() {
+  var q = {};
+  try { (location.search || "").replace(/^\?/, "").split("&").forEach(function (kv) { var a = kv.split("="); q[a[0]] = decodeURIComponent(a[1] || ""); }); } catch (e) { }
+  if (q.ws) return q.ws;
+  var best = "";
+  weekTables.forEach(function (r) { if (r && r.ws && r.ws > best) best = r.ws; });
+  return best || mondayOf(today());
+}
+function aGetCell(ws, t) {
+  var all = aLogAll(), w = all[ws] || {}, c = w[t] || {};
+  return { l: num(c.l), n: num(c.n), note: c.note || "", at: c.at || "" };
+}
+function aSetDone(ws, t, k, v) {
+  var all = aLogAll();
+  if (!all[ws]) all[ws] = {};
+  if (!all[ws][t]) all[ws][t] = { l: 0, n: 0 };
+  all[ws][t][k] = Math.max(0, Math.round(num(v)));
+  all[ws][t].at = new Date().toISOString();
+  try { localStorage.setItem(KEY_A, JSON.stringify(all)); } catch (e) { }
+  renderA();
+  try { toast("已记录，正在同步给号主"); } catch (e) { }
+}
+function aSetNote(ws, v) {
+  var all = aLogAll();
+  if (!all[ws]) all[ws] = {};
+  all[ws].note = v;
+  all[ws].at = new Date().toISOString();
+  try { localStorage.setItem(KEY_A, JSON.stringify(all)); } catch (e) { }
+}
+function aLoggedIn() {
+  try { var s0 = JSON.parse(localStorage.getItem("clipCloudAuthV1") || "null"); return !!(s0 && s0.access_token); } catch (e) { return false; }
+}
+function renderA() {
+  var body = $("aBody");
+  if (!body) return;
+  var ws = aWeekOfLog();
+  var p = weekPlanPayload(ws);
+  var log = aLogAll()[ws] || {};
+  var need = 0, done = 0, needL = 0, needN = 0, doneL = 0, doneN = 0;
+  var rows = p.rows.map(function (r) {
+    var c = log[r.t] || {};
+    var dl = num(c.l), dn = num(c.n);
+    /* A 要剪的挂链/不挂链，按这一行的挂链:不挂链比例分配 */
+    var sL = r.q > 0 ? Math.round(r.sub * r.l / r.q) : 0;
+    var sN = Math.max(0, r.sub - sL);
+    need += r.sub; needL += sL; needN += sN;
+    done += dl + dn; doneL += dl; doneN += dn;
+    return { r: r, dl: dl, dn: dn, at: c.at || "", sL: sL, sN: sN };
+  });
+  var pct = need > 0 ? Math.min(100, Math.round(done * 100 / need)) : 0;
+  var tip = aLoggedIn() ? "登录中，填完自动同步给号主" : "未登录：现在只能看，登录后才能保存（问号主要登录方式）";
+  var nm = (p.rec && p.rec.name) ? ("｜" + p.rec.name) : "";
+  var html = "";
+  html += '<h3 style="margin:0 0 4px;font-size:17px">' + mds(p.ws) + " ~ " + mds(p.we) + " · " + weekLabel(p.ws) + nm + "</h3>";
+  html += '<div class="a-card"><div class="a-num">'
+    + '<div><b>' + need + '</b><span>本周要剪（条）</span></div>'
+    + '<div><b>' + needL + '</b><span>其中挂链</span></div>'
+    + '<div><b>' + needN + '</b><span>其中不挂链</span></div>'
+    + '<div><b>' + done + '</b><span>我已剪完</span></div>'
+    + '<div><b>' + pct + '%</b><span>完成进度</span></div>'
+    + "</div>"
+    + '<div class="a-bar"><i style="width:' + pct + '%"></i></div>'
+    + '<div class="legend" style="margin:10px 0 0">' + tip + "</div></div>";
+
+  html += '<table class="rec a-tbl"><thead><tr>'
+    + "<th>内容形式</th><th>挂链要剪</th><th>不挂链要剪</th><th>合计要剪</th><th>YH 项目</th><th>XC 项目</th><th>已剪·挂链</th><th>已剪·不挂链</th><th>还差</th>"
+    + "</tr></thead><tbody>";
+  rows.forEach(function (o, i) {
+    var r = o.r;
+    var left = Math.max(0, r.sub - (o.dl + o.dn));
+    html += "<tr>"
+      + "<td><b>" + r.t + "</b></td>"
+      + '<td class="a-ro">' + o.sL + "</td>"
+      + '<td class="a-ro">' + o.sN + "</td>"
+      + '<td class="a-ro" style="color:#2563eb">' + r.sub + "</td>"
+      + '<td class="a-ro">' + r.subY + "</td>"
+      + '<td class="a-ro">' + r.subX + "</td>"
+      + '<td><input type="number" min="0" value="' + o.dl + '" onchange="aSetDone(\'' + ws + "','" + r.t + "','l',this.value)\"></td>"
+      + '<td><input type="number" min="0" value="' + o.dn + '" onchange="aSetDone(\'' + ws + "','" + r.t + "','n',this.value)\"></td>"
+      + "<td>" + (left ? left : '<span class="badge g">完成</span>') + "</td>"
+      + "</tr>";
+  });
+  html += '<tr style="background:#f8fafc;font-weight:700"><td>合计（本周）</td><td>' + needL + "</td><td>" + needN + "</td><td>" + need + "</td><td>"
+    + rows.reduce(function (a, o) { return a + o.r.subY; }, 0) + "</td><td>"
+    + rows.reduce(function (a, o) { return a + o.r.subX; }, 0) + "</td><td>" + doneL + "</td><td>" + doneN + "</td><td>" + Math.max(0, need - done) + "</td></tr>";
+  html += "</tbody></table>";
+  html += '<div class="fld" style="margin-top:12px"><label>备注（剪辑中遇到的问题，写这里给号主看）</label>'
+    + '<textarea style="min-height:56px" oninput="aSetNote(\'' + ws + '\',this.value)" placeholder="例：混剪素材不够 / 差 3 条没交">' + esc((aLogAll()[ws] || {}).note || "") + "</textarea></div>";
+  body.innerHTML = html;
+  var t = $("aTip"); if (t) t.textContent = "已剪 " + done + " / " + need + " 条";
+}
+
+/* 给号主（主界面）看：A 交上来的进度 */
+function weekAStat(ws) {
+  var log = aLogAll()[ws];
+  if (!log) return "";
+  var p = weekPlanPayload(ws);
+  var done = 0, need = 0, last = "", byT = [];
+  p.rows.forEach(function (r) {
+    var c = log[r.t] || {};
+    var dl = num(c.l), dn = num(c.n);
+    need += r.sub; done += dl + dn;
+    if (c.at && c.at > last) last = c.at;
+    if (dl || dn) byT.push(r.t + " " + (dl + dn) + "/" + r.sub);
+  });
+  var tm = last ? new Date(last) : null;
+  var tms = tm ? (("0" + tm.getMonth()).slice(-2) + "/" + ("0" + tm.getDate()).slice(-2) + " " + ("0" + tm.getHours()).slice(-2) + ":" + ("0" + tm.getMinutes()).slice(-2)) : "—";
+  return '<div class="legend" style="margin:8px 0 0;padding:8px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;color:#166534">'
+    + "🅰 A 已交：<b>" + done + " / " + need + "</b> 条" + (byT.length ? "（" + byT.join("，") + "）" : "")
+    + (log.note ? "<br>备注：" + esc(log.note) : "")
+    + "｜更新 " + tms + "</div>";
+}
+
 /* ===== 导出 ===== */
 function weekPlanPayload(ws, idOpt) {
   var rec = findWeekTableById(idOpt) || findWeekTable(ws) || { ws: ws, name: "", account: "", goal: "", rows: {} };
@@ -6309,6 +6462,17 @@ function exportWeekSheet(mode, fmt, wsOpt, variant, idOpt) {
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
+</script>
+<script>
+window.addEventListener("load", function () {
+  if (!document.body.classList.contains("mode-a")) return;
+  document.title = "A 剪辑工作台";
+  var h = document.querySelector("h1"); if (h) h.textContent = "A 剪辑工作台";
+  var sub = document.querySelector("p.sub");
+  if (sub) sub.textContent = "本周要剪什么、分给谁；填完自动同步给号主";
+  try { renderA(); } catch (e) { }
+  setTimeout(function () { try { renderA(); } catch (e) { } }, 900);
+});
 </script>
 </body>
 </html>
