@@ -1161,6 +1161,8 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
     <div class="listhead">
       <h2>周计划表（图二格式：含资金 / 模特 / 协助）</h2>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <label style="font-size:12px;color:#6b7280">只看</label>
+        <select id="onlyWeek" onchange="setOnlyWeek(this.value)" style="font-size:12px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;background:#fff"></select>
         <button class="mini blue" onclick="addWeekTable()">+ 新增一周</button>
         <button class="mini" onclick="exportWeekCsv('plan')">导出全部CSV</button>
       </div>
@@ -6021,11 +6023,45 @@ function autoFillWeek(i) {
   renderSheetList();
   try { toast("已按一周总量 " + W + " 分好（YH " + target + " / XC " + (W - target) + "）"); } catch (e) { }
 }
+var onlyWeekKey = "";
+try { onlyWeekKey = localStorage.getItem("clipOnlyWeekV1") || ""; } catch (e) { }
+function setOnlyWeek(v) {
+  onlyWeekKey = v || "";
+  try { localStorage.setItem("clipOnlyWeekV1", onlyWeekKey); } catch (e) { }
+  renderSheetList();
+}
+function renderOnlyWeekPicker() {
+  var sel = $("onlyWeek");
+  if (!sel) return;
+  var opts = ['<option value="">全部周（模板一致，逐周核对）</option>'];
+  var order = weekTables.map(function (r, i) { return i; }).sort(function (a, b) {
+    var A = weekTables[a], B = weekTables[b];
+    if (B.ws !== A.ws) return B.ws > A.ws ? 1 : -1;
+    return (B.id || 0) - (A.id || 0);
+  });
+  order.forEach(function (i) {
+    var rec = weekTables[i];
+    var name = (rec.name || "").trim() || "未命名";
+    var lab = rec.ws + " · " + name;
+    opts.push('<option value="' + rec.id + '"' + (String(rec.id) === onlyWeekKey ? " selected" : "") + ">" + lab + "</option>");
+  });
+  /* 选中的周已被删掉时回落到全部 */
+  if (onlyWeekKey && !weekTables.some(function (r) { return String(r.id) === onlyWeekKey; })) onlyWeekKey = "";
+  sel.innerHTML = opts.join("");
+}
 function renderSheetList() {
   var wrap = $("sheetList");
-  if (!weekTables.length) { wrap.innerHTML = '<div class="empty">还没有周计划表，点右上角「+ 新增一周」</div>'; return; }
+  if (!weekTables.length) { wrap.innerHTML = '<div class="empty">还没有周计划表，点右上角「+ 新增一周」</div>'; renderOnlyWeekPicker(); return; }
+  renderOnlyWeekPicker();
   var html = "";
-  weekTables.forEach(function (rec, i) {
+  var orderIdx = weekTables.map(function (r, i) { return i; }).sort(function (a, b) {
+    var A = weekTables[a], B = weekTables[b];
+    if (B.ws !== A.ws) return B.ws > A.ws ? 1 : -1;
+    return (B.id || 0) - (A.id || 0);
+  });
+  orderIdx.forEach(function (i) {
+    var rec = weekTables[i];
+    if (onlyWeekKey && String(rec.id) !== onlyWeekKey) return;
     if (rec.wtot === undefined || rec.wtot === null || rec.wtot === "") rec.wtot = (weekTargetTotals(rec.ws).tot.edit || 0);
     var rows = "";
     TYPES.forEach(function (t, ti) {
