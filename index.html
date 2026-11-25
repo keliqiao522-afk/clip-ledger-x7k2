@@ -6094,9 +6094,9 @@ function stepWeek(dir) {
 function renderOnlyWeekPicker() {
   var sel = $("onlyWeek");
   if (!sel) return;
-  if ((!onlyWeekTouched || onlyWeekKey === "") && weekTables.length) {
-    var o0 = weekOrderIdx();
-    onlyWeekKey = String(weekTables[o0[0]].id);
+  /* 默认显示全部周（每周一张独立卡片）；只有用户主动选了某一周才收起 */
+  if (!onlyWeekTouched && weekTables.length) {
+    onlyWeekKey = "all";
     onlyWeekTouched = true;
     try { localStorage.setItem("clipOnlyWeekV1", onlyWeekKey); } catch (e) { }
   }
