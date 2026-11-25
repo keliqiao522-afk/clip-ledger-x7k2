@@ -6183,9 +6183,22 @@ function renderSheetList() {
   wrap.innerHTML = html;
   weekTables.forEach(function (rec, i) { refreshWeekTable(i); });
 }
-/* ===== A 剪辑工作台（?a=1） ===== */
+/* ===== A 剪辑工作台（?a=1）：按「日期 + 内容形式 + 项目YH/XC + 挂链/不挂链 + 条数」逐条登记 ===== */
 var KEY_A = "clipALogV1";
-function aLogAll() { try { return JSON.parse(localStorage.getItem(KEY_A) || "{}"); } catch (e) { return {}; } }
+function aStore() {
+  try {
+    var o = JSON.parse(localStorage.getItem(KEY_A) || "null");
+    if (!o || typeof o !== "object") o = {};
+    if (!o.items) o.items = [];
+    if (!o.notes) o.notes = {};
+    return o;
+  } catch (e) { return { items: [], notes: {} }; }
+}
+function aSaveStore(o) { try { localStorage.setItem(KEY_A, JSON.stringify(o)); } catch (e) { } }
+function aItemsOf(ws) {
+  return aStore().items.filter(function (it) { return it.ws === ws; })
+    .sort(function (a, b) { return (b.date > a.date) ? 1 : (b.date < a.date ? -1 : 0); });
+}
 function aWeekOfLog() {
   var q = {};
   try { (location.search || "").replace(/^\?/, "").split("&").forEach(function (kv) { var a = kv.split("="); q[a[0]] = decodeURIComponent(a[1] || ""); }); } catch (e) { }
@@ -6194,110 +6207,149 @@ function aWeekOfLog() {
   weekTables.forEach(function (r) { if (r && r.ws && r.ws > best) best = r.ws; });
   return best || mondayOf(today());
 }
-function aGetCell(ws, t) {
-  var all = aLogAll(), w = all[ws] || {}, c = w[t] || {};
-  return { l: num(c.l), n: num(c.n), note: c.note || "", at: c.at || "" };
-}
-function aSetDone(ws, t, k, v) {
-  var all = aLogAll();
-  if (!all[ws]) all[ws] = {};
-  if (!all[ws][t]) all[ws][t] = { l: 0, n: 0 };
-  all[ws][t][k] = Math.max(0, Math.round(num(v)));
-  all[ws][t].at = new Date().toISOString();
-  try { localStorage.setItem(KEY_A, JSON.stringify(all)); } catch (e) { }
-  renderA();
-  try { toast("已记录，正在同步给号主"); } catch (e) { }
-}
-function aSetNote(ws, v) {
-  var all = aLogAll();
-  if (!all[ws]) all[ws] = {};
-  all[ws].note = v;
-  all[ws].at = new Date().toISOString();
-  try { localStorage.setItem(KEY_A, JSON.stringify(all)); } catch (e) { }
-}
 function aLoggedIn() {
   try { var s0 = JSON.parse(localStorage.getItem("clipCloudAuthV1") || "null"); return !!(s0 && s0.access_token); } catch (e) { return false; }
 }
+function aAddEntry() {
+  var d = ($("aDate") && $("aDate").value) || today();
+  var t = $("aType").value, pr = $("aProj").value, lk = $("aLink").value;
+  var n = Math.round(num($("aNum").value));
+  if (!(n > 0)) { try { toast("条数要填大于 0"); } catch (e) { } return; }
+  var o = aStore();
+  o.items.push({
+    id: String(Date.now()), date: d, ws: mondayOf(d), t: t, p: pr,
+    link: lk === "1" ? 1 : 0, n: n, at: new Date().toISOString()
+  });
+  aSaveStore(o);
+  try { $("aNum").value = ""; } catch (e) { }
+  renderA();
+  try { toast("已登记：" + d + " · " + t + " · " + pr + " · " + (lk === "1" ? "挂链" : "不挂链") + " " + n + " 条"); } catch (e) { }
+}
+function aDelEntry(id) {
+  var o = aStore();
+  o.items = o.items.filter(function (it) { return String(it.id) !== String(id); });
+  aSaveStore(o);
+  renderA();
+}
+function aSetNote(ws, v) { var o = aStore(); o.notes[ws] = v; aSaveStore(o); }
+
 function renderA() {
   var body = $("aBody");
   if (!body) return;
   var ws = aWeekOfLog();
   var p = weekPlanPayload(ws);
-  var log = aLogAll()[ws] || {};
-  var need = 0, done = 0, needL = 0, needN = 0, doneL = 0, doneN = 0;
+  var items = aItemsOf(ws);
+  var note = (aStore().notes || {})[ws] || "";
+  var need = 0, needL = 0, needN = 0, needYH = 0, needXC = 0;
+  var done = 0, dYH = 0, dXC = 0, dL = 0, dN = 0;
   var rows = p.rows.map(function (r) {
-    var c = log[r.t] || {};
-    var dl = num(c.l), dn = num(c.n);
-    /* A 要剪的挂链/不挂链，按这一行的挂链:不挂链比例分配 */
     var sL = r.q > 0 ? Math.round(r.sub * r.l / r.q) : 0;
     var sN = Math.max(0, r.sub - sL);
-    need += r.sub; needL += sL; needN += sN;
-    done += dl + dn; doneL += dl; doneN += dn;
-    return { r: r, dl: dl, dn: dn, at: c.at || "", sL: sL, sN: sN };
+    need += r.sub; needL += sL; needN += sN; needYH += r.subY; needXC += r.subX;
+    var ty = 0, tx = 0;
+    items.forEach(function (it) {
+      if (it.t !== r.t) return;
+      if (it.p === "YH") ty += it.n; else tx += it.n;
+    });
+    done += ty + tx; dYH += ty; dXC += tx;
+    return { r: r, sL: sL, sN: sN, ty: ty, tx: tx };
   });
+  items.forEach(function (it) { if (it.link) dL += it.n; else dN += it.n; });
   var pct = need > 0 ? Math.min(100, Math.round(done * 100 / need)) : 0;
-  var tip = aLoggedIn() ? "登录中，填完自动同步给号主" : "未登录：现在只能看，登录后才能保存（问号主要登录方式）";
+  var tip = aLoggedIn() ? "登录中：登记完自动同步给号主" : "没登录只能看，登记需要先登录（账号问号主要）";
   var nm = (p.rec && p.rec.name) ? ("｜" + p.rec.name) : "";
+
   var html = "";
   html += '<h3 style="margin:0 0 4px;font-size:17px">' + mds(p.ws) + " ~ " + mds(p.we) + " · " + weekLabel(p.ws) + nm + "</h3>";
   html += '<div class="a-card"><div class="a-num">'
-    + '<div><b>' + need + '</b><span>本周要剪（条）</span></div>'
-    + '<div><b>' + needL + '</b><span>其中挂链</span></div>'
-    + '<div><b>' + needN + '</b><span>其中不挂链</span></div>'
-    + '<div><b>' + done + '</b><span>我已剪完</span></div>'
-    + '<div><b>' + pct + '%</b><span>完成进度</span></div>'
-    + "</div>"
-    + '<div class="a-bar"><i style="width:' + pct + '%"></i></div>'
+    + "<div><b>" + need + "</b><span>本周要剪（条）</span></div>"
+    + "<div><b>" + needL + "</b><span>其中挂链</span></div>"
+    + "<div><b>" + needN + "</b><span>其中不挂链</span></div>"
+    + "<div><b>" + needYH + "</b><span>YH 项目</span></div>"
+    + "<div><b>" + needXC + "</b><span>XC 项目</span></div>"
+    + "<div><b>" + done + "</b><span>我已剪完</span></div>"
+    + "<div><b>" + pct + "%</b><span>完成进度</span></div>"
+    + "</div><div class=\"a-bar\"><i style=\"width:" + pct + "%\"></i></div>"
     + '<div class="legend" style="margin:10px 0 0">' + tip + "</div></div>";
 
+  /* 逐条登记 */
+  html += '<div class="a-card"><h4 style="margin:0 0 10px;font-size:15px">登记一条（按日期记，和剪辑登记同一套口径）</h4>'
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">'
+    + '<div class="fld"><label>日期</label><input type="date" id="aDate" value="' + today() + '" style="width:150px"></div>'
+    + '<div class="fld"><label>内容形式</label><select id="aType" style="width:120px">' + TYPES.map(function (t) { return "<option>" + t + "</option>"; }).join("") + "</select></div>"
+    + '<div class="fld"><label>项目</label><select id="aProj" style="width:96px"><option value="YH">YH</option><option value="XC">XC</option></select></div>'
+    + '<div class="fld"><label>挂链</label><select id="aLink" style="width:110px"><option value="1">挂链</option><option value="0">不挂链</option></select></div>'
+    + '<div class="fld"><label>条数</label><input type="number" min="1" id="aNum" style="width:90px" placeholder="几条"></div>'
+    + '<button class="mini blue" style="height:36px" onclick="aAddEntry()">＋ 登记</button>'
+    + "</div></div>";
+
+  /* 进度表 */
   html += '<table class="rec a-tbl"><thead><tr>'
-    + "<th>内容形式</th><th>挂链要剪</th><th>不挂链要剪</th><th>合计要剪</th><th>YH 项目</th><th>XC 项目</th><th>已剪·挂链</th><th>已剪·不挂链</th><th>还差</th>"
+    + "<th>内容形式</th><th>挂链要剪</th><th>不挂链要剪</th><th>合计要剪</th><th>YH 要剪</th><th>XC 要剪</th><th>已剪·YH</th><th>已剪·XC</th><th>还差</th>"
     + "</tr></thead><tbody>";
-  rows.forEach(function (o, i) {
-    var r = o.r;
-    var left = Math.max(0, r.sub - (o.dl + o.dn));
-    html += "<tr>"
-      + "<td><b>" + r.t + "</b></td>"
+  rows.forEach(function (o) {
+    var r = o.r, left = Math.max(0, r.sub - (o.ty + o.tx));
+    html += "<tr><td><b>" + r.t + "</b></td>"
       + '<td class="a-ro">' + o.sL + "</td>"
       + '<td class="a-ro">' + o.sN + "</td>"
       + '<td class="a-ro" style="color:#2563eb">' + r.sub + "</td>"
       + '<td class="a-ro">' + r.subY + "</td>"
       + '<td class="a-ro">' + r.subX + "</td>"
-      + '<td><input type="number" min="0" value="' + o.dl + '" onchange="aSetDone(\'' + ws + "','" + r.t + "','l',this.value)\"></td>"
-      + '<td><input type="number" min="0" value="' + o.dn + '" onchange="aSetDone(\'' + ws + "','" + r.t + "','n',this.value)\"></td>"
-      + "<td>" + (left ? left : '<span class="badge g">完成</span>') + "</td>"
-      + "</tr>";
+      + '<td style="color:#059669;font-weight:700">' + o.ty + "</td>"
+      + '<td style="color:#059669;font-weight:700">' + o.tx + "</td>"
+      + "<td>" + (left ? left : '<span class="badge g">完成</span>') + "</td></tr>";
   });
-  html += '<tr style="background:#f8fafc;font-weight:700"><td>合计（本周）</td><td>' + needL + "</td><td>" + needN + "</td><td>" + need + "</td><td>"
-    + rows.reduce(function (a, o) { return a + o.r.subY; }, 0) + "</td><td>"
-    + rows.reduce(function (a, o) { return a + o.r.subX; }, 0) + "</td><td>" + doneL + "</td><td>" + doneN + "</td><td>" + Math.max(0, need - done) + "</td></tr>";
+  html += '<tr style="background:#f8fafc;font-weight:700"><td>合计（本周）</td><td>' + needL + "</td><td>" + needN + "</td><td>" + need + "</td><td>" + needYH + "</td><td>" + needXC + "</td><td>" + dYH + "</td><td>" + dXC + "</td><td>" + Math.max(0, need - done) + "</td></tr>";
   html += "</tbody></table>";
-  html += '<div class="fld" style="margin-top:12px"><label>备注（剪辑中遇到的问题，写这里给号主看）</label>'
-    + '<textarea style="min-height:56px" oninput="aSetNote(\'' + ws + '\',this.value)" placeholder="例：混剪素材不够 / 差 3 条没交">' + esc((aLogAll()[ws] || {}).note || "") + "</textarea></div>";
+
+  /* 已登记明细 */
+  html += '<div class="a-card" style="margin-top:14px"><h4 style="margin:0 0 8px;font-size:15px">我本周的登记（' + items.length + " 条，已剪 " + done + " / " + need + "）</h4>";
+  if (!items.length) html += '<div class="legend" style="margin:0">还没有登记。</div>';
+  else {
+    html += '<table class="rec a-tbl"><thead><tr><th>日期</th><th>内容形式</th><th>项目</th><th>挂链</th><th>条数</th><th>操作</th></tr></thead><tbody>';
+    items.forEach(function (it) {
+      html += "<tr><td>" + mds(it.date) + "</td><td>" + it.t + '</td><td><span class="badge ' + (it.p === "YH" ? "b" : "o") + '">' + it.p + '</span></td><td>' + (it.link ? "挂链" : "不挂链") + '</td><td style="font-weight:700">' + it.n + '</td><td><button class="mini" onclick="aDelEntry(\'' + it.id + '\')">删除</button></td></tr>';
+    });
+    html += "</tbody></table>";
+  }
+  html += '<div class="fld" style="margin-top:12px"><label>本周备注（剪辑中遇到的问题，号主能看到）</label>'
+    + '<textarea style="min-height:56px" oninput="aSetNote(\'' + ws + '\',this.value)" placeholder="例：混剪素材不够 / 差 3 条没交">' + esc(note) + "</textarea></div></div>";
+
   body.innerHTML = html;
-  var t = $("aTip"); if (t) t.textContent = "已剪 " + done + " / " + need + " 条";
+  var t = $("aTip");
+  if (t) t.textContent = "已剪 " + done + " / " + need + " 条";
 }
 
-/* 给号主（主界面）看：A 交上来的进度 */
+/* 给号主（主界面）看：A 交上来的登记 */
 function weekAStat(ws) {
-  var log = aLogAll()[ws];
-  if (!log) return "";
+  var items = (function () {
+    try {
+      var o = JSON.parse(localStorage.getItem(KEY_A) || "null");
+      return (o && o.items) ? o.items.filter(function (it) { return it.ws === ws; }) : [];
+    } catch (e) { return []; }
+    })();
+  if (!items.length) return "";
   var p = weekPlanPayload(ws);
-  var done = 0, need = 0, last = "", byT = [];
-  p.rows.forEach(function (r) {
-    var c = log[r.t] || {};
-    var dl = num(c.l), dn = num(c.n);
-    need += r.sub; done += dl + dn;
-    if (c.at && c.at > last) last = c.at;
-    if (dl || dn) byT.push(r.t + " " + (dl + dn) + "/" + r.sub);
+  var done = 0, yh = 0, xc = 0, lk = 0, nl = 0, last = "";
+  items.forEach(function (it) {
+    done += it.n;
+    if (it.p === "YH") yh += it.n; else xc += it.n;
+    if (it.link) lk += it.n; else nl += it.n;
+    if (it.at && it.at > last) last = it.at;
   });
+  var note = "";
+  try { note = (JSON.parse(localStorage.getItem(KEY_A) || "{}").notes || {})[ws] || ""; } catch (e) { }
   var tm = last ? new Date(last) : null;
-  var tms = tm ? (("0" + tm.getMonth()).slice(-2) + "/" + ("0" + tm.getDate()).slice(-2) + " " + ("0" + tm.getHours()).slice(-2) + ":" + ("0" + tm.getMinutes()).slice(-2)) : "—";
-  return '<div class="legend" style="margin:8px 0 0;padding:8px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;color:#166534">'
-    + "🅰 A 已交：<b>" + done + " / " + need + "</b> 条" + (byT.length ? "（" + byT.join("，") + "）" : "")
-    + (log.note ? "<br>备注：" + esc(log.note) : "")
-    + "｜更新 " + tms + "</div>";
+  var tms = tm ? (("0" + (tm.getMonth() + 1)).slice(-2) + "/" + ("0" + tm.getDate()).slice(-2) + " " + ("0" + tm.getHours()).slice(-2) + ":" + ("0" + tm.getMinutes()).slice(-2)) : "—";
+  var detail = items.slice(0, 6).map(function (it) { return mds(it.date) + " " + it.t + " " + it.p + (it.link ? "挂" : "不挂") + it.n; }).join("；");
+  return '<details style="margin:8px 0 0"><summary style="cursor:pointer;font-size:13px;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px 10px">'
+    + "🅰 A 已交：<b>" + done + " / " + p.tot.sub + "</b> 条（YH " + yh + "、" + "XC " + xc + " ｜ 挂链 " + lk + "、不挂链 " + nl + "）｜更新 " + tms + "</summary>"
+    + '<div style="font-size:12px;color:#166534;padding:8px 10px;background:#f8fdf9;border:1px solid #d7f5e0;border-top:0;border-radius:0 0 8px 8px">'
+    + (detail ? "明细：" + detail + (items.length > 6 ? "…共 " + items.length + " 条" : "") + "<br>" : "")
+    + (note ? "备注：" + esc(note) + "<br>" : "")
+    + "共 " + items.length + " 条登记</div></details>";
 }
+
 
 /* ===== 导出 ===== */
 function weekPlanPayload(ws, idOpt) {
