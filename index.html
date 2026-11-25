@@ -3640,8 +3640,30 @@ function restoreWeekBak() {
   try { localStorage.setItem("clipWeekBakV1", JSON.stringify(ring)); } catch (e) { }
   location.reload();
 }
+/* 保存前保险：本条记录里某格原来是手填的数字、现在被清空了，就用上一份存过的值补回来（防止被重建逻辑冲掉） */
+function keepHandFilled() {
+  try {
+    var prev = JSON.parse(localStorage.getItem(KEY_WK) || "[]") || [];
+    var keys = ["me", "sub", "subL", "yh", "xc", "meY", "subY", "meX", "subX"];
+    weekTables.forEach(function (w) {
+      if (!w || !w.id) return;
+      var old = null;
+      for (var i = 0; i < prev.length; i++) { if (prev[i] && String(prev[i].id) === String(w.id)) { old = prev[i]; break; } }
+      if (!old || !old.rows || !w.rows) return;
+      TYPES.forEach(function (t) {
+        var o = old.rows[t], n2 = w.rows[t];
+        if (!o || !n2) return;
+        keys.forEach(function (k) {
+          var ov = o[k], nv = n2[k];
+          if ((ov !== null && ov !== undefined && ov !== "") && (nv === null || nv === undefined || nv === "")) n2[k] = ov;
+        });
+      });
+    });
+  } catch (e) { }
+}
 function saveWeekTables(now) {
   clearTimeout(wkTimer);
+  keepHandFilled();
   refreshProg();
   if (now) {
     try { weekBakKeep(localStorage.getItem(KEY_WK) || ""); } catch (e) { }
@@ -5908,7 +5930,7 @@ function rowMeY(rec, t) {
   var base = (r.yh === null || r.yh === "" || r.yh === undefined) ? Math.round(q / 2) : num(r.yh);
   var v = (r.meY === null || r.meY === "" || r.meY === undefined) ? (q > 0 ? Math.round(me * base / q) : 0) : num(r.meY);
   if (v < 0) v = 0;
-  if (v > q) v = q;   /* 只受小计限制，不因为「我」较小就把你填的数改小 */
+  if (v > me) v = me;   /* 我·YH 不能超过我自己的总量，否则「我」合计对不上 */
   return v;
 }
 function rowMeX(rec, t) { return Math.max(0, rowMe(rec, t) - rowMeY(rec, t)); }
@@ -6136,9 +6158,15 @@ function stepWeek(dir) {
 function renderOnlyWeekPicker() {
   var sel = $("onlyWeek");
   if (!sel) return;
-  /* 默认显示全部周（每周一张独立卡片）；只有用户主动选了某一周才收起 */
+  /* 默认只看一周：盖住今天的那周，没有就取最近一周；要换周用下拉或左右箭头 */
   if (!onlyWeekTouched && weekTables.length) {
-    onlyWeekKey = "all";
+    var t0 = today(), hit = "", any = "";
+    weekTables.forEach(function (r) {
+      if (!r || !r.ws) return;
+      if (!hit && r.ws <= t0 && weekEndOf(r.ws) >= t0) hit = r.ws;
+      if (!any || r.ws > any) any = r.ws;
+    });
+    onlyWeekKey = hit || any;
     onlyWeekTouched = true;
     try { localStorage.setItem("clipOnlyWeekV1", onlyWeekKey); } catch (e) { }
   }
