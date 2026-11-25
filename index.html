@@ -1183,8 +1183,9 @@ body.mode-a h1 { font-size: 22px; }
     <div class="listhead">
       <h2>周计划表（图二格式：含资金 / 模特 / 协助）</h2>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <label style="font-size:12px;color:#6b7280">只看</label>
-        <select id="onlyWeek" onchange="setOnlyWeek(this.value)" style="font-size:12px;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;background:#fff"></select>
+        <button class="mini" onclick="stepWeek(1)">‹ 上一周</button>
+        <select id="onlyWeek" onchange="setOnlyWeek(this.value)" style="font-size:13px;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;background:#fff;font-weight:600"></select>
+        <button class="mini" onclick="stepWeek(-1)">下一周 ›</button>
         <button class="mini blue" onclick="addWeekTable()">+ 新增一周</button>
         <button class="mini" onclick="exportWeekCsv('plan')">导出全部CSV</button>
       </div>
@@ -6060,16 +6061,46 @@ function autoFillWeek(i) {
   try { toast("已按一周总量 " + W + " 分好（YH " + target + " / XC " + (W - target) + "）"); } catch (e) { }
 }
 var onlyWeekKey = "";
-try { onlyWeekKey = localStorage.getItem("clipOnlyWeekV1") || ""; } catch (e) { }
+var onlyWeekTouched = false;
+try {
+  var v0 = localStorage.getItem("clipOnlyWeekV1");
+  if (v0 !== null) { onlyWeekKey = v0; onlyWeekTouched = true; }
+} catch (e) { }
 function setOnlyWeek(v) {
   onlyWeekKey = v || "";
+  onlyWeekTouched = true;
   try { localStorage.setItem("clipOnlyWeekV1", onlyWeekKey); } catch (e) { }
   renderSheetList();
+}
+function weekOrderIdx() {
+  return weekTables.map(function (r, i) { return i; }).sort(function (a, b) {
+    var A = weekTables[a], B = weekTables[b];
+    if (B.ws !== A.ws) return B.ws > A.ws ? 1 : -1;
+    return (B.id || 0) - (A.id || 0);
+  });
+}
+function stepWeek(dir) {
+  var o = weekOrderIdx();
+  if (!o.length) return;
+  var cur = -1;
+  for (var i = 0; i < o.length; i++) if (String(weekTables[o[i]].id) === onlyWeekKey) { cur = i; break; }
+  if (cur < 0) cur = 0;
+  var ni = cur + (dir > 0 ? 1 : -1);
+  if (ni < 0) ni = 0;
+  if (ni > o.length - 1) ni = o.length - 1;
+  onlyWeekTouched = true;
+  setOnlyWeek(String(weekTables[o[ni]].id));
 }
 function renderOnlyWeekPicker() {
   var sel = $("onlyWeek");
   if (!sel) return;
-  var opts = ['<option value="">全部周（模板一致，逐周核对）</option>'];
+  if ((!onlyWeekTouched || onlyWeekKey === "") && weekTables.length) {
+    var o0 = weekOrderIdx();
+    onlyWeekKey = String(weekTables[o0[0]].id);
+    onlyWeekTouched = true;
+    try { localStorage.setItem("clipOnlyWeekV1", onlyWeekKey); } catch (e) { }
+  }
+  var opts = ['<option value="all"' + (onlyWeekKey === "all" ? ' selected="selected"' : "") + '>全部周（列表查看）</option>'];
   var order = weekTables.map(function (r, i) { return i; }).sort(function (a, b) {
     var A = weekTables[a], B = weekTables[b];
     if (B.ws !== A.ws) return B.ws > A.ws ? 1 : -1;
@@ -6097,7 +6128,7 @@ function renderSheetList() {
   });
   orderIdx.forEach(function (i) {
     var rec = weekTables[i];
-    if (onlyWeekKey && String(rec.id) !== onlyWeekKey) return;
+    if (onlyWeekKey && onlyWeekKey !== "all" && String(rec.id) !== onlyWeekKey) return;
     if (rec.wtot === undefined || rec.wtot === null || rec.wtot === "") rec.wtot = (weekTargetTotals(rec.ws).tot.edit || 0);
     var rows = "";
     TYPES.forEach(function (t, ti) {
@@ -6132,22 +6163,22 @@ function renderSheetList() {
       + '<span id="sv' + i + '" style="margin-left:10px;font-size:13px;color:#059669;font-weight:600"></span>'
       + '<button class="mini red" onclick="delWeekTable(' + i + ')">删除</button>'
       + "</div></div>"
-      + '<div class="flds" style="margin-bottom:10px"><div class="fld grow" style="flex:1;min-width:260px"><label>周度目标</label><textarea style="min-height:48px" oninput="setWeekField(' + i + ',\'goal\',this.value)" placeholder="例：稳定成交素材供给，验证3个可复用选题方向">' + esc(rec.goal) + '</textarea></div></div>'
+      + '<div class="flds" style="margin-bottom:10px"><div class="fld grow" style="flex:1;min-width:260px"><label>周度目标</label><textarea style="min-height:34px;height:34px" oninput="setWeekField(' + i + ',\'goal\',this.value)" placeholder="例：稳定成交素材供给，验证3个可复用选题方向">' + esc(rec.goal) + '</textarea></div></div>'
       + '<div class="grandline" id="gw' + i + '"></div>'
       + '<div class="scroll"><table class="wk"><thead><tr><th>内容形式</th><th>挂链（条）</th><th>不挂链（条）</th><th>小计<br><span style="font-weight:400">（条）</span></th><th>我（条）</th><th>我·YH<br><span style="font-weight:400">（手填）</span></th><th>我·XC<br><span style="font-weight:400">（＝我−YH）</span></th><th>A剪辑（条）<br><span style="font-weight:400">（＝小计−我）</span></th><th>A·YH<br><span style="font-weight:400">（手填）</span></th><th>A·XC<br><span style="font-weight:400">（＝A−A·YH）</span></th></tr></thead><tbody>'
       + rows
       + '<tr class="tot"><td>合计（本周）</td><td id="rt' + i + '_l"></td><td id="rt' + i + '_n"></td><td class="sumcell" id="rt' + i + '_q"></td><td class="sumcell" id="rt' + i + '_me"></td><td class="subcell" id="rt' + i + '_meY"></td><td class="subcell" id="rt' + i + '_meX"></td><td class="subcell" id="rt' + i + '_sub"></td><td class="subcell" id="rt' + i + '_subY"></td><td class="subcell" id="rt' + i + '_subX"></td></tr>'
       + "</tbody></table></div>"
       + '<div class="yhnote" id="yn' + i + '"></div>'
-      + '<p class="legend" style="margin:8px 0 0">规则：一周总量 ÷ 2＝YH 和 XC 各一半（单数 YH 多 1）；项目内按「月度目标」各类型占比分；再按月度目标里「我剪 / 下属剪」比例拆「我」和「A剪辑」。任一格都能手改，改完相关的自动补：小计＝挂链＋不挂链；A剪辑＝小计−我；我·XC＝我−我·YH；A·XC＝A剪辑−A·YH。<b>两个 YH 都由手填</b>：我·YH 填我在 YH 剪几条，A·YH 填下属在 YH 剪几条；项目 YH 合计＝我·YH＋A·YH，XC 合计＝我·XC＋A·XC，核对栏会自己校验。</p>'
+      + '<details style="margin:8px 0 0"><summary style="cursor:pointer;font-size:12px;color:#6b7280">计算规则（点开看）</summary><p class="legend" style="margin:6px 0 0">规则：一周总量 ÷ 2＝YH 和 XC 各一半（单数 YH 多 1）；项目内按「月度目标」各类型占比分；再按月度目标里「我剪 / 下属剪」比例拆「我」和「A剪辑」。任一格都能手改，改完相关的自动补：小计＝挂链＋不挂链；A剪辑＝小计−我；我·XC＝我−我·YH；A·XC＝A剪辑−A·YH。<b>两个 YH 都由手填</b>：我·YH 填我在 YH 剪几条，A·YH 填下属在 YH 剪几条；项目 YH 合计＝我·YH＋A·YH，XC 合计＝我·XC＋A·XC，核对栏会自己校验。</p></details>'
       + '<div class="wkdist" id="wd' + i + '">' + weekDistText(rec) + "</div>"
       + '<div class="wkfoot" id="wf' + i + '">' + weekFootText(rec.ws) + "</div>"
       + weekAStat(rec.ws)
-      + '<div class="flds" style="margin-top:12px">'
+      + '<details style="margin-top:12px"><summary style="cursor:pointer;font-size:12px;color:#6b7280">资金申请 / 模特 / 协助（点开填）</summary><div class="flds" style="margin-top:8px">'
       + '<div class="fld grow"><label>是否需要资金申请</label><textarea style="min-height:44px" placeholder="如是，请写明预估金额及用途" oninput="setWeekField(' + i + ',\'fund\',this.value)">' + esc(rec.fund) + '</textarea></div>'
       + '<div class="fld grow"><label>是否需要模特</label><textarea style="min-height:44px" placeholder="如是，写明人员性质、日期及时长" oninput="setWeekField(' + i + ',\'model\',this.value)">' + esc(rec.model) + '</textarea></div>'
       + '<div class="fld grow"><label>是否需要其他协助</label><textarea style="min-height:44px" placeholder="场地配合、器材采购等" oninput="setWeekField(' + i + ',\'assist\',this.value)">' + esc(rec.assist) + '</textarea></div>'
-      + "</div></div>";
+      + "</div></details></div>";
   });
   wrap.innerHTML = html;
   weekTables.forEach(function (rec, i) { refreshWeekTable(i); });
