@@ -325,6 +325,20 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
             w.rows[t] = r1;
           }
         });
+        /* 同一条记录被云端和本机各存了一份（id 相同、周一起不同）时，只留最近改动的那条，避免一张卡变两张 */
+        var seenId = {}, uniq = [];
+        nowB.forEach(function (w) {
+          if (!w) return;
+          var kk = String(w.id || w.ws);
+          var at = num(w.upd) || 0;
+          if (seenId[kk] === undefined) { seenId[kk] = uniq.length; uniq.push(w); }
+          else {
+            var ix = seenId[kk], old = uniq[ix];
+            if (at >= (num(old.upd) || 0)) uniq[ix] = w;
+          }
+        });
+        if (uniq.length !== nowB.length) mergedWk = true;
+        nowB = uniq;
         if (mergedWk) localStorage.setItem("clipWeekTablesV1", JSON.stringify(nowB));
       } catch (e) { }
     }
@@ -6236,8 +6250,10 @@ function aWeekLabel(ws) {
 function aRenderWeekSel(ws) {
   var sel = $("aWeekSel");
   if (!sel) return;
-  var opts = [];
+  var opts = [], done = {};
   weekTables.slice().sort(function (a, b) { return b.ws > a.ws ? 1 : -1; }).forEach(function (r) {
+    if (!r || !r.ws || done[r.ws]) return;
+    done[r.ws] = 1;
     var name = (r.name || "").trim();
     opts.push('<option value="' + r.ws + '"' + (r.ws === ws ? ' selected="selected"' : "") + ">" + aWeekLabel(r.ws) + (name ? "｜" + name : "") + "</option>");
   });
