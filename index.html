@@ -1202,6 +1202,7 @@ body.mode-a h1 { font-size: 22px; }
       <h2 id="aTitle">A 剪辑工作台</h2>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <span id="aTip" class="legend" style="margin:0"></span>
+        <select id="aWeekSel" onchange="aPickWeek(this.value)" style="padding:7px 10px;font-size:13px;border:1px solid #d5dbe2;border-radius:8px"></select>
         <button class="mini" onclick="renderA()">刷新</button>
       </div>
     </div>
@@ -6201,13 +6202,47 @@ function aItemsOf(ws) {
   return aStore().items.filter(function (it) { return it.ws === ws; })
     .sort(function (a, b) { return (b.date > a.date) ? 1 : (b.date < a.date ? -1 : 0); });
 }
+var aWeekKey = "";
+try { aWeekKey = localStorage.getItem("clipAWeekV1") || ""; } catch (e) { }
+function aPickWeek(ws) {
+  aWeekKey = ws || "";
+  try { localStorage.setItem("clipAWeekV1", aWeekKey); } catch (e) { }
+  renderA();
+}
 function aWeekOfLog() {
   var q = {};
   try { (location.search || "").replace(/^\?/, "").split("&").forEach(function (kv) { var a = kv.split("="); q[a[0]] = decodeURIComponent(a[1] || ""); }); } catch (e) { }
-  if (q.ws) return q.ws;
-  var best = "";
-  weekTables.forEach(function (r) { if (r && r.ws && r.ws > best) best = r.ws; });
-  return best || mondayOf(today());
+  if (q.ws) { aWeekKey = q.ws; return q.ws; }
+  /* 选中过的那一周还在就用它 */
+  if (aWeekKey && weekTables.some(function (r) { return r.ws === aWeekKey; })) return aWeekKey;
+  /* 否则默认：本周（这周一）→ 若没有则取最近已过去的周 → 再没有就取最新一周 */
+  /* 默认：哪条周记录的区间盖住今天就用哪条；都没有就用最新的一条周记录 */
+  var t0 = today(), hit = "";
+  weekTables.forEach(function (r) { if (r && r.ws && !hit && r.ws <= t0 && weekEndOf(r.ws) >= t0) hit = r.ws; });
+  if (hit) return hit;
+  var any = "";
+  weekTables.forEach(function (r) { if (r && r.ws && (!any || r.ws > any)) any = r.ws; });
+  return any || mondayOf(t0);
+}
+function aWeekLabel(ws) {
+  var tw = mondayOf(today());
+  if (ws === tw) return ws + "（本周）";
+  var d = new Date(ws + "T00:00:00"), td = new Date(tw + "T00:00:00");
+  var diff = Math.round((d - td) / 604800000);
+  if (diff === 1) return ws + "（下周）";
+  if (diff === -1) return ws + "（上周）";
+  return ws + "（" + (diff > 0 ? "+" + diff : diff) + " 周）";
+}
+function aRenderWeekSel(ws) {
+  var sel = $("aWeekSel");
+  if (!sel) return;
+  var opts = [];
+  weekTables.slice().sort(function (a, b) { return b.ws > a.ws ? 1 : -1; }).forEach(function (r) {
+    var name = (r.name || "").trim();
+    opts.push('<option value="' + r.ws + '"' + (r.ws === ws ? ' selected="selected"' : "") + ">" + aWeekLabel(r.ws) + (name ? "｜" + name : "") + "</option>");
+  });
+  if (!opts.length) opts.push('<option value="' + ws + '">' + ws + "</option>");
+  sel.innerHTML = opts.join("");
 }
 function aLoggedIn() {
   try { var s0 = JSON.parse(localStorage.getItem("clipCloudAuthV1") || "null"); return !!(s0 && s0.access_token); } catch (e) { return false; }
@@ -6239,6 +6274,7 @@ function renderA() {
   var body = $("aBody");
   if (!body) return;
   var ws = aWeekOfLog();
+  aRenderWeekSel(ws);
   var p = weekPlanPayload(ws);
   var items = aItemsOf(ws);
   var note = (aStore().notes || {})[ws] || "";
@@ -6263,6 +6299,7 @@ function renderA() {
 
   var html = "";
   html += '<h3 style="margin:0 0 4px;font-size:17px">' + mds(p.ws) + " ~ " + mds(p.we) + " · " + weekLabel(p.ws) + nm + "</h3>";
+  if (!need) html += '<div class="legend" style="margin:0 0 8px;color:#b45309">这一周的周计划还没填数：请号主先在「周计划表」里给这一周填好挂链/不挂链（小计），这里才有要剪的量。</div>';
   html += '<div class="a-card"><div class="a-num">'
     + "<div><b>" + need + "</b><span>A 合计要剪（条）</span></div>"
     + "<div><b>" + needL + "</b><span>其中挂链</span></div>"
