@@ -220,7 +220,11 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
   var FULL   = SB_URL + "/rest/v1/app_state";
   var AUTHK  = "clipCloudAuthV1";
   var LASTEM = "cloudLastEmail";
-  var LOCAL_ONLY = { "clipBackupV1": 1, "clipUndoV1": 1, "clipCloudAuthV1": 1 };
+  var LOCAL_ONLY = { "clipBackupV1": 1, "clipUndoV1": 1, "clipCloudAuthV1": 1, "clipDeviceV1": 1, "clipWkSnapV1": 1 };
+  var DEVID = "";
+  try { DEVID = localStorage.getItem("clipDeviceV1") || ""; } catch (e) { DEVID = ""; }
+  if (!DEVID) { DEVID = "d" + Math.random().toString(36).slice(2, 8); try { localStorage.setItem("clipDeviceV1", DEVID); } catch (e) { } }
+  var DEVNAME = (function () { var p = (navigator.platform || "") + " " + (navigator.userAgent || ""); return /Macintosh|Mac OS|iPhone|iPad/i.test(p) ? "这台Mac" : (/Windows/i.test(p) ? "Windows电脑" : "设备" + DEVID.slice(-4)); })();
 
   function synced(k) { return !!k && k.indexOf("clip") === 0 && !LOCAL_ONLY[k]; }
 
@@ -414,14 +418,88 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
     });
   }
 
+  /* ---- 读云端某个键（同步，仅用于推送前合并） ---- */
+  function cloudGet(k) {
+    try {
+      var x = new XMLHttpRequest();
+      x.open("GET", FULL + "?select=value&key=eq." + encodeURIComponent(k) + "&apikey=" + encodeURIComponent(SB_KEY), false);
+      x.send(null);
+      if (x.status >= 200 && x.status < 300) {
+        var a = JSON.parse(x.responseText || "[]");
+        return a.length ? a[0].value : null;
+      }
+    } catch (e) { }
+    return null;
+  }
+
+  /* ---- 两台设备的周表按「记录 + 格子」合并：谁新听谁的，空的地方用另一台补 ---- */
+  function wkMerge(L, C) {
+    var out = [], idx = {};
+    function keyOf(r) { return String((r && (r.id || r.ws)) || ""); }
+    (C || []).forEach(function (r) { if (!r) return; idx[keyOf(r)] = out.length; out.push(r); });
+    (L || []).forEach(function (r) {
+      if (!r) return;
+      var k = keyOf(r);
+      if (idx[k] === undefined) { idx[k] = out.length; out.push(r); return; }
+      var c = out[idx[k]];
+      var lu = num(r.upd) || 0, cu = num(c.upd) || 0;
+      var newer = lu >= cu ? r : c, older = lu >= cu ? c : r;
+      var m = JSON.parse(JSON.stringify(newer));
+      var orows = older.rows || {};
+      m.rows = m.rows || {};
+      for (var t in orows) {
+        if (!Object.prototype.hasOwnProperty.call(orows, t)) continue;
+        if (!m.rows[t]) { m.rows[t] = JSON.parse(JSON.stringify(orows[t])); continue; }
+        var mr = m.rows[t], oo = orows[t];
+        ["l", "n", "me", "sub", "subL", "yh", "xc", "meY", "subY", "meX", "subX"].forEach(function (kk) {
+          if ((mr[kk] === undefined || mr[kk] === null || mr[kk] === "") && oo[kk] !== undefined && oo[kk] !== null && oo[kk] !== "") mr[kk] = oo[kk];
+        });
+      }
+      ["goal", "wtot", "fund", "model", "assist", "name", "account"].forEach(function (kk) {
+        if ((m[kk] === undefined || m[kk] === null || m[kk] === "") && older[kk] !== undefined && older[kk] !== null && older[kk] !== "") m[kk] = older[kk];
+      });
+      out[idx[k]] = m;
+    });
+    return out;
+  }
+
   function flush() {
     timer = null;
-    var keys = [], k;
+    var keys = [], k, i;
     for (k in pending) { if (Object.prototype.hasOwnProperty.call(pending, k)) keys.push(k); }
     if (!keys.length) return;
     if (!logged()) { setChip("🔒 只读预览", "fail"); return; }
+    /* 推周表之前先跟云端合并 + 把云端旧版留档：防止这台电脑把另一台的记录整张盖掉 */
+    if (pending["clipWeekTablesV1"]) {
+      try {
+        var cRaw = cloudGet("clipWeekTablesV1"), cArr = [];
+        try { cArr = JSON.parse(cRaw || "[]") || []; } catch (e2) { cArr = []; }
+        var lArr = [];
+        try { lArr = JSON.parse(pending["clipWeekTablesV1"] || "[]") || []; } catch (e3) { lArr = []; }
+        if (cArr.length) {
+          var snapRaw = cloudGet("clipWkSnapV1"), list = [];
+          try { list = JSON.parse(snapRaw || "[]") || []; } catch (e6) { list = []; }
+          var same = list[0] && list[0].wk && JSON.stringify(list[0].wk) === JSON.stringify(cArr);
+          if (!same) {
+            list.unshift({ t: Date.now(), dev: DEVNAME, tag: "被覆盖前留档", wk: cArr });
+            if (list.length > 15) list.length = 15;
+            pending["clipWkSnapV1"] = JSON.stringify(list);
+          }
+        }
+        var mg = wkMerge(lArr, cArr);
+        pending["clipWeekTablesV1"] = JSON.stringify(mg);
+        try { origSet.call(localStorage, "clipWeekTablesV1", pending["clipWeekTablesV1"]); } catch (e4) { }
+        if (typeof weekTables !== "undefined" && weekTables && weekTables.push) {
+          weekTables.length = 0;
+          mg.forEach(function (r) { weekTables.push(r); });
+          try { if (typeof renderSheetList === "function") renderSheetList(); } catch (e7) { }
+        }
+      } catch (e5) { }
+      keys = [];
+      for (k in pending) { if (Object.prototype.hasOwnProperty.call(pending, k)) keys.push(k); }
+    }
     var payload = [], sending = {};
-    for (var i = 0; i < keys.length; i++) { payload.push({ key: keys[i], value: pending[keys[i]] }); sending[keys[i]] = pending[keys[i]]; }
+    for (i = 0; i < keys.length; i++) { payload.push({ key: keys[i], value: pending[keys[i]] }); sending[keys[i]] = pending[keys[i]]; }
     pending = {};
     savePending();
     setChip("☁ 同步中…", "doing");
@@ -1203,6 +1281,7 @@ body.mode-a h1 { font-size: 22px; }
         <button class="mini blue" onclick="addWeekTable()">+ 新增一周</button>
         <button class="mini" onclick="exportWeekCsv('plan')">导出全部CSV</button>
         <button class="mini green" onclick="shareALink()" title="复制的链接发给剪辑，他点开就是自己的登记页">📤 发给剪辑</button>
+        <button class="mini" onclick="wkHistory()" title="查看/恢复之前被覆盖过的版本">🕘 历史版本</button>
       </div>
     </div>
     <p class="legend" style="margin:0 0 12px">每周一张表：周次、发布账号、周度目标、各类产出形式（挂链 / 不挂链）+ 资金申请 / 模特 / 协助。款号在「每日计划」里按天填，这里自动汇总。</p>
@@ -3664,6 +3743,8 @@ function keepHandFilled() {
 function saveWeekTables(now) {
   clearTimeout(wkTimer);
   keepHandFilled();
+  /* 每条记录盖一个改动时间戳：多台电脑合并时谁后改听谁的 */
+  try { weekTables.forEach(function (r) { if (r) { r.upd = Date.now(); r.dev = (typeof DEVNAME !== "undefined" ? DEVNAME : ""); } }); } catch (e) { }
   refreshProg();
   if (now) {
     try { weekBakKeep(localStorage.getItem(KEY_WK) || ""); } catch (e) { }
@@ -6281,6 +6362,74 @@ function aCopyFallback(t) {
   } catch (e) {
     try { toast("复制没成功，手抄一下这个链接：" + t); } catch (e2) { }
   }
+}
+/* ===== 历史版本：每次覆盖云端前都会自动留档，这里可以看和恢复 ===== */
+var WK_SNAP_KEY = "clipWkSnapV1";
+var WK_SB = "https://pgcwhsirjmntwbqwzomu.supabase.co";
+var WK_KEY = "sb_publishable_tbvdFyg9_xlmQ-wlF9bH-Q_40ASN_Kc";
+var wkSnaps = [];
+function wkSummaryLine(wk) {
+  if (!wk || !wk.length) return "空";
+  return wk.map(function (r) {
+    var tot = 0, me = 0;
+    for (var t in (r.rows || {})) { tot += (num(r.rows[t].l) + num(r.rows[t].n)); me += num(r.rows[t].me); }
+    return (r.ws || "") + " 小计" + tot + "/我" + me;
+  }).join("；");
+}
+function wkHistory() {
+  toast("正在读历史版本…");
+  fetch(WK_SB + "/rest/v1/app_state?select=value&key=eq." + WK_SNAP_KEY + "&apikey=" + encodeURIComponent(WK_KEY))
+    .then(function (r) { return r.ok ? r.json() : []; })
+    .then(function (rows) {
+      wkSnaps = [];
+      try { wkSnaps = JSON.parse((rows[0] && rows[0].value) || "[]") || []; } catch (e) { wkSnaps = []; }
+      var box = document.getElementById("wkHistBox");
+      if (box) box.parentNode.removeChild(box);
+      box = document.createElement("div");
+      box.id = "wkHistBox";
+      box.style.cssText = "position:fixed;inset:0;background:rgba(17,24,39,.55);z-index:99998;display:flex;align-items:center;justify-content:center;padding:20px";
+      var inner = '<div style="background:#fff;border-radius:14px;max-width:820px;width:100%;max-height:80vh;overflow:auto;padding:18px 20px;box-shadow:0 12px 40px rgba(0,0,0,.25)">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+        + '<b style="font-size:15px">🕘 周表历史版本（最近 15 次被覆盖前的样子）</b>'
+        + '<button class="mini" onclick="wkHistClose()">关闭</button></div>'
+        + '<div style="font-size:12px;color:#6b7280;margin-bottom:10px">每次保存覆盖云端前，系统自动把云端旧版存在这里。哪一版是对的，点「恢复这条」就回到那一版。</div>';
+      if (!wkSnaps.length) {
+        inner += '<div style="padding:18px;border:1px dashed #d1d5db;border-radius:10px;color:#6b7280;font-size:13px">还没有历史版本。以后每次保存都会自动留一条。</div>';
+      } else {
+        inner += '<table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="background:#f9fafb">'
+          + '<th style="padding:8px;text-align:left">时间</th><th style="padding:8px;text-align:left">来自</th><th style="padding:8px;text-align:left">内容</th><th style="padding:8px">操作</th></tr></thead><tbody>';
+        wkSnaps.forEach(function (e, i) {
+          var d = new Date(e.t || 0);
+          var ts = (d.getMonth() + 1) + "-" + ("0" + d.getDate()).slice(-2) + " " + ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2);
+          inner += '<tr style="border-top:1px solid #f1f3f5"><td style="padding:8px;white-space:nowrap">' + ts + '</td>'
+            + '<td style="padding:8px;white-space:nowrap;color:#374151">' + (e.dev || "-") + '</td>'
+            + '<td style="padding:8px;color:#4b5563">' + wkSummaryLine(e.wk) + '</td>'
+            + '<td style="padding:8px;text-align:center"><button class="mini blue" onclick="wkRestore(' + i + ')">恢复这条</button></td></tr>';
+        });
+        inner += "</tbody></table>";
+      }
+      inner += "</div>";
+      box.innerHTML = inner;
+      box.addEventListener("click", function (ev) { if (ev.target === box) wkHistClose(); });
+      document.body.appendChild(box);
+    }).catch(function () { toast("读历史版本失败，检查网络再试"); });
+}
+function wkHistClose() { var b = document.getElementById("wkHistBox"); if (b) b.parentNode.removeChild(b); }
+function wkRestore(i) {
+  var e = wkSnaps[i];
+  if (!e || !e.wk) return;
+  if (!confirm("把周计划表恢复成 " + new Date(e.t).toLocaleString() + " 这一版？\n当前版本会先自动留档，恢复错了还能再找回来。")) return;
+  wkSnaps.splice(i, 1);
+  try {
+    weekTables.length = 0;
+    e.wk.forEach(function (r) { weekTables.push(r); });
+    saveWeekTables(true);
+    renderSheetList();
+    renderWeekDone();
+    refreshProg();
+  } catch (err) { }
+  wkHistClose();
+  toast("已恢复，并已存回云端");
 }
 function shareALink() {
   var u = aShareUrl();
