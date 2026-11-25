@@ -6005,6 +6005,14 @@ function rowSubL(rec, t) {
   return v;
 }
 function rowSubN(rec, t) { return Math.max(0, rowSub(rec, t) - rowSubL(rec, t)); }
+/* 挂链按两个发布账号拆：①号手填，②号＝挂链−①；都没填就自动各一半（奇数时①多 1 条） */
+function rowL1(rec, t) {
+  var r = rowOf(rec, t), l = num(r.l);
+  if (r.l1 === null || r.l1 === undefined || r.l1 === "") return Math.floor(l / 2);
+  var v = num(r.l1); if (v < 0) v = 0; if (v > l) v = l;
+  return v;
+}
+function rowL2(rec, t) { var r = rowOf(rec, t); return Math.max(0, num(r.l) - rowL1(rec, t)); }
 /* 关系：我·XC＝我−我·YH；A剪辑＝小计−我；A·XC＝A剪辑−A·YH；项目 YH＝我·YH＋A·YH，XC＝小计−YH */
 function rowMeY(rec, t) {
   var r = rowOf(rec, t), q = rowQ(rec, t), me = rowMe(rec, t);
@@ -6027,10 +6035,11 @@ function rowSubX(rec, t) { return Math.max(0, rowSub(rec, t) - rowSubY(rec, t));
 function rowYh(rec, t) { return Math.min(rowQ(rec, t), rowMeY(rec, t) + rowSubY(rec, t)); }
 function rowXc(rec, t) { return Math.max(0, rowQ(rec, t) - rowYh(rec, t)); }
 function weekRowTotals(rec) {
-  var o = { l: 0, n: 0, q: 0, me: 0, sub: 0, subL: 0, subN: 0, yh: 0, xc: 0, meY: 0, meX: 0, subY: 0, subX: 0 };
+  var o = { l: 0, n: 0, q: 0, me: 0, sub: 0, subL: 0, subN: 0, yh: 0, xc: 0, meY: 0, meX: 0, subY: 0, subX: 0, l1: 0, l2: 0 };
   TYPES.forEach(function (t) {
     var r = rowOf(rec, t);
     o.l += r.l || 0; o.n += r.n || 0; o.q += rowQ(rec, t);
+    o.l1 += rowL1(rec, t); o.l2 += rowL2(rec, t);
     o.me += rowMe(rec, t); o.sub += rowSub(rec, t); o.subL += rowSubL(rec, t); o.subN += rowSubN(rec, t);
     o.yh += rowYh(rec, t); o.xc += rowXc(rec, t);
     o.meY += rowMeY(rec, t); o.meX += rowMeX(rec, t);
@@ -6047,6 +6056,10 @@ function refreshWeekRow(i, t) {
     var e = document.getElementById("r" + k + i + "_" + ti);
     if (e) e.value = (k === "me" ? rowMe(rec, t) : k === "meY" ? rowMeY(rec, t) : k === "sub" ? rowSub(rec, t) : rowSubY(rec, t));
   });
+  var l1e = document.getElementById("rl1" + i + "_" + ti);
+  if (l1e) l1e.value = rowL1(rec, t);
+  var l2e = document.getElementById("rl2" + i + "_" + ti);
+  if (l2e) l2e.textContent = rowL2(rec, t);
   var sle = document.getElementById("rsubl" + i + "_" + ti);
   if (sle) sle.value = rowSubL(rec, t);
   var sne = document.getElementById("rsubn" + i + "_" + ti);
@@ -6059,7 +6072,7 @@ function refreshWeekRow(i, t) {
 function refreshWeekTable(i) {
   var rec = weekTables[i]; if (!rec) return;
   var g = weekRowTotals(rec);
-  ["l", "n", "q", "me", "meY", "meX", "sub", "subL", "subN", "subY", "subX"].forEach(function (k) {
+  ["l", "n", "q", "me", "meY", "meX", "sub", "subL", "subN", "subY", "subX", "l1", "l2"].forEach(function (k) {
     var el = document.getElementById("rt" + i + "_" + k);
     if (el) el.textContent = g[k];
   });
@@ -6094,6 +6107,16 @@ function setRowNum(i, t, k, v) {
   if (r.yh !== null && num(r.yh) > (rowQ(rec, t))) { r.yh = rowQ(rec, t); }
   refreshWeekRow(i, t);
   refreshWeekTable(i);
+}
+function setRowL1x(el) {
+  if (!el) return;
+  setRowL1(num(el.getAttribute("data-ri")), el.getAttribute("data-rt"), el.value);
+}
+function setRowL1(i, t, v) {
+  var rec = weekTables[i]; if (!rec) return;
+  var r = rowOf(rec, t), l = num(r.l);
+  r.l1 = (String(v).trim() === "") ? null : Math.max(0, Math.min(l, num(v)));
+  refreshWeekRow(i, t); refreshWeekTable(i); saveWeekTables();
 }
 function setRowMe(i, t, v) {
   var rec = weekTables[i]; if (!rec) return;
@@ -6288,6 +6311,8 @@ function renderSheetList() {
       var r = rowOf(rec, t);
       rows += "<tr><td>" + t + "</td>"
         + '<td><input type="number" min="0" style="width:46px" value="' + (r.l || 0) + '" oninput="setRowNum(' + i + ",'" + t + "','l',this.value)\"></td>"
+        + '<td class="subcell" style="white-space:nowrap"><input type="number" min="0" style="width:38px" data-ri="' + i + '" data-rt="' + t + '" id="rl1' + i + '_' + ti + '" value="' + rowL1(rec, t) + '" oninput="setRowL1x(this)">'
+        + '<span style="font-size:11px;color:#6b7280">／②<span id="rl2' + i + '_' + ti + '">' + rowL2(rec, t) + '</span></span></td>'
         + '<td><input type="number" min="0" style="width:46px" value="' + (r.n || 0) + '" oninput="setRowNum(' + i + ",'" + t + "','n',this.value)\"></td>"
         + '<td class="sumcell" id="rq' + i + "_" + ti + '">' + rowQ(rec, t) + "</td>"
         + '<td><input type="number" min="0" style="width:44px" id="rme' + i + "_" + ti + '" value="' + rowMe(rec, t) + '" oninput="setRowMe(' + i + ",'" + t + "',this.value)\"></td>"
@@ -6320,9 +6345,9 @@ function renderSheetList() {
       + "</div></div>"
       + '<div class="flds" style="margin-bottom:10px"><div class="fld grow" style="flex:1;min-width:260px"><label>周度目标</label><textarea style="min-height:34px;height:34px" oninput="setWeekField(' + i + ',\'goal\',this.value)" placeholder="例：稳定成交素材供给，验证3个可复用选题方向">' + esc(rec.goal) + '</textarea></div></div>'
       + '<div class="grandline" id="gw' + i + '"></div>'
-      + '<div class="scroll"><table class="wk"><thead><tr><th>内容形式</th><th>挂链（条）</th><th>不挂链（条）</th><th>我＋剪辑合计<br><span style="font-weight:400">（＝小计）</span></th><th>我自己剪<br><span style="font-weight:400">（条）</span></th><th>我·YH<br><span style="font-weight:400">（手填）</span></th><th>我·XC<br><span style="font-weight:400">（＝我−YH）</span></th><th>剪辑要剪<br><span style="font-weight:400">（＝小计−我）</span></th><th>剪辑·挂链<br><span style="font-weight:400">（手填）</span></th><th>剪辑·不挂链<br><span style="font-weight:400">（＝剪辑−挂链）</span></th><th>A·YH<br><span style="font-weight:400">（手填）</span></th><th>A·XC<br><span style="font-weight:400">（＝A−A·YH）</span></th></tr></thead><tbody>'
+      + '<div class="scroll"><table class="wk"><thead><tr><th>内容形式</th><th>挂链（条）</th><th>挂链·分两个号<br><span style="font-weight:400">（①手填 / ②＝挂链−①）</span></th><th>不挂链（条）</th><th>我＋剪辑合计<br><span style="font-weight:400">（＝小计）</span></th><th>我自己剪<br><span style="font-weight:400">（条）</span></th><th>我·YH<br><span style="font-weight:400">（手填）</span></th><th>我·XC<br><span style="font-weight:400">（＝我−YH）</span></th><th>剪辑要剪<br><span style="font-weight:400">（＝小计−我）</span></th><th>剪辑·挂链<br><span style="font-weight:400">（手填）</span></th><th>剪辑·不挂链<br><span style="font-weight:400">（＝剪辑−挂链）</span></th><th>A·YH<br><span style="font-weight:400">（手填）</span></th><th>A·XC<br><span style="font-weight:400">（＝A−A·YH）</span></th></tr></thead><tbody>'
       + rows
-      + '<tr class="tot"><td>合计（本周）</td><td id="rt' + i + '_l"></td><td id="rt' + i + '_n"></td><td class="sumcell" id="rt' + i + '_q"></td><td class="sumcell" id="rt' + i + '_me"></td><td class="subcell" id="rt' + i + '_meY"></td><td class="subcell" id="rt' + i + '_meX"></td><td class="subcell" id="rt' + i + '_sub"></td><td class="subcell" id="rt' + i + '_subL"></td><td class="subcell" id="rt' + i + '_subN"></td><td class="subcell" id="rt' + i + '_subY"></td><td class="subcell" id="rt' + i + '_subX"></td></tr>'
+      + '<tr class="tot"><td>合计（本周）</td><td id="rt' + i + '_l"></td><td class="subcell"><span id="rt' + i + '_l1"></span>／②<span id="rt' + i + '_l2"></span></td><td id="rt' + i + '_n"></td><td class="sumcell" id="rt' + i + '_q"></td><td class="sumcell" id="rt' + i + '_me"></td><td class="subcell" id="rt' + i + '_meY"></td><td class="subcell" id="rt' + i + '_meX"></td><td class="subcell" id="rt' + i + '_sub"></td><td class="subcell" id="rt' + i + '_subL"></td><td class="subcell" id="rt' + i + '_subN"></td><td class="subcell" id="rt' + i + '_subY"></td><td class="subcell" id="rt' + i + '_subX"></td></tr>'
       + "</tbody></table></div>"
       + '<div class="yhnote" id="yn' + i + '"></div>'
       + '<details style="margin:8px 0 0"><summary style="cursor:pointer;font-size:12px;color:#6b7280">计算规则（点开看）</summary><p class="legend" style="margin:6px 0 0">规则：一周总量 ÷ 2＝YH 和 XC 各一半（单数 YH 多 1）；项目内按「月度目标」各类型占比分；再按月度目标里「我剪 / 下属剪」比例拆「我」和「A剪辑」。任一格都能手改，改完相关的自动补：小计＝挂链＋不挂链；A剪辑＝小计−我；我·XC＝我−我·YH；A·XC＝A剪辑−A·YH。<b>两个 YH 都由手填</b>：我·YH 填我在 YH 剪几条，A·YH 填下属在 YH 剪几条；项目 YH 合计＝我·YH＋A·YH，XC 合计＝我·XC＋A·XC，核对栏会自己校验。</p></details>'
