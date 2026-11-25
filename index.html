@@ -6125,20 +6125,22 @@ function exportWeekSheet(mode, fmt, wsOpt, variant) {
   var vals = defs[V] || defs.full;
   var title = "周计划表_" + (V === "A" ? "总量分项目_" : V === "B" ? "A剪辑要剪_" : "") + p.ws;
   if (fmt === "csv") {
-    var head = ["周期/周次", "主推品", "周主目标", "内容形式"].concat(vals.map(function (v) {
+    var head = (V === "B" ? ["周期/周次", "内容形式"] : ["周期/周次", "主推品", "周主目标", "内容形式"]).concat(vals.map(function (v) {
       return v.g ? v.g.replace("（条）", "") + "·" + v.t : v.t;
     }));
     var out = [head];
     var period = mds(p.ws) + " ~ " + mds(p.we) + " · " + weekLabel(p.ws);
     rows2.forEach(function (r) {
-      out.push([period, p.rec.name || "", p.rec.goal || "", r.t].concat(vals.map(function (v) { return r[v.k]; })));
+      out.push((V === "B" ? [period, r.t] : [period, p.rec.name || "", p.rec.goal || "", r.t]).concat(vals.map(function (v) { return r[v.k]; })));
     });
-    out.push([period, p.rec.name || "", p.rec.goal || "", "合计（本周）"].concat(vals.map(function (v) { return tot2[v.k]; })));
+    out.push((V === "B" ? [period, "合计（本周）"] : [period, p.rec.name || "", p.rec.goal || "", "合计（本周）"]).concat(vals.map(function (v) { return tot2[v.k]; })));
     csvDownload(out, title + "_" + today() + ".csv");
     return;
   }
   var FONT = "'Microsoft YaHei','PingFang SC','Hiragino Sans GB',sans-serif";
-  var cols = [{ w: 215, t: "周期 / 周次" }, { w: 230, t: "主推品 / 活动" }, { w: 320, t: "周主目标" }, { w: 175, t: "内容形式" }].concat(vals);
+  var cols = (V === "B"
+    ? [{ w: 235, t: "周期 / 周次" }, { w: 190, t: "内容形式" }]
+    : [{ w: 215, t: "周期 / 周次" }, { w: 230, t: "主推品 / 活动" }, { w: 320, t: "周主目标" }, { w: 175, t: "内容形式" }]).concat(vals);
   var W = 0; cols.forEach(function (c) { W += c.w; });
   var nRows = rows2.length;
   var hasG = vals.some(function (v) { return !!v.g; });
