@@ -6043,7 +6043,7 @@ function renderSheetList() {
       + '<div class="ops">'
       + '<button class="mini blue" onclick="autoFillWeek(' + i + ')">按一周总量自动分</button>'
       + '<button class="mini blue" onclick="exportWeekSheet(\'plan\',\'img\',\'' + rec.ws + '\',\'A\')" title="只出总量＋项目 YH/XC，不出我/A剪辑">导出A·总量</button>'
-      + '<button class="mini blue" onclick="exportWeekSheet(\'plan\',\'img\',\'' + rec.ws + '\',\'B\')" title="只出「合计 / 我剪 / A剪辑」三列，拿给 A 看要剪多少">导出B·A剪辑量</button>'
+      + '<button class="mini blue" onclick="exportWeekSheet(\'plan\',\'img\',\'' + rec.ws + '\',\'B\')" title="只出「A剪辑（条）」一列（合计行是 A 自己的总量）">导出B·A剪辑量</button>'
       + '<button class="mini" onclick="exportWeekSheet(\'plan\',\'img\',\'' + rec.ws + '\',\'full\')" title="含挂链/不挂链/我/A剪辑/YH/XC 全部">导出C·完整</button>'
       + '<button class="mini" onclick="exportWeekSheet(\'plan\',\'csv\',\'' + rec.ws + '\',\'A\')" title="同 A 模板的表格文件">CSV</button>'
       + '<button class="mini" onclick="jumpMonthTgt()" title="周目标从月度目标来，去改月度目标">月度目标</button>'
@@ -6095,9 +6095,7 @@ function exportWeekSheet(mode, fmt, wsOpt, variant) {
       { k: "yh", w: 115, t: "YH（条）" }, { k: "xc", w: 115, t: "XC（条）" }
     ],
     B: [
-      { k: "q", w: 150, t: "合计（条）" },
-      { k: "me", w: 140, t: "我剪（条）" },
-      { k: "sub", w: 160, t: "A剪辑（条）" }
+      { k: "sub", w: 200, t: "A剪辑（条）" }
     ],
     full: [
       { k: "l", w: 128, t: "挂链（条）" }, { k: "n", w: 142, t: "不挂链（条）" }, { k: "q", w: 130, t: "合计（条）" },
