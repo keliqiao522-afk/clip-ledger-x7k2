@@ -6161,13 +6161,14 @@ function renderOnlyWeekPicker() {
   if (!sel) return;
   /* 默认只看一周：盖住今天的那周，没有就取最近一周；要换周用下拉或左右箭头 */
   if (!onlyWeekTouched && weekTables.length) {
-    var t0 = today(), hit = "", any = "";
+    var t0 = today(), hitR = null, anyR = null;
     weekTables.forEach(function (r) {
       if (!r || !r.ws) return;
-      if (!hit && r.ws <= t0 && weekEndOf(r.ws) >= t0) hit = r.ws;
-      if (!any || r.ws > any) any = r.ws;
+      if (!hitR && r.ws <= t0 && weekEndOf(r.ws) >= t0) hitR = r;
+      if (!anyR || r.ws > anyR.ws) anyR = r;
     });
-    onlyWeekKey = hit || any;
+    var pick = hitR || anyR;
+    onlyWeekKey = pick ? String(pick.id) : "";
     onlyWeekTouched = true;
     try { localStorage.setItem("clipOnlyWeekV1", onlyWeekKey); } catch (e) { }
   }
