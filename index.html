@@ -5938,9 +5938,11 @@ function refreshWeekTable(i) {
   var box = document.getElementById("gw" + i);
   if (box) {
     var W = num(rec.wtot), okW = (W ? (W === g.q) : true), okMS = (g.me + g.sub === g.q), okYX = (g.yh + g.xc === g.q);
-    box.innerHTML = "一周总量 <b>" + (W || "—") + "</b> ｜ 小计合计 <b>" + g.q + "</b>"
-      + (okW ? " ✅" : ' <span style="color:#dc2626">（差 ' + (W - g.q) + "）</span>")
-      + " ｜ 我 <b>" + g.me + "</b> ＋ A剪辑 <b>" + g.sub + "</b> ＝ <b>" + (g.me + g.sub) + "</b>" + (okMS ? " ✅" : ' <span style="color:#dc2626">✗</span>')
+    box.innerHTML = "一周总量 <b>" + (W || "—") + "</b>"
+      + " ｜ <b>我＋剪辑合计（小计）</b> <b>" + g.q + "</b>" + (okW ? " ✅" : ' <span style="color:#dc2626">（与一周总量差 ' + (W - g.q) + "）</span>")
+      + " ｜ <b>我自己</b> <b>" + g.me + "</b>"
+      + " ｜ <b>剪辑的要剪</b> <b>" + g.sub + "</b>"
+      + ((g.me + g.sub) === g.q ? " ✅" : ' <span style="color:#dc2626">（我＋剪辑 差 ' + (g.q - g.me - g.sub) + "）</span>")
       + " ｜ 我·YH <b>" + g.meY + "</b> ＋ 我·XC <b>" + g.meX + "</b> ＝ 我（条）<b>" + g.me + "</b>" + ((g.meY + g.meX) === g.me ? " ✅" : ' <span style="color:#dc2626">✗</span>')
       + " ｜ A·YH <b>" + g.subY + "</b> ＋ A·XC <b>" + g.subX + "</b> ＝ A剪辑（条）<b>" + g.sub + "</b>" + ((g.subY + g.subX) === g.sub ? " ✅" : ' <span style="color:#dc2626">✗</span>')
       + " ｜ 项目 YH <b>" + g.yh + "</b> ＋ XC <b>" + g.xc + "</b> ＝ 小计 <b>" + (g.yh + g.xc) + "</b>" + (okYX ? " ✅" : ' <span style="color:#dc2626">✗</span>');
@@ -6165,7 +6167,7 @@ function renderSheetList() {
       + "</div></div>"
       + '<div class="flds" style="margin-bottom:10px"><div class="fld grow" style="flex:1;min-width:260px"><label>周度目标</label><textarea style="min-height:34px;height:34px" oninput="setWeekField(' + i + ',\'goal\',this.value)" placeholder="例：稳定成交素材供给，验证3个可复用选题方向">' + esc(rec.goal) + '</textarea></div></div>'
       + '<div class="grandline" id="gw' + i + '"></div>'
-      + '<div class="scroll"><table class="wk"><thead><tr><th>内容形式</th><th>挂链（条）</th><th>不挂链（条）</th><th>小计<br><span style="font-weight:400">（条）</span></th><th>我（条）</th><th>我·YH<br><span style="font-weight:400">（手填）</span></th><th>我·XC<br><span style="font-weight:400">（＝我−YH）</span></th><th>A剪辑（条）<br><span style="font-weight:400">（＝小计−我）</span></th><th>A·YH<br><span style="font-weight:400">（手填）</span></th><th>A·XC<br><span style="font-weight:400">（＝A−A·YH）</span></th></tr></thead><tbody>'
+      + '<div class="scroll"><table class="wk"><thead><tr><th>内容形式</th><th>挂链（条）</th><th>不挂链（条）</th><th>我＋剪辑合计<br><span style="font-weight:400">（＝小计）</span></th><th>我自己剪<br><span style="font-weight:400">（条）</span></th><th>我·YH<br><span style="font-weight:400">（手填）</span></th><th>我·XC<br><span style="font-weight:400">（＝我−YH）</span></th><th>剪辑要剪<br><span style="font-weight:400">（＝小计−我）</span></th><th>A·YH<br><span style="font-weight:400">（手填）</span></th><th>A·XC<br><span style="font-weight:400">（＝A−A·YH）</span></th></tr></thead><tbody>'
       + rows
       + '<tr class="tot"><td>合计（本周）</td><td id="rt' + i + '_l"></td><td id="rt' + i + '_n"></td><td class="sumcell" id="rt' + i + '_q"></td><td class="sumcell" id="rt' + i + '_me"></td><td class="subcell" id="rt' + i + '_meY"></td><td class="subcell" id="rt' + i + '_meX"></td><td class="subcell" id="rt' + i + '_sub"></td><td class="subcell" id="rt' + i + '_subY"></td><td class="subcell" id="rt' + i + '_subX"></td></tr>'
       + "</tbody></table></div>"
@@ -6262,7 +6264,7 @@ function renderA() {
   var html = "";
   html += '<h3 style="margin:0 0 4px;font-size:17px">' + mds(p.ws) + " ~ " + mds(p.we) + " · " + weekLabel(p.ws) + nm + "</h3>";
   html += '<div class="a-card"><div class="a-num">'
-    + "<div><b>" + need + "</b><span>本周要剪（条）</span></div>"
+    + "<div><b>" + need + "</b><span>A 合计要剪（条）</span></div>"
     + "<div><b>" + needL + "</b><span>其中挂链</span></div>"
     + "<div><b>" + needN + "</b><span>其中不挂链</span></div>"
     + "<div><b>" + needYH + "</b><span>YH 项目</span></div>"
@@ -6270,7 +6272,8 @@ function renderA() {
     + "<div><b>" + done + "</b><span>我已剪完</span></div>"
     + "<div><b>" + pct + "%</b><span>完成进度</span></div>"
     + "</div><div class=\"a-bar\"><i style=\"width:" + pct + "%\"></i></div>"
-    + '<div class="legend" style="margin:10px 0 0">' + tip + "</div></div>";
+    + '<div class="legend" style="margin:10px 0 0">' + tip + "</div>"
+    + '<div class="legend" style="margin:6px 0 0">口径：这里只算<b>你自己</b>要剪的＝每周小计 − 号主自己剪的（按内容形式逐行相减），不含号主剪的条数。</div></div>';
 
   /* 逐条登记 */
   html += '<div class="a-card"><h4 style="margin:0 0 10px;font-size:15px">登记一条（按日期记，和剪辑登记同一套口径）</h4>'
@@ -6285,7 +6288,7 @@ function renderA() {
 
   /* 进度表 */
   html += '<table class="rec a-tbl"><thead><tr>'
-    + "<th>内容形式</th><th>挂链要剪</th><th>不挂链要剪</th><th>合计要剪</th><th>YH 要剪</th><th>XC 要剪</th><th>已剪·YH</th><th>已剪·XC</th><th>还差</th>"
+    + "<th>内容形式</th><th>挂链要剪</th><th>不挂链要剪</th><th>A 要剪<br><span style='font-weight:400;color:#8792a2'>（不含号主）</span></th><th>YH 要剪</th><th>XC 要剪</th><th>已剪·YH</th><th>已剪·XC</th><th>还差</th>"
     + "</tr></thead><tbody>";
   rows.forEach(function (o) {
     var r = o.r, left = Math.max(0, r.sub - (o.ty + o.tx));
@@ -6299,7 +6302,7 @@ function renderA() {
       + '<td style="color:#059669;font-weight:700">' + o.tx + "</td>"
       + "<td>" + (left ? left : '<span class="badge g">完成</span>') + "</td></tr>";
   });
-  html += '<tr style="background:#f8fafc;font-weight:700"><td>合计（本周）</td><td>' + needL + "</td><td>" + needN + "</td><td>" + need + "</td><td>" + needYH + "</td><td>" + needXC + "</td><td>" + dYH + "</td><td>" + dXC + "</td><td>" + Math.max(0, need - done) + "</td></tr>";
+  html += '<tr style="background:#f8fafc;font-weight:700"><td>A 合计（本周）</td><td>' + needL + "</td><td>" + needN + "</td><td>" + need + "</td><td>" + needYH + "</td><td>" + needXC + "</td><td>" + dYH + "</td><td>" + dXC + "</td><td>" + Math.max(0, need - done) + "</td></tr>";
   html += "</tbody></table>";
 
   /* 已登记明细 */
