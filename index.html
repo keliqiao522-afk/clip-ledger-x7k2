@@ -6043,7 +6043,7 @@ function renderSheetList() {
       + '<div class="ops">'
       + '<button class="mini blue" onclick="autoFillWeek(' + i + ')">按一周总量自动分</button>'
       + '<button class="mini blue" onclick="exportWeekSheet(\'plan\',\'img\',\'' + rec.ws + '\',\'A\')" title="只出总量＋项目 YH/XC，不出我/A剪辑">导出A·总量</button>'
-      + '<button class="mini blue" onclick="exportWeekSheet(\'plan\',\'img\',\'' + rec.ws + '\',\'B\')" title="我的量按 YH/XC 拆，剩下的就是 A剪辑要剪的">导出B·我→A剪辑</button>'
+      + '<button class="mini blue" onclick="exportWeekSheet(\'plan\',\'img\',\'' + rec.ws + '\',\'B\')" title="只出「合计 / 我剪 / A剪辑」三列，拿给 A 看要剪多少">导出B·A剪辑量</button>'
       + '<button class="mini" onclick="exportWeekSheet(\'plan\',\'img\',\'' + rec.ws + '\',\'full\')" title="含挂链/不挂链/我/A剪辑/YH/XC 全部">导出C·完整</button>'
       + '<button class="mini" onclick="exportWeekSheet(\'plan\',\'csv\',\'' + rec.ws + '\',\'A\')" title="同 A 模板的表格文件">CSV</button>'
       + '<button class="mini" onclick="jumpMonthTgt()" title="周目标从月度目标来，去改月度目标">月度目标</button>'
@@ -6095,10 +6095,9 @@ function exportWeekSheet(mode, fmt, wsOpt, variant) {
       { k: "yh", w: 115, t: "YH（条）" }, { k: "xc", w: 115, t: "XC（条）" }
     ],
     B: [
-      { k: "l", w: 104, t: "挂链", g: "合计（条）" }, { k: "n", w: 112, t: "不挂链", g: "合计（条）" }, { k: "q", w: 104, t: "合计", g: "合计（条）" },
-      { k: "meY", w: 104, t: "YH", g: "我剪（条）" }, { k: "meX", w: 104, t: "XC", g: "我剪（条）" },
-      { k: "subY", w: 116, t: "YH", g: "A剪辑（条）" }, { k: "subX", w: 116, t: "XC", g: "A剪辑（条）" },
-      { k: "yh", w: 96, t: "YH", g: "项目（条）" }, { k: "xc", w: 96, t: "XC", g: "项目（条）" }
+      { k: "q", w: 150, t: "合计（条）" },
+      { k: "me", w: 140, t: "我剪（条）" },
+      { k: "sub", w: 160, t: "A剪辑（条）" }
     ],
     full: [
       { k: "l", w: 128, t: "挂链（条）" }, { k: "n", w: 142, t: "不挂链（条）" }, { k: "q", w: 130, t: "合计（条）" },
@@ -6126,7 +6125,7 @@ function exportWeekSheet(mode, fmt, wsOpt, variant) {
   var tot2 = splitProj({ q: p.tot.q, me: p.tot.me, yh: p.tot.yh, xc: p.tot.xc, sub: p.tot.sub, l: p.tot.l, n: p.tot.n,
     meY: p.tot.meY, subY: p.tot.subY, subX: p.tot.subX });
   var vals = defs[V] || defs.full;
-  var title = "周计划表_" + (V === "A" ? "总量分项目_" : V === "B" ? "我剪按项目-其余A剪辑_" : "") + p.ws;
+  var title = "周计划表_" + (V === "A" ? "总量分项目_" : V === "B" ? "A剪辑要剪_" : "") + p.ws;
   if (fmt === "csv") {
     var head = ["周期/周次", "主推品", "周主目标", "内容形式"].concat(vals.map(function (v) {
       return v.g ? v.g.replace("（条）", "") + "·" + v.t : v.t;
