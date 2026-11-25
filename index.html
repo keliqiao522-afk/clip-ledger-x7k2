@@ -6043,7 +6043,7 @@ function renderSheetList() {
       + '<div class="ops">'
       + '<button class="mini blue" onclick="autoFillWeek(' + i + ')">按一周总量自动分</button>'
       + '<button class="mini blue" onclick="exportWeekSheet(\'plan\',\'img\',\'' + rec.ws + '\',\'A\')" title="只出总量＋项目 YH/XC，不出我/A剪辑">导出A·总量</button>'
-      + '<button class="mini blue" onclick="exportWeekSheet(\'plan\',\'img\',\'' + rec.ws + '\',\'B\')" title="只出「A剪辑（条）」一列（合计行是 A 自己的总量）">导出B·A剪辑量</button>'
+      + '<button class="mini blue" onclick="exportWeekSheet(\'plan\',\'img\',\'' + rec.ws + '\',\'B\')" title="只出「A剪辑（条）」一列（＝合计−我剪），拿给 A 看要剪多少">导出B·A剪辑量</button>'
       + '<button class="mini" onclick="exportWeekSheet(\'plan\',\'img\',\'' + rec.ws + '\',\'full\')" title="含挂链/不挂链/我/A剪辑/YH/XC 全部">导出C·完整</button>'
       + '<button class="mini" onclick="exportWeekSheet(\'plan\',\'csv\',\'' + rec.ws + '\',\'A\')" title="同 A 模板的表格文件">CSV</button>'
       + '<button class="mini" onclick="jumpMonthTgt()" title="周目标从月度目标来，去改月度目标">月度目标</button>'
@@ -6225,7 +6225,7 @@ function exportWeekSheet(mode, fmt, wsOpt, variant) {
     y += RH;
   });
   ctx.beginPath(); ctx.moveTo(tX, y); ctx.lineTo(W, y); ctx.stroke();
-  cell(mds(p.ws) + " ~ " + mds(p.we) + " · " + weekLabel(p.ws) + (p.wtot ? "（一周总量 " + p.wtot + "）" : ""), c0, 0, HDR, bodyH, 19, false, "#111827", 8);
+  cell(mds(p.ws) + " ~ " + mds(p.we) + " · " + weekLabel(p.ws) + ((p.wtot && V !== "B") ? "（一周总量 " + p.wtot + "）" : ""), c0, 0, HDR, bodyH, 19, false, "#111827", 8);
   cell(p.rec.name || "—", c1, c0, HDR, bodyH, 20, false, "#111827", 8);
   cell(p.rec.goal || "—", c2, c0 + c1, HDR, bodyH, 20, false, "#111827", 8);
   var bx = 0;
