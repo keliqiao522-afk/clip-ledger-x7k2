@@ -471,7 +471,7 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
           if ((mr[kk] === undefined || mr[kk] === null || mr[kk] === "") && oo[kk] !== undefined && oo[kk] !== null && oo[kk] !== "") mr[kk] = oo[kk];
         });
       }
-      ["goal", "wtot", "fund", "model", "assist", "name", "account"].forEach(function (kk) {
+      ["goal", "wtot", "fund", "model", "assist", "name", "account", "ltY", "ltX"].forEach(function (kk) {
         if ((m[kk] === undefined || m[kk] === null || m[kk] === "") && older[kk] !== undefined && older[kk] !== null && older[kk] !== "") m[kk] = older[kk];
       });
       out[idx[k]] = m;
@@ -4079,6 +4079,26 @@ function weekTargetTotals(ws) {
       }
     });
   }
+  /* 挂链目标：周计划表里手填的「YH / XC」两个数优先，按月度目标各类型占比分到每类 */
+  if (rec0) {
+    var lk = weekLinkTgtOf(rec0);
+    if (lk.has) {
+      var baseL = 0;
+      TYPES.forEach(function (t) { baseL += (w[t].link || 0); });
+      var usedL = 0, mxT = TYPES[0];
+      TYPES.forEach(function (t, idx) {
+        var wt2 = (w[t].link || 0) + (w[t].nolink || 0) + (w[t].sub || 0), baseAll = 0;
+    TYPES.forEach(function (x) { baseAll += (x.link || 0) + (x.nolink || 0) + (x.sub || 0); });
+    var wgtv = (baseL > 0) ? (w[t].link || 0) / baseL : (baseAll > 0 ? wt2 / baseAll : 1 / TYPES.length);
+    var share = Math.round(wgtv * lk.total);
+        w[t].link = Math.max(0, share); usedL += w[t].link;
+        if (w[t].link > (w[mxT].link || 0)) mxT = t;
+      });
+      var difL = lk.total - usedL;
+      if (difL !== 0) w[mxT].link = Math.max(0, (w[mxT].link || 0) + difL);
+      TYPES.forEach(function (t) { w[t].sum = (w[t].link || 0) + (w[t].nolink || 0); w[t].edit = w[t].sum + (w[t].sub || 0); });
+    }
+  }
   var tot = { shoot: 0, link: 0, nolink: 0, sub: 0, sum: 0, edit: 0 };
   TYPES.forEach(function (t) {
     ["shoot", "link", "nolink", "sub", "sum", "edit"].forEach(function (f) { tot[f] += w[t][f] || 0; });
@@ -4106,6 +4126,7 @@ function renderWeekDone() {
   $("weekDoneHead").innerHTML = "周次：<b>" + esc(rec.name || (ws + " ~ " + we + "（" + weekLabel(ws) + "）")) + "</b>"
     + "　发布账号：" + (esc(rec.account) || "—")
     + "　<b>本周目标（按月度目标自动分）：拍摄 " + wt.shoot + " 条 ｜ 剪辑 " + wt.edit + " 条（挂链 " + wt.link + " / 不挂链 " + wt.nolink + " / 下属剪 " + wt.sub + "）</b>"
+    + (weekLinkTgtOf(rec).has ? "　<b style=\"color:#2563eb\">挂链目标（手填）YH " + (weekLinkTgtOf(rec).yh || 0) + " ／ XC " + (weekLinkTgtOf(rec).xc || 0) + "</b>" : "")
     + "　累计拍摄：<b>" + weekCodesCount(ws) + "</b> 款";
   var split = weekCountsBy(ws, we), c = weekCounts(ws, we);
   var tl = 0, tn = 0, ts = 0, dl = 0, dn = 0, ds = 0, html = "";
@@ -4309,6 +4330,35 @@ function weekSubOf(rec, t) {
   if (!r) return 0;
   if (r.sub === undefined || r.sub === null || r.sub === "") return null;
   return num(r.sub);
+}
+function weekLinkTgtOf(rec) {
+  var y = (rec && rec.ltY !== undefined && rec.ltY !== null && rec.ltY !== "") ? Math.max(0, Math.round(num(rec.ltY))) : null;
+  var x = (rec && rec.ltX !== undefined && rec.ltX !== null && rec.ltX !== "") ? Math.max(0, Math.round(num(rec.ltX))) : null;
+  var has = (y !== null || x !== null);
+  var total = (y || 0) + (x || 0);
+  return {
+    yh: y, xc: x, has: has, total: total,
+    text: has ? (total + " 条（YH " + (y || 0) + " ／ XC " + (x || 0) + "）") : "自动（未手填）"
+  };
+}
+function setWeekLinkTgt(i, which, v) {
+  var rec = weekTables[i]; if (!rec) return;
+  var key = (String(which) === "y") ? "ltY" : "ltX";
+  var sv = String(v === null || v === undefined ? "" : v).replace(/[^\d.]/g, "");
+  rec[key] = (sv === "") ? null : Math.max(0, Math.round(num(sv)));
+  saveWeekTables(true);
+  var t = weekLinkTgtOf(rec), lb = document.getElementById("wlt" + i);
+  if (lb) lb.textContent = t.text;
+  try { renderWeekDone(); } catch (e) { }
+  try { if (typeof refreshProg === "function") refreshProg(); } catch (e2) { }
+}
+function clearWeekLinkTgt(i) {
+  var rec = weekTables[i]; if (!rec) return;
+  rec.ltY = null; rec.ltX = null;
+  saveWeekTables(true);
+  try { renderSheetList(); } catch (e) { }
+  try { renderWeekDone(); } catch (e2) { }
+  try { if (typeof refreshProg === "function") refreshProg(); } catch (e3) { }
 }
 function refreshWeekTotals(i) {
   var rec = weekTables[i]; if (!rec) return;
@@ -6508,6 +6558,13 @@ function renderSheetList() {
       + '<button class="mini red" onclick="delWeekTable(' + i + ')">删除</button>'
       + "</div></div>"
       + '<div class="flds" style="margin-bottom:10px"><div class="fld grow" style="flex:1;min-width:260px"><label>周度目标</label><textarea style="min-height:34px;height:34px" oninput="setWeekField(' + i + ',\'goal\',this.value)" placeholder="例：稳定成交素材供给，验证3个可复用选题方向">' + esc(rec.goal) + '</textarea></div></div>'
+      + '<div class="flds" style="align-items:flex-end;gap:10px;flex-wrap:wrap;margin:0 0 8px">'
+      + '<div class="fld" style="flex:0 0 auto"><label>挂链目标 · YH（手填）</label><input type="number" min="0" style="width:90px" value="' + (weekLinkTgtOf(rec).yh === null ? "" : weekLinkTgtOf(rec).yh) + '" placeholder="不填＝自动" oninput="setWeekLinkTgt(' + i + ',\'y\',this.value)"></div>'
+      + '<div class="fld" style="flex:0 0 auto"><label>挂链目标 · XC（手填）</label><input type="number" min="0" style="width:90px" value="' + (weekLinkTgtOf(rec).xc === null ? "" : weekLinkTgtOf(rec).xc) + '" placeholder="不填＝自动" oninput="setWeekLinkTgt(' + i + ',\'x\',this.value)"></div>'
+      + '<div class="fld" style="flex:0 0 auto"><label>本周挂链目标合计</label><div style="padding:7px 0;font-size:13px;font-weight:700;color:#111827" id="wlt' + i + '">' + weekLinkTgtOf(rec).text + '</div></div>'
+      + '<button class="mini" onclick="clearWeekLinkTgt(' + i + ')">清空 · 回到自动</button>'
+      + '<span class="legend" style="margin:0;flex-basis:100%">这两个数随便改、每周一套：合计＝YH＋XC，再按「月度目标」各内容形式的占比自动分下去；不填就按月度目标摊到这一周。</span>'
+      + '</div>'
       + '<div class="grandline" id="gw' + i + '"></div>'
       + '<div class="scroll"><table class="wk"><thead><tr><th>内容形式</th><th>挂链（条）</th><th>挂链·分两个号<br><span style="font-weight:400">（①手填 / ②＝挂链−①）</span></th><th>不挂链（条）</th><th>我＋剪辑合计<br><span style="font-weight:400">（＝小计）</span></th><th>我自己剪<br><span style="font-weight:400">（条）</span></th><th>我·YH<br><span style="font-weight:400">（手填）</span></th><th>我·XC<br><span style="font-weight:400">（＝我−YH）</span></th><th>剪辑要剪<br><span style="font-weight:400">（＝小计−我）</span></th><th>剪辑·挂链<br><span style="font-weight:400">（手填）</span></th><th>剪辑·不挂链<br><span style="font-weight:400">（＝剪辑−挂链）</span></th><th>A·YH<br><span style="font-weight:400">（手填）</span></th><th>A·XC<br><span style="font-weight:400">（＝A−A·YH）</span></th></tr></thead><tbody>'
       + rows
