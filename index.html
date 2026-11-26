@@ -6840,42 +6840,56 @@ function aPushCloud() {
     }).catch(function () { aPushState("fail"); });
   } catch (e) { }
 }
-/* 把 A 端登记自动并进「剪辑登记」：按日期合并成一条（谁剪=剪辑、账号=A剪辑） */
+/* 把 A 端登记自动并进「剪辑登记」：按「日期 + 项目」拆开，账号写 YH / XC，谁剪=剪辑 */
 function aMergeIntoData() {
   if (aMode()) return false;
   var o = null;
   try { o = JSON.parse(localStorage.getItem("clipALogV1") || "null"); } catch (e) { o = null; }
   if (!o || !o.items) return false;
-  var byDate = {};
+  /* A 的记录按「日期 + 项目（YH / XC）」拆开，项目直接写进账号，和号主自己登记的口径一致 */
+  var byKey = {};
   (o.items || []).forEach(function (it) {
     if (!it || !it.date || !it.t) return;
-    if (!byDate[it.date]) byDate[it.date] = {};
-    if (!byDate[it.date][it.t]) byDate[it.date][it.t] = { link: 0, nolink: 0, yh: 0, xc: 0 };
     var q = num(it.n);
     if (q <= 0) return;
-    if (it.link) byDate[it.date][it.t].link += q; else byDate[it.date][it.t].nolink += q;
-    var pp = String(it.p || "").toUpperCase();
-    if (pp === "YH") byDate[it.date][it.t].yh += q;
-    else if (pp === "XC") byDate[it.date][it.t].xc += q;
+    var proj = String(it.p || "").toUpperCase();
+    if (proj !== "YH" && proj !== "XC") proj = "";
+    var k = it.date + "#" + proj;
+    if (!byKey[k]) byKey[k] = { date: it.date, proj: proj, rows: {} };
+    var box = byKey[k].rows;
+    if (!box[it.t]) box[it.t] = { link: 0, nolink: 0 };
+    if (it.link) box[it.t].link += q; else box[it.t].nolink += q;
   });
-  var keep = {};
-  Object.keys(byDate).forEach(function (k) { keep[k] = 1; });
   var changed = false, before = data.length;
-  data = data.filter(function (r) { return r.aDate === undefined || keep[r.aDate]; });
+  data = data.filter(function (r) {
+    if (r.aDate === undefined) return true;
+    var pr = String(r.aProj || "").toUpperCase();
+    return !!byKey[r.aDate + "#" + pr];
+  });
   if (data.length !== before) changed = true;
-  Object.keys(byDate).forEach(function (dt) {
-    var want = byDate[dt], rec = null;
-    for (var i = 0; i < data.length; i++) if (data[i].aDate === dt) { rec = data[i]; break; }
+  Object.keys(byKey).forEach(function (k) {
+    var g = byKey[k], dt = g.date, proj = g.proj, rec = null;
+    for (var i = 0; i < data.length; i++) {
+      if (data[i].aDate === dt && String(data[i].aProj || "").toUpperCase() === proj) { rec = data[i]; break; }
+    }
     if (!rec) {
-      rec = { id: Date.now() + Math.floor(Math.random() * 1000), aDate: dt, date: dt, note: "A 端登记（自动同步）", owner: "sub", account: "A剪辑", codes: [], items: {} };
+      rec = {
+        id: Date.now() + Math.floor(Math.random() * 1000), aDate: dt, aProj: proj, date: dt,
+        note: proj ? ("A 端登记（" + proj + " · 自动同步）") : "A 端登记（自动同步）",
+        owner: "sub", account: proj || "A剪辑", codes: [], items: {}
+      };
       data.push(rec);
       changed = true;
     }
     TYPES.forEach(function (t) {
-      var w = want[t] || { link: 0, nolink: 0, yh: 0, xc: 0 };
-      var cur = rec.items[t] || { link: 0, nolink: 0 };
-      if (num(cur.link) !== w.link || num(cur.nolink) !== w.nolink || num(cur.yh) !== (w.yh || 0) || num(cur.xc) !== (w.xc || 0)) {
-        rec.items[t] = { link: w.link, nolink: w.nolink, yh: w.yh || 0, xc: w.xc || 0, detail: "A 端登记" };
+      var w = g.rows[t] || { link: 0, nolink: 0 };
+      var cur = rec.items[t] || null;
+      var ty = (proj === "YH") ? (w.link + w.nolink) : 0;
+      var tx = (proj === "XC") ? (w.link + w.nolink) : 0;
+      var same = cur && num(cur.link) === w.link && num(cur.nolink) === w.nolink && num(cur.yh) === ty && num(cur.xc) === tx;
+      if (!same) {
+        if (!w.link && !w.nolink) delete rec.items[t];
+        else rec.items[t] = { link: w.link, nolink: w.nolink, yh: ty, xc: tx, detail: "A 端登记" };
         changed = true;
       }
     });
