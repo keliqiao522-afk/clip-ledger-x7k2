@@ -2262,7 +2262,7 @@ function rangeHint() {
 function rangeInit() {
   try {
     if (!$("rgFrom") || !$("rgTo")) return;
-    if (!$("rgFrom").value) { var t0 = today(); $("rgFrom").value = mondayOf(t0); $("rgTo").value = weekEndOf(t0); }
+    if (!$("rgFrom").value) { var t0 = today(); $("rgFrom").value = mondayOf(t0); $("rgTo").value = weekEndOf(mondayOf(t0)); }
     rangeHint();
   } catch (e) { }
 }
