@@ -480,6 +480,7 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
   }
 
   function flush() {
+    if (aMode()) { pending = {}; savePending(); setChip("☁ A 端 · 免登录登记，自动同步给号主", "ok"); return; }
     timer = null;
     var keys = [], k, i;
     for (k in pending) { if (Object.prototype.hasOwnProperty.call(pending, k)) keys.push(k); }
@@ -533,6 +534,7 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
   }
 
   function uploadLocalAll() {
+    if (aMode()) { setChip("☁ A 端 · 免登录登记，自动同步给号主", "ok"); return; }
     if (!logged() && !aMode()) { setChip("🔒 只读预览", "fail"); return; }
     var up = [];
     for (var i = 0; i < localStorage.length; i++) {
@@ -666,7 +668,7 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
       btn.onclick = function () { doLogin(em2.value.trim(), pw.value, msg); };
       pw.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); doLogin(em2.value.trim(), pw.value, msg); } });
       bar.appendChild(b2); bar.appendChild(hint); bar.appendChild(em2); bar.appendChild(pw); bar.appendChild(btn); bar.appendChild(msg);
-      document.body.classList.add("ro");
+      if (!aMode()) document.body.classList.add("ro");
     }
     document.body.appendChild(bar);
   }
@@ -708,6 +710,7 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
     chip.textContent = aMode() ? (pulledOK ? "☁ A 端 · 免登录可登记" : "⚠ 云端未连接") : (pulledOK ? (logged() ? "☁ 已同步" : "🔒 只读预览") : "⚠ 云端未连接");
     chip.title = "点一下：重试未同步的数据；再从云端重新拉取会弹确认";
     chip.onclick = function () {
+      if (aMode() && !logged()) { toast("A 端不用登录：填好条数点「＋ 登记」会自动同步给号主"); return; }
       if (!pulledOK) { location.reload(); return; }
       if (staleHint) { staleHint = false; pullAndReload(); return; }
       var n = 0; for (var k in pending) n++;
