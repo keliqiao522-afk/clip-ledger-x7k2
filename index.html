@@ -6970,7 +6970,7 @@ function exportWeekSheet(mode, fmt, wsOpt, variant, idOpt) {
     y += RH;
   });
   ctx.beginPath(); ctx.moveTo(tX, y); ctx.lineTo(W, y); ctx.stroke();
-  cell(mds(p.ws) + " ~ " + mds(p.we) + " · " + weekLabel(p.ws) + ((p.wtot && V !== "B") ? " ｜ 一周总量 " + p.wtot : ""), tX, 0, HDR, bodyH, 17, false, "#111827", 8);
+  cell(mds(p.ws) + " ~ " + mds(p.we) + " · " + weekLabel(p.ws) + ((p.wtot && V !== "B") ? " ｜ 一周总量 " + p.wtot : ""), c0, 0, HDR, bodyH, 17, false, "#111827", 8);
   if (lead > 3) {
     cell(p.rec.name || "—", c1, c0, HDR, bodyH, 20, false, "#111827", 8);
     cell(p.rec.goal || "—", c2, c0 + c1, HDR, bodyH, 20, false, "#111827", 8);
