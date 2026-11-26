@@ -1373,20 +1373,20 @@ body.mode-a h1 { font-size: 22px; }
         <button class="mini blue" onclick="openShootOcr()">🖼 截图识别</button>
         <button class="mini" onclick="copyPrevShootMonth()">复制上个月</button>
         <button class="mini" onclick="openShootPaste()">📋 粘贴导入</button>
-        <button class="mini green" onclick="exportShootImage()">导出全部表格图片</button>
-        <button class="mini" onclick="exportShootCsv()">导出CSV</button>
+        <button class="mini green" onclick="exportShootWeekImg()">导出全部计划图片</button>
+        <button class="mini" onclick="exportShootWeekCsv()">导出CSV</button>
         <button class="mini red" onclick="clearShootMonth()">清空本月</button>
       </div>
       <div class="legend" style="flex-basis:100%;margin:2px 0 0;line-height:1.9">
-        填写示例（只在这里举例一次）：<b>场地</b> 公司室内 ｜ <b>拍摄明细</b> 口播 1 + 随拍 8 ｜ <b>当日拍摄</b> 9 ｜ <b>拍摄款号</b> 7988 × 1、6549 × 5（可加多个款号；周计划表和进度总览会自动汇总）
+        填写示例（只在这里举例一次）：<b>场地</b> 公司室内 ｜ <b>拍摄需求</b> 口播 1 + 随拍 8 ｜ <b>拍摄时段</b> 09:00–12:00（右边自动算几小时）｜ <b>拍摄款号</b> 7988 × 1（要多拍一款点＋加款号；周计划表和进度总览会自动汇总）
       </div>
     </div>
     <div class="grandline" id="weekGoalLine"></div>
     <div class="secttl">本周拍摄安排 <span>场地 / 拍什么 / 拍几条 / 款号，往后排到整月，页面整体滚动，不再卡小滚轮</span></div>
     <div class="scroll shootscroll">
       <table class="wk" style="min-width:0">
-        <colgroup><col style="width:58px"><col style="width:96px"><col style="width:130px"><col><col style="width:84px"><col style="width:160px"></colgroup>
-        <thead><tr><th>星期</th><th>日期</th><th>场地</th><th>拍摄明细</th><th>当日拍摄</th><th>拍摄款号</th></tr></thead>
+        <colgroup><col style="width:44px"><col style="width:54px"><col style="width:98px"><col style="width:120px"><col><col style="width:180px"><col style="width:176px"></colgroup>
+        <thead><tr><th>选</th><th>星期</th><th>日期</th><th>场地</th><th>拍摄需求</th><th>拍摄时段</th><th>拍摄款号</th></tr></thead>
         <tbody id="shootBodyShot"></tbody>
       </table>
     </div>
@@ -1417,7 +1417,7 @@ body.mode-a h1 { font-size: 22px; }
 <div class="modal" id="shootPasteModal">
   <div class="mbox">
     <h3>📋 粘贴导入每日计划</h3>
-    <p>从飞书 / Excel / 表格里直接复制整张表粘进来，一行一天。列顺序照抄截图即可：<b>日期 → 星期 → 场地 → 拍摄明细 → 当日拍摄 → 当日剪辑任务</b>（只有"星期 → 日期"换个顺序也能认）。表头那行会自动跳过。</p>
+    <p>从飞书 / Excel / 表格里直接复制整张表粘进来，一行一天。列顺序照抄截图即可：<b>日期 → 星期 → 场地 → 拍摄需求 → 拍摄时段 → 当日剪辑任务</b>（只有"星期 → 日期"换个顺序也能认）。表头那行会自动跳过。</p>
     <textarea id="shootPasteText" placeholder="11月16日	周一	公司室内	测评 1 + 口播 2	3	2&#10;11月17日	周二	公司室内	口播 3	3	2"></textarea>
     <div class="mbtns">
       <button class="add" onclick="doShootPaste()">✅ 导入到当前月份</button>
@@ -4948,6 +4948,52 @@ function saveShoot(now) {  clearTimeout(shootTimer);
     try { localStorage.setItem(KEY_SHOOT, JSON.stringify(shootPlan)); autoBackup(); } catch (e) { }
   }, 350);
 }
+/* ===== 周计划：勾选导出 + 拍摄时段（小时自动算） ===== */
+var shootSel = {};
+function shootSelSet(ds, on) { if (on) shootSel[ds] = 1; else delete shootSel[ds]; shootSelSync(); }
+function shootSelWeek(wk, on) {
+  var d0 = new Date(wk + "T00:00:00");
+  for (var i = 0; i < 7; i++) {
+    var d = new Date(d0); d.setDate(d.getDate() + i);
+    var ds = ymd(d);
+    if (!shootPlan[ds]) continue;
+    if (on) shootSel[ds] = 1; else delete shootSel[ds];
+  }
+  renderShootPlan();
+  try { toast(on ? "已勾选本周" : "已清空本周勾选"); } catch (e) { }
+}
+function shootSelClearAll() { shootSel = {}; renderShootPlan(); }
+function shootSelSync() {
+  var n = 0, k;
+  for (k in shootSel) if (shootSel[k]) n++;
+  var els = document.querySelectorAll(".selcnt");
+  for (var i = 0; i < els.length; i++) els[i].textContent = n ? ("已勾选 " + n + " 天（只导出勾选的）") : "未勾选＝导出全部";
+}
+function shootTMin(v) { var m = String(v || "").match(/(\d{1,2}):(\d{2})/); if (!m) return -1; return parseInt(m[1], 10) * 60 + parseInt(m[2], 10); }
+function shootHoursTxt(ds) {
+  var rec = shootPlan[ds] || {};
+  var a = shootTMin(rec.t1), b = shootTMin(rec.t2);
+  if (a < 0 || b < 0) return "未选时间";
+  if (b <= a) b += 1440;
+  var mins = b - a, h = mins / 60, s = (mins % 60 === 0) ? String(h) : h.toFixed(1);
+  return "共 " + s + " 小时（" + rec.t1 + "–" + rec.t2 + "）";
+}
+function shootTimeTxt(ds) {
+  var rec = shootPlan[ds] || {};
+  if (shootTMin(rec.t1) < 0 || shootTMin(rec.t2) < 0) return "—";
+  var a = shootTMin(rec.t1), b = shootTMin(rec.t2); if (b <= a) b += 1440;
+  return rec.t1 + "–" + rec.t2 + "（" + ((b - a) / 60 % 1 === 0 ? ((b - a) / 60) : ((b - a) / 60).toFixed(1)) + " 小时）";
+}
+function shootDayN(ds) {
+  var rec = shootPlan[ds] || {}, cs = rec.codes || [], s = 0;
+  for (var i = 0; i < cs.length; i++) s += num(cs[i].q);
+  return s || num(rec.shot);
+}
+function shootPickDates(list) {
+  var n = 0, k; for (k in shootSel) if (shootSel[k]) n++;
+  if (!n) return list;
+  return list.filter(function (ds) { return !!shootSel[ds]; });
+}
 function shootSet(date, k, v) {
   if (!shootPlan[date]) shootPlan[date] = { place: "", detail: "", shot: 0, edit: "", editN: 0 };
   var rec = shootPlan[date];
@@ -4958,6 +5004,7 @@ function shootSet(date, k, v) {
     return;
   }
   rec[k] = v;
+  if (k === "t1" || k === "t2") { var hEl = document.getElementById("ht-" + date); if (hEl) hEl.textContent = shootHoursTxt(date); }
   if (k === "subEdit") rec.subN = (String(v).trim() === "" ? null : guessEditN(v));
   saveShoot();
   if (k === "shot" || k === "editN" || k === "subEdit" || k === "place" || k === "detail") {
@@ -4974,7 +5021,7 @@ function refreshMineRow(ds) {
   if (!tr) return;
   var planTxt = ((rec.place || "").trim() + (rec.place && rec.detail ? " · " : "") + (rec.detail || "").trim()) || "—";
   tr.children[2].textContent = planTxt;
-  tr.children[3].textContent = num(rec.shot) ? rec.shot : "—";
+  if (tr.children[3]) tr.children[3].textContent = shootDayN(ds) ? shootDayN(ds) : "—";
   tr.children[4].textContent = num(rec.editN) ? rec.editN : "—";
   tr.children[5].textContent = subN ? subN : "—";
 }
@@ -4988,7 +5035,8 @@ function dayCodeCell(ds) {
   var r = shootDay(ds);
   if (!r.codes) r.codes = [];
   var cs = r.codes.slice();
-  if (!cs.length || String(cs[cs.length - 1].c || "").trim() || num(cs[cs.length - 1].q)) cs.push({ c: "", q: 0 });
+  /* 默认只一行：没填过才给空行，要再加款号点「＋ 加款号」 */
+  if (!cs.length) cs.push({ c: "", q: 0 });
   var html = '<div class="codewrap">';
   for (var i = 0; i < cs.length; i++) {
     html += '<span class="cc"><input class="cin" value="' + esc(cs[i].c) + '" placeholder="款号" oninput="setDayCode(\'' + ds + "'," + i + ',\'c\',this.value)">'
@@ -5396,7 +5444,7 @@ function renderShootPlan() {
   for (var qi = 0; qi < 7; qi++) {
     var dqi = new Date(wsNow + "T00:00:00"); dqi.setDate(dqi.getDate() + qi);
     var rqi = shootPlan[ymd(dqi)] || {};
-    shootArr += num(rqi.shot);
+    shootArr += shootDayN(ymd(dqi));
   }
   var line = document.getElementById("weekGoalLine");
   if (line) {
@@ -5415,8 +5463,11 @@ function renderShootPlan() {
     var wkStart = ymd(ws2);
     var wkLine = '<div class="wkhead2">第 ' + weekLabel(wkStart) + ' 周（' + (hs.getMonth() + 1) + "/" + hs.getDate()
       + " – " + (he.getMonth() + 1) + "/" + he.getDate() + "）</div>";
-    hShot += '<tr class="wkweek"><td colspan="6"><div class="wkrow"><span>第 ' + weekLabel(wkStart) + ' 周（' + (hs.getMonth() + 1) + "/" + hs.getDate() + " – " + (he.getMonth() + 1) + "/" + he.getDate() + "）</span>"
-      + '<button onclick="exportShootImage(\'' + wkStart + '\')" title="只导出这一周的图片">⬇ 导出这一周图片</button></div></td></tr>';
+    hShot += '<tr class="wkweek"><td colspan="7"><div class="wkrow"><span>第 ' + weekLabel(wkStart) + ' 周（' + (hs.getMonth() + 1) + "/" + hs.getDate() + " – " + (he.getMonth() + 1) + "/" + he.getDate() + "）</span>"
+      + '<i class="selcnt" style="font-weight:400;color:#8792a2;font-size:12px;margin:0 6px">未勾选＝导出全部</i>'
+      + '<button onclick="shootSelWeek(\'' + wkStart + '\',true)" title="把本周这几天都勾上">☑ 全选本周</button>'
+      + '<button onclick="shootSelWeek(\'' + wkStart + '\',false)" title="清空本周的勾选">✖ 清空</button>'
+      + '<button onclick="exportShootWeekImg(\'' + wkStart + '\')" title="只导出勾选的行；没勾就全部导出">⬇ 导出这一周图片</button></div></td></tr>';
     for (var i = 0; i < 7; i++) {
       var d = new Date(ws2);
       d.setDate(d.getDate() + i);
@@ -5430,15 +5481,17 @@ function renderShootPlan() {
       var rows = "";
       /* 拍摄表那一行 */
       hShot += "<tr" + (inSel ? ' class="selday"' : "") + ' id="sd-' + ds + '">'
+        + '<td class="selc"><input type="checkbox" class="selbox" ' + (shootSel[ds] ? "checked" : "") + ' onchange="shootSelSet(\'' + ds + '\',this.checked)"></td>'
         + "<td>" + WDS[d.getDay()] + "</td><td>" + ds + "</td>"
-        + '<td><input type="text" value="' + esc(rec.place) + '" oninput="shootSet(\'' + ds + '\',\'place\',this.value)"></td>'
-        + '<td><textarea style="min-height:38px" oninput="shootSet(\'' + ds + '\',\'detail\',this.value)">' + esc(rec.detail) + "</textarea></td>"
-        + '<td><input type="number" min="0" value="' + (num(rec.shot) ? rec.shot : "") + '" oninput="shootSet(\'' + ds + '\',\'shot\',this.value)"></td>'
+        + '<td><input type="text" value="' + esc(rec.place) + '" placeholder="公司室内" oninput="shootSet(\'' + ds + '\',\'place\',this.value)"></td>'
+        + '<td><textarea style="min-height:38px" placeholder="口播 1 + 随拍 8" oninput="shootSet(\'' + ds + '\',\'detail\',this.value)">' + esc(rec.detail) + "</textarea></td>"
+        + '<td><div style="display:flex;align-items:center;gap:4px"><input type="time" style="width:86px" value="' + esc(rec.t1 || "") + '" oninput="shootSet(\'' + ds + '\',\'t1\',this.value)"><span style="color:#9aa3b2;font-size:12px">—</span><input type="time" style="width:86px" value="' + esc(rec.t2 || "") + '" oninput="shootSet(\'' + ds + '\',\'t2\',this.value)"></div><div id="ht-' + ds + '" style="font-size:12px;color:#2563eb;margin-top:3px">' + shootHoursTxt(ds) + '</div></td>'
         + "<td>" + dayCodeCell(ds) + "</td></tr>";
     }
     cur.setDate(cur.getDate() + 7);
   }
   $("shootBodyShot").innerHTML = hShot;
+  try { shootSelSync(); } catch (eSel3) { }
   var eb = document.getElementById("dayEditBox");
   if (eb) eb.innerHTML = hEdit;
   $("shootFromPick").value = shootFrom || "";
@@ -5601,6 +5654,140 @@ function shootRows(wk) {
   return { rows: out, y: y, m: m };
 }
 
+/* ===== 周计划导出：星期 / 日期 / 场地 / 拍摄需求 / 拍摄时段 / 拍摄款号 =====
+   勾了行就只导勾的，没勾就导出全部 */
+function shootWeekExportData(wk) {
+  var mf = shootMonthBase(), y0 = mf.getFullYear(), m0 = mf.getMonth();
+  var span = { s: new Date(y0, m0, 1), e: new Date(y0, m0 + 1, 0), ranged: false };
+  if (wk) {
+    var wS = new Date(wk + "T00:00:00"), wE = new Date(wk + "T00:00:00");
+    wE.setDate(wE.getDate() + 6);
+    span = { s: wS, e: wE, ranged: true };
+  }
+  var out = [], cur = new Date(span.s);
+  cur.setDate(cur.getDate() - (cur.getDay() || 7) + 1);
+  while (cur <= span.e) {
+    var ws2 = new Date(cur), we2 = new Date(cur);
+    we2.setDate(we2.getDate() + 6);
+    var days = [], i, d;
+    for (i = 0; i < 7; i++) {
+      d = new Date(ws2); d.setDate(d.getDate() + i);
+      if (d < span.s || d > span.e) continue;
+      days.push(ymd(d));
+    }
+    days = shootPickDates(days);
+    if (days.length) {
+      out.push({ type: "week", text: "第 " + weekLabel(ymd(ws2)) + " 周（" + (ws2.getMonth() + 1) + "/" + ws2.getDate()
+        + " – " + (we2.getMonth() + 1) + "/" + we2.getDate() + "）" });
+      for (i = 0; i < days.length; i++) {
+        var ds = days[i], dd = new Date(ds + "T00:00:00"), rec = shootPlan[ds] || {};
+        out.push({ type: "day", wd: WDS[dd.getDay()], date: ds, place: rec.place || "",
+          detail: rec.detail || "", time: shootTimeTxt(ds), hours: shootHoursTxt(ds), codes: dayCodesText(ds) });
+      }
+    }
+    cur.setDate(cur.getDate() + 7);
+  }
+  return out;
+}
+function exportShootWeekImg(wk) {
+  var FONT = "'Microsoft YaHei','PingFang SC','Hiragino Sans GB',sans-serif";
+  var rows = shootWeekExportData(wk || "");
+  if (!rows.length) { alert("没有可导出的内容"); return; }
+  var W = 1180, S = 2, HDR = 72, WEEK = 44;
+  var c1 = 74, c2 = 112, c3 = 126, c5 = 210, c6 = 250;
+  var c4 = W - c1 - c2 - c3 - c5 - c6;
+  var mc = document.createElement("canvas").getContext("2d");
+  function wrap(text, size, bold, maxW) {
+    mc.font = (bold ? "bold " : "") + size + "px " + FONT;
+    var out = [], cur = "", s = String(text == null ? "" : text);
+    for (var i = 0; i < s.length; i++) {
+      var tt = cur + s.charAt(i);
+      if (mc.measureText(tt).width > maxW && cur) { out.push(cur); cur = s.charAt(i); }
+      else cur = tt;
+    }
+    out.push(cur);
+    return out;
+  }
+  var blocks = [], total = HDR;
+  rows.forEach(function (r) {
+    if (r.type === "week") { blocks.push({ r: r, h: WEEK }); total += WEEK; return; }
+    var pl = wrap(r.place || "—", 20, false, c3 - 18);
+    var dl = wrap(r.detail || "—", 21, false, c4 - 22);
+    var tl = wrap(r.time || "—", 19, false, c5 - 18);
+    var cl = wrap(r.codes || "—", 19, false, c6 - 18);
+    var h = Math.max(Math.max(pl.length, dl.length, tl.length + 1, cl.length) * 29 + 22, 64);
+    blocks.push({ r: r, h: h, pl: pl, dl: dl, tl: tl, cl: cl });
+    total += h;
+  });
+  var cv = document.createElement("canvas");
+  cv.width = W * S; cv.height = total * S;
+  var ctx = cv.getContext("2d");
+  ctx.scale(S, S);
+  ctx.textBaseline = "middle"; ctx.textAlign = "center";
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, total);
+  var x3 = c1 + c2, x4 = x3 + c3, x5 = x4 + c4, x6 = x5 + c5;
+  ctx.fillStyle = "#111827"; ctx.fillRect(0, 0, W, HDR);
+  ctx.fillStyle = "#ffffff"; ctx.font = "bold 23px " + FONT;
+  var heads = [[c1 / 2, "星期"], [c1 + c2 / 2, "日期"], [x3 + c3 / 2, "场地"], [x4 + c4 / 2, "拍摄需求"], [x5 + c5 / 2, "拍摄时段"], [x6 + c6 / 2, "拍摄款号"]];
+  heads.forEach(function (h) { ctx.fillText(h[1], h[0], HDR / 2); });
+  var y = HDR;
+  blocks.forEach(function (b) {
+    if (b.r.type === "week") {
+      ctx.fillStyle = "#eff6ff"; ctx.fillRect(0, y, W, WEEK);
+      ctx.fillStyle = "#1d4ed8"; ctx.fillRect(0, y, 5, WEEK);
+      ctx.font = "bold 20px " + FONT; ctx.textAlign = "left";
+      ctx.fillText(b.r.text, 18, y + WEEK / 2);
+      ctx.textAlign = "center";
+      ctx.strokeStyle = "#c7d7f5"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0, y + WEEK); ctx.lineTo(W, y + WEEK); ctx.stroke();
+      y += WEEK; return;
+    }
+    var r = b.r;
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, y, W, b.h);
+    ctx.fillStyle = "#111827"; ctx.font = "bold 21px " + FONT;
+    ctx.fillText(r.wd, c1 / 2, y + b.h / 2);
+    ctx.fillStyle = "#6b7280"; ctx.font = "18px " + FONT;
+    ctx.fillText(r.date, c1 + c2 / 2, y + b.h / 2);
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#4b5563"; ctx.font = "20px " + FONT;
+    b.pl.forEach(function (ln, i) { ctx.fillText(ln, x3 + 9, y + 21 + i * 29); });
+    ctx.fillStyle = "#111827"; ctx.font = "21px " + FONT;
+    b.dl.forEach(function (ln, i) { ctx.fillText(ln, x4 + 11, y + 21 + i * 29); });
+    ctx.fillStyle = "#111827"; ctx.font = "20px " + FONT;
+    b.tl.forEach(function (ln, i) { ctx.fillText(ln, x5 + 11, y + 21 + i * 29); });
+    ctx.fillStyle = "#2563eb"; ctx.font = "19px " + FONT;
+    b.cl.forEach(function (ln, i) { ctx.fillText(ln, x6 + 11, y + 21 + i * 29); });
+    ctx.textAlign = "center";
+    ctx.strokeStyle = "#e5e7eb"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, y + b.h); ctx.lineTo(W, y + b.h); ctx.stroke();
+    y += b.h;
+  });
+  ctx.strokeStyle = "#d7dde6"; ctx.lineWidth = 1;
+  [0, x3, x4, x5, x6, W].forEach(function (x) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, total); ctx.stroke();
+  });
+  var a = document.createElement("a");
+  a.download = "拍摄计划_" + (wk || (shootMonthStr || "本月")) + "_" + today() + ".png";
+  a.href = cv.toDataURL("image/png");
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+function exportShootWeekCsv(wk) {
+  var rows = shootWeekExportData(wk || "");
+  if (!rows.length) { alert("没有可导出的内容"); return; }
+  var out = [["星期", "日期", "场地", "拍摄需求", "拍摄时段", "拍摄小时数", "拍摄款号"]];
+  rows.forEach(function (r) {
+    if (r.type === "week") { out.push([r.text, "", "", "", "", "", ""]); return; }
+    out.push([r.wd, r.date, r.place, r.detail, r.time, r.hours, r.codes]);
+  });
+  var csv = "\ufeff" + out.map(function (a) {
+    return a.map(function (x) { return '"' + String(x == null ? "" : x).replace(/"/g, '""') + '"'; }).join(",");
+  }).join("\r\n");
+  var b = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  var a = document.createElement("a");
+  a.download = "拍摄计划_" + (wk || (shootMonthStr || "本月")) + "_" + today() + ".csv";
+  a.href = URL.createObjectURL(b);
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
 function exportShootImage(wk) {
   var FONT = "'Microsoft YaHei','PingFang SC','Hiragino Sans GB',sans-serif";
   var data2 = shootRows(wk || "");
