@@ -4332,8 +4332,11 @@ function weekSubOf(rec, t) {
   return num(r.sub);
 }
 function weekLinkTgtOf(rec) {
-  var y = (rec && rec.ltY !== undefined && rec.ltY !== null && rec.ltY !== "") ? Math.max(0, Math.round(num(rec.ltY))) : null;
-  var x = (rec && rec.ltX !== undefined && rec.ltX !== null && rec.ltX !== "") ? Math.max(0, Math.round(num(rec.ltX))) : null;
+  var y = null, x = null;
+  if (rec) {
+    if (!(rec.ltY === undefined || rec.ltY === null || rec.ltY === "" || num(rec.ltY) < 0)) y = Math.max(0, Math.round(num(rec.ltY)));
+    if (!(rec.ltX === undefined || rec.ltX === null || rec.ltX === "" || num(rec.ltX) < 0)) x = Math.max(0, Math.round(num(rec.ltX)));
+  }
   var has = (y !== null || x !== null);
   var total = (y || 0) + (x || 0);
   return {
@@ -4345,7 +4348,7 @@ function setWeekLinkTgt(i, which, v) {
   var rec = weekTables[i]; if (!rec) return;
   var key = (String(which) === "y") ? "ltY" : "ltX";
   var sv = String(v === null || v === undefined ? "" : v).replace(/[^\d.]/g, "");
-  rec[key] = (sv === "") ? null : Math.max(0, Math.round(num(sv)));
+  rec[key] = (sv === "") ? -1 : Math.max(0, Math.round(num(sv)));
   saveWeekTables(true);
   var t = weekLinkTgtOf(rec), lb = document.getElementById("wlt" + i);
   if (lb) lb.textContent = t.text;
@@ -4354,7 +4357,7 @@ function setWeekLinkTgt(i, which, v) {
 }
 function clearWeekLinkTgt(i) {
   var rec = weekTables[i]; if (!rec) return;
-  rec.ltY = null; rec.ltX = null;
+  rec.ltY = -1; rec.ltX = -1;
   saveWeekTables(true);
   try { renderSheetList(); } catch (e) { }
   try { renderWeekDone(); } catch (e2) { }
