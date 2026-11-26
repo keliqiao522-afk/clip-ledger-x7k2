@@ -6880,7 +6880,7 @@ function exportWeekSheet(mode, fmt, wsOpt, variant, idOpt) {
   var FONT = "'Microsoft YaHei','PingFang SC','Hiragino Sans GB',sans-serif";
   var cols = (V === "B"
     ? [{ w: 290, t: "周期 / 周次" }, { w: 190, t: "内容形式" }]
-    : [{ w: 215, t: "周期 / 周次" }, { w: 230, t: "主推品 / 活动" }, { w: 320, t: "周主目标" }, { w: 175, t: "内容形式" }]).concat(vals);
+    : [{ w: 320, t: "周期 / 周次" }, { w: 230, t: "主推品 / 活动" }, { w: 240, t: "周主目标" }, { w: 175, t: "内容形式" }]).concat(vals);
   var W = 0; cols.forEach(function (c) { W += c.w; });
   var nRows = rows2.length;
   var hasG = vals.some(function (v) { return !!v.g; });
@@ -6970,7 +6970,7 @@ function exportWeekSheet(mode, fmt, wsOpt, variant, idOpt) {
     y += RH;
   });
   ctx.beginPath(); ctx.moveTo(tX, y); ctx.lineTo(W, y); ctx.stroke();
-  cell(mds(p.ws) + " ~ " + mds(p.we) + " · " + weekLabel(p.ws) + ((p.wtot && V !== "B") ? "（一周总量 " + p.wtot + "）" : ""), tX, 0, HDR, bodyH, 19, false, "#111827", 8);
+  cell(mds(p.ws) + " ~ " + mds(p.we) + " · " + weekLabel(p.ws) + ((p.wtot && V !== "B") ? " ｜ 一周总量 " + p.wtot : ""), tX, 0, HDR, bodyH, 17, false, "#111827", 8);
   if (lead > 3) {
     cell(p.rec.name || "—", c1, c0, HDR, bodyH, 20, false, "#111827", 8);
     cell(p.rec.goal || "—", c2, c0 + c1, HDR, bodyH, 20, false, "#111827", 8);
