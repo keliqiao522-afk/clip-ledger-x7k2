@@ -468,7 +468,7 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
     var keys = [], k, i;
     for (k in pending) { if (Object.prototype.hasOwnProperty.call(pending, k)) keys.push(k); }
     if (!keys.length) return;
-    if (!logged()) { setChip("🔒 只读预览", "fail"); return; }
+    if (!logged() && !aMode()) { setChip("🔒 只读预览", "fail"); return; }
     /* 推周表之前先跟云端合并 + 把云端旧版留档：防止这台电脑把另一台的记录整张盖掉 */
     if (pending["clipWeekTablesV1"]) {
       try {
@@ -517,7 +517,7 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
   }
 
   function uploadLocalAll() {
-    if (!logged()) { setChip("🔒 只读预览", "fail"); return; }
+    if (!logged() && !aMode()) { setChip("🔒 只读预览", "fail"); return; }
     var up = [];
     for (var i = 0; i < localStorage.length; i++) {
       var k = localStorage.key(i);
@@ -640,8 +640,8 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
       };
       bar.appendChild(b1); bar.appendChild(em); bar.appendChild(out);
     } else {
-      var b2 = document.createElement("b"); b2.textContent = "只读预览";
-      var hint = document.createElement("span"); hint.className = "hint"; hint.textContent = "登录后可编辑";
+      var b2 = document.createElement("b"); b2.textContent = aMode() ? "A 端模式" : "只读预览";
+      var hint = document.createElement("span"); hint.className = "hint"; hint.textContent = aMode() ? "不用登录也能登记" : "登录后可编辑";
       var em2 = document.createElement("input"); em2.type = "email"; em2.placeholder = "邮箱"; em2.id = "caEmail";
       var pw = document.createElement("input"); pw.type = "password"; pw.placeholder = "密码"; pw.id = "caPwd";
       var btn = document.createElement("button"); btn.type = "button"; btn.id = "caIn"; btn.textContent = "登录";
@@ -689,7 +689,7 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
     chip = document.createElement("div");
     chip.id = "cloudChip";
     chip.className = "cloudChip";
-    chip.textContent = pulledOK ? (logged() ? "☁ 已同步" : "🔒 只读预览") : "⚠ 云端未连接";
+    chip.textContent = aMode() ? (pulledOK ? "☁ A 端 · 免登录可登记" : "⚠ 云端未连接") : (pulledOK ? (logged() ? "☁ 已同步" : "🔒 只读预览") : "⚠ 云端未连接");
     chip.title = "点一下：重试未同步的数据；再从云端重新拉取会弹确认";
     chip.onclick = function () {
       if (!pulledOK) { location.reload(); return; }
