@@ -6758,6 +6758,7 @@ var aWeekKey = "";
 try { aWeekKey = localStorage.getItem("clipAWeekV1") || ""; } catch (e) { }
 function aPickWeek(ws) {
   aWeekKey = ws || "";
+  aEditId = null; aSel = {};
   try { localStorage.setItem("clipAWeekV1", aWeekKey); } catch (e) { }
   renderA();
 }
@@ -6822,6 +6823,62 @@ function aDelEntry(id) {
   o.del = o.del || []; if (o.del.indexOf(String(id)) < 0) o.del.push(String(id));
   aSaveStore(o);
   renderA();
+}
+var aEditId = null, aSel = {};
+function aIdSafe(v) { return String(v == null ? "" : v).replace(/[^\w-]/g, ""); }
+function aStartEdit(id) { aEditId = id; renderA(); }
+function aCancelEdit() { aEditId = null; renderA(); }
+function aSelPick(id, on) { aSel[String(id)] = !!on; aSelCount(); }
+function aSelAll(on) {
+  var o = aStore(), ws = aWeekOfLog();
+  aSel = {};
+  if (on) o.items.forEach(function (it) { if (it.ws === ws) aSel[String(it.id)] = true; });
+  renderA();
+}
+function aSelIds() { return Object.keys(aSel).filter(function (k) { return aSel[k]; }); }
+function aSelCount() { var c = $("aSelCnt"); if (c) c.textContent = String(aSelIds().length); }
+function aSaveEdit(id) {
+  var o = aStore(), sid = aIdSafe(id), it = null;
+  o.items.forEach(function (x) { if (String(x.id) === String(id)) it = x; });
+  if (!it) { aEditId = null; renderA(); return; }
+  var d = ($("aeD" + sid) && $("aeD" + sid).value) || it.date;
+  var t = $("aeT" + sid) ? $("aeT" + sid).value : it.t;
+  var p = $("aeP" + sid) ? $("aeP" + sid).value : it.p;
+  var lk = $("aeL" + sid) ? $("aeL" + sid).value : (it.link ? "1" : "0");
+  var eln = $("aeN" + sid), n = Math.round(num(eln ? eln.value : it.n));
+  if (!(n > 0)) { try { toast("条数要填大于 0"); } catch (e) { } return; }
+  it.date = d; it.ws = mondayOf(d); it.t = t; it.p = p; it.link = (lk === "1" ? 1 : 0); it.n = n; it.at = new Date().toISOString();
+  aEditId = null;
+  aSaveStore(o);
+  renderA();
+  try { toast("已修改：" + d + " · " + t + " · " + p + " · " + n + " 条"); } catch (e) { }
+}
+function aBatchApply() {
+  var ids = aSelIds();
+  if (!ids.length) { try { toast("先在下面勾选要改的记录"); } catch (e) { } return; }
+  var d = $("abDate") ? $("abDate").value : "";
+  var t = $("abType") ? $("abType").value : "";
+  var p = $("abProj") ? $("abProj").value : "";
+  var lk = $("abLink") ? $("abLink").value : "";
+  var nv = $("abNum") ? String($("abNum").value || "").trim() : "";
+  if (!d && !t && !p && lk === "" && !nv) { try { toast("一个要改的项都没填"); } catch (e) { } return; }
+  var n2 = null;
+  if (nv !== "") { n2 = Math.round(num(nv)); if (!(n2 > 0)) { try { toast("条数要填大于 0"); } catch (e) { } return; } }
+  var o = aStore(), cnt = 0;
+  o.items.forEach(function (it) {
+    if (ids.indexOf(String(it.id)) < 0) return;
+    if (d) { it.date = d; it.ws = mondayOf(d); }
+    if (t) it.t = t;
+    if (p) it.p = p;
+    if (lk !== "") it.link = (lk === "1" ? 1 : 0);
+    if (n2 !== null) it.n = n2;
+    it.at = new Date().toISOString();
+    cnt++;
+  });
+  aSel = {};
+  aSaveStore(o);
+  renderA();
+  try { toast("已批量修改 " + cnt + " 条"); } catch (e) { }
 }
 function aSetNote(ws, v) { var o = aStore(); o.notes[ws] = v; aSaveStore(o); }
 
@@ -7018,9 +7075,33 @@ function renderA() {
   html += '<div class="a-card" style="margin-top:14px"><h4 style="margin:0 0 8px;font-size:15px">我本周的登记（' + items.length + " 条，已剪 " + done + " / " + need + "）</h4>";
   if (!items.length) html += '<div class="legend" style="margin:0">还没有登记。</div>';
   else {
-    html += '<table class="rec a-tbl"><thead><tr><th>日期</th><th>内容形式</th><th>项目</th><th>挂链</th><th>条数</th><th>操作</th></tr></thead><tbody>';
+    html += '<div class="flds" style="gap:8px;flex-wrap:wrap;align-items:flex-end;margin:0 0 10px;background:#f8fafc;border:1px solid #e8ecf0;border-radius:10px;padding:10px">'
+      + '<div class="fld"><label>批量改日期（留空＝不改）</label><input type="date" id="abDate" style="width:148px"></div>'
+      + '<div class="fld"><label>内容形式</label><select id="abType" style="width:118px"><option value="">不改</option>' + TYPES.map(function (t) { return "<option>" + t + "</option>"; }).join("") + '</select></div>'
+      + '<div class="fld"><label>项目</label><select id="abProj" style="width:92px"><option value="">不改</option><option value="YH">YH</option><option value="XC">XC</option></select></div>'
+      + '<div class="fld"><label>挂链</label><select id="abLink" style="width:104px"><option value="">不改</option><option value="1">挂链</option><option value="0">不挂链</option></select></div>'
+      + '<div class="fld"><label>条数</label><input type="number" min="1" id="abNum" style="width:80px" placeholder="不改"></div>'
+      + '<button class="mini blue" onclick="aBatchApply()">批量改选中的 <span id="aSelCnt">0</span> 条</button>'
+      + '<span class="legend" style="margin:0;flex-basis:100%;font-size:12px">先勾选下面的记录，再填要改的项（没填的保持原样），点按钮一次全改。</span>'
+      + "</div>";
+    html += '<table class="rec a-tbl"><thead><tr><th style="width:34px"><input type="checkbox" onchange="aSelAll(this.checked)"></th><th>日期</th><th>内容形式</th><th>项目</th><th>挂链</th><th>条数</th><th>操作</th></tr></thead><tbody>';
     items.forEach(function (it) {
-      html += "<tr><td>" + mds(it.date) + "</td><td>" + it.t + '</td><td><span class="badge ' + (it.p === "YH" ? "b" : "o") + '">' + it.p + '</span></td><td>' + (it.link ? "挂链" : "不挂链") + '</td><td style="font-weight:700">' + it.n + '</td><td><button class="mini" onclick="aDelEntry(\'' + it.id + '\')">删除</button></td></tr>';
+      var sid = aIdSafe(it.id);
+      if (String(aEditId) === String(it.id)) {
+        html += '<tr style="background:#f6f9ff"><td></td>'
+          + '<td><input type="date" id="aeD' + sid + '" value="' + it.date + '" style="width:148px"></td>'
+          + '<td><select id="aeT' + sid + '" style="width:110px">' + TYPES.map(function (t) { return '<option' + (t === it.t ? " selected" : "") + ">" + t + "</option>"; }).join("") + "</select></td>"
+          + '<td><select id="aeP' + sid + '" style="width:84px"><option value="YH"' + (it.p === "YH" ? " selected" : "") + '>YH</option><option value="XC"' + (it.p === "XC" ? " selected" : "") + '>XC</option></select></td>'
+          + '<td><select id="aeL' + sid + '" style="width:104px"><option value="1"' + (it.link ? " selected" : "") + '>挂链</option><option value="0"' + (!it.link ? " selected" : "") + '>不挂链</option></select></td>'
+          + '<td><input type="number" min="1" id="aeN' + sid + '" value="' + it.n + '" style="width:80px"></td>'
+          + '<td><button class="mini blue" onclick="aSaveEdit(\'' + it.id + '\')">保存</button> <button class="mini" onclick="aCancelEdit()">取消</button></td></tr>';
+        return;
+      }
+      html += "<tr>"
+        + '<td><input type="checkbox"' + (aSel[String(it.id)] ? " checked" : "") + ' onchange="aSelPick(\'' + it.id + '\',this.checked)"></td>'
+        + "<td>" + mds(it.date) + "</td><td>" + it.t + '</td><td><span class="badge ' + (it.p === "YH" ? "b" : "o") + '">' + it.p + '</span></td><td>' + (it.link ? "挂链" : "不挂链") + '</td><td style="font-weight:700">' + it.n + '</td>'
+        + '<td><button class="mini" onclick="aStartEdit(\'' + it.id + '\')">修改</button> <button class="mini red" onclick="aDelEntry(\'' + it.id + '\')">删除</button></td></tr>'
+        ;
     });
     html += "</tbody></table>";
   }
@@ -7028,6 +7109,7 @@ function renderA() {
     + '<textarea style="min-height:56px" oninput="aSetNote(\'' + ws + '\',this.value)" placeholder="例：混剪素材不够 / 差 3 条没交">' + esc(note) + "</textarea></div></div>";
 
   body.innerHTML = html;
+  try { aSelCount(); } catch (eSel) { }
   var t = $("aTip");
   if (t) t.textContent = "已剪 " + done + " / " + need + " 条";
 }
