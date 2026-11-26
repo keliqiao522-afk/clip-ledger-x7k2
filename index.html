@@ -5681,9 +5681,13 @@ function shootWeekExportData(wk) {
         + " – " + (we2.getMonth() + 1) + "/" + we2.getDate() + "）" });
       for (i = 0; i < days.length; i++) {
         var ds = days[i], dd = new Date(ds + "T00:00:00"), rec = shootPlan[ds] || {};
+        /* 空白的一天不导出（除非这一天是手动勾选的） */
+        if (!shootSel[ds] && !(String(rec.place || "").trim() || String(rec.detail || "").trim()
+          || shootTMin(rec.t1) >= 0 || dayCodesText(ds))) continue;
         out.push({ type: "day", wd: WDS[dd.getDay()], date: ds, place: rec.place || "",
           detail: rec.detail || "", time: shootTimeTxt(ds), hours: shootHoursTxt(ds), codes: dayCodesText(ds) });
       }
+      if (!out.length) { }
     }
     cur.setDate(cur.getDate() + 7);
   }
