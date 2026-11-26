@@ -4156,26 +4156,25 @@ function setWeekField(i, k, v) {
 }
 /* 把卡片上正在显示的数字全部收回数据里（防止出现「看着改了、其实没存」） */
 function syncWeekInputs(onlyId) {
-  /* 只把「当前这张卡」正在显示的数收回它自己那条记录里。
-     必须按卡片的 data-wid 找记录：只显示一周/按日期排序后，卡片顺序和数组顺序不一样，
-     用顺序号会把数写到隔壁周。 */
+  /* 按「记录下标 + 行号」拼出的 input id 直接读数，不靠卡片顺序、也不靠 input 顺序 */
   var cards = document.querySelectorAll("#sheetList .wkcard");
-  for (var i = 0; i < cards.length; i++) {
-    var wid = cards[i].getAttribute("data-wid");
+  for (var c = 0; c < cards.length; c++) {
+    var wid = cards[c].getAttribute("data-wid");
     if (onlyId !== undefined && onlyId !== null && String(wid) !== String(onlyId)) continue;
-    var rec = (wid && findWeekTableById(wid)) || weekTables[i];
+    var rec = (wid && findWeekTableById(wid)) || weekTables[c];
     if (!rec) continue;
+    var idx = weekTables.indexOf(rec);
+    if (idx < 0) continue;
     if (!rec.rows) rec.rows = {};
-    var trs = cards[i].querySelectorAll("tbody tr");
-    for (var ti = 0; ti < TYPES.length && ti < trs.length; ti++) {
-      var t = TYPES[ti], ins = trs[ti].querySelectorAll("input");
+    for (var ti = 0; ti < TYPES.length; ti++) {
+      var t = TYPES[ti];
       if (!rec.rows[t]) rec.rows[t] = { l: 0, n: 0, style: "", codes: [] };
-      /* 一行里 input 的顺序：挂链 / 挂链① / 不挂链 / 我 / 我·YH / 下属剪 / 下属·挂链 / 下属·YH */
-      var F = [["l", 0, 0], ["l1", 1, 1], ["n", 2, 0], ["me", 3, 1], ["meY", 4, 1], ["sub", 5, 1], ["subL", 6, 1], ["subY", 7, 1]];
+      var F = [["l", "rl", 0], ["l1", "rl1", 1], ["n", "rn", 0], ["me", "rme", 1], ["meY", "rmeY", 1], ["sub", "rsub", 1], ["subL", "rsubl", 1], ["subY", "rsuby", 1]];
       for (var fi = 0; fi < F.length; fi++) {
-        var key = F[fi][0], idx = F[fi][1], nullable = F[fi][2], inp = ins[idx];
-        if (!inp) continue;
-        var sv = String(inp.value === null || inp.value === undefined ? "" : inp.value).replace(/\s+/g, "");
+        var key = F[fi][0], pfx = F[fi][1], nullable = F[fi][2];
+        var el = document.getElementById(pfx + idx + "_" + ti);
+        if (!el) continue;
+        var sv = String(el.value === null || el.value === undefined ? "" : el.value).replace(/\s+/g, "");
         if (sv === "") rec.rows[t][key] = (nullable ? null : 0);
         else rec.rows[t][key] = num(sv);
       }
@@ -6422,10 +6421,10 @@ function renderSheetList() {
     TYPES.forEach(function (t, ti) {
       var r = rowOf(rec, t);
       rows += "<tr><td>" + t + "</td>"
-        + '<td><input type="number" min="0" style="width:46px" value="' + (r.l || 0) + '" oninput="setRowNum(' + i + ",'" + t + "','l',this.value)\"></td>"
+        + '<td><input type="number" min="0" style="width:46px" id="rl' + i + '_' + ti + '" value="' + (r.l || 0) + '" oninput="setRowNum(' + i + ",'" + t + "','l',this.value)\"></td>"
         + '<td class="subcell" style="white-space:nowrap"><input type="number" min="0" style="width:38px" data-ri="' + i + '" data-rt="' + t + '" id="rl1' + i + '_' + ti + '" value="' + rowL1(rec, t) + '" oninput="setRowL1x(this)">'
         + '<span style="font-size:11px;color:#6b7280">／②<span id="rl2' + i + '_' + ti + '">' + rowL2(rec, t) + '</span></span></td>'
-        + '<td><input type="number" min="0" style="width:46px" value="' + (r.n || 0) + '" oninput="setRowNum(' + i + ",'" + t + "','n',this.value)\"></td>"
+        + '<td><input type="number" min="0" style="width:46px" id="rn' + i + '_' + ti + '" value="' + (r.n || 0) + '" oninput="setRowNum(' + i + ",'" + t + "','n',this.value)\"></td>"
         + '<td class="sumcell" id="rq' + i + "_" + ti + '">' + rowQ(rec, t) + "</td>"
         + '<td><input type="number" min="0" style="width:44px" id="rme' + i + "_" + ti + '" value="' + rowMe(rec, t) + '" oninput="setRowMe(' + i + ",'" + t + "',this.value)\"></td>"
         + '<td class="subcell"><input type="number" min="0" style="width:40px" id="rmeY' + i + "_" + ti + '" value="' + rowMeY(rec, t) + '" oninput="setRowMeY(' + i + ",'" + t + "',this.value)\"></td>"
