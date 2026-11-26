@@ -6694,23 +6694,31 @@ function aDelEntry(id) {
 function aSetNote(ws, v) { var o = aStore(); o.notes[ws] = v; aSaveStore(o); }
 
 /* ===== A 端免登录同步：A 写到一个公开小仓库，号主页面自动拉回来合并 ===== */
-var A_CLOUD_ID = "ff808181a09d98f701a215d13e7c4fba";
-var A_CLOUD_URL = "https://api.restful-api.dev/objects/" + A_CLOUD_ID;
+var A_RELAY = "https://ntfy.sh/clipA7291xq4zm";
+var A_PUSH_T = "clipAPushAtV1";
 function aPushState(s) { try { var e = $("aSyncChip"); if (e) { e.textContent = s === "ok" ? "☁ A 的登记已同步给号主" : (s === "ing" ? "☁ 正在同步…" : "⚠ 没同步成功（网络问题，稍后再点一次登记）"); e.style.color = s === "ok" ? "#059669" : (s === "ing" ? "#2563eb" : "#b45309"); } } catch (e2) { } }
 function aPushCloud() {
   try {
     var o = aStore();
+    var txt = JSON.stringify({ items: o.items, notes: o.notes, del: o.del || [], at: new Date().toISOString() });
     aPushState("ing");
-    fetch(A_CLOUD_URL, {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "clipA", data: { items: o.items, notes: o.notes, del: o.del || [], updatedAt: new Date().toISOString() } })
-    }).then(function (r) { aPushState(r && r.ok ? "ok" : "fail"); }).catch(function () { aPushState("fail"); });
+    fetch(A_RELAY, { method: "POST", headers: { "Content-Type": "text/plain" }, body: txt }).then(function (r) {
+      if (r && r.ok) { try { localStorage.setItem(A_PUSH_T, String(Date.now())); } catch (e1) { } }
+      aPushState(r && r.ok ? "ok" : "fail");
+    }).catch(function () { aPushState("fail"); });
   } catch (e) { }
 }
 function aPullCloud() {
   if (aMode()) return;
-  fetch(A_CLOUD_URL, { headers: { "Accept": "application/json" } }).then(function (r) { return r.json(); }).then(function (j) {
-    var d = j && j.data; if (!d || (!d.items && !d.del)) return;
+  fetch(A_RELAY + "/json?poll=1&since=all").then(function (r) { return r.text(); }).then(function (txt) {
+    var last = null;
+    (txt || "").split("\n").forEach(function (ln) {
+      if (!ln) return;
+      try { var ev = JSON.parse(ln); if (ev && ev.event === "message" && ev.message) last = ev; } catch (e0) { }
+    });
+    if (!last) return;
+    var j = null; try { j = JSON.parse(last.message); } catch (e1) { return; }
+    var d = j; if (!d || (!d.items && !d.del)) return;
     var o = aStore(), changed = false, i, k;
     (d.del || []).forEach(function (id) {
       var before = o.items.length;
@@ -7067,7 +7075,7 @@ window.addEventListener("load", function () {
   setTimeout(function () { try { renderA(); } catch (e) { } }, 900);
 });
 </script>
-<script>window.addEventListener('load',function(){try{if(!aMode()){setTimeout(aPullCloud,2500);setInterval(aPullCloud,60000);}}catch(e){}});</script>
+<script>window.addEventListener('load',function(){try{if(!aMode()){setTimeout(aPullCloud,2500);setInterval(aPullCloud,60000);}else{setTimeout(function(){try{var o=aStore();if(o.items&&o.items.length)aPushCloud();}catch(e3){}},1500);}}catch(e){}});</script>
 </body>
 </html>
 
