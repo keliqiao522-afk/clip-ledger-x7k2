@@ -656,6 +656,7 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
   }
 
   /* ---------- 4) 只读拦截 ---------- */
+  function aMode() { try { return /(?:^|[?&])a=1(?:&|$)/.test(location.search || ""); } catch (e) { return false; } }
   function guardEdits() {
     var inBar = function (el) { return el && el.closest && el.closest("#cloudAuthBar,#cloudChip,#cloudToast"); };
     var isLink = function (el) {
@@ -667,7 +668,7 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
     };
     ["mousedown", "click", "dblclick", "touchstart"].forEach(function (ev) {
       document.addEventListener(ev, function (e) {
-        if (logged()) return;
+        if (logged() || aMode()) return;
         if (inBar(e.target)) return;
         if (isLink(e.target)) return;
         e.preventDefault(); e.stopPropagation();
@@ -675,13 +676,13 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
       }, true);
     });
     document.addEventListener("keydown", function (e) {
-      if (logged()) return;
+      if (logged() || aMode()) return;
       if (inBar(e.target)) return;
       if (e.ctrlKey && (e.key === "c" || e.key === "a")) return;
       e.preventDefault(); e.stopPropagation();
       toast("只读预览：点右上角登录后才能修改");
     }, true);
-    document.addEventListener("paste", function (e) { if (!logged()) { e.preventDefault(); } }, true);
+    document.addEventListener("paste", function (e) { if (!logged() && !aMode()) { e.preventDefault(); } }, true);
   }
 
   function buildChip() {
@@ -6544,6 +6545,8 @@ function shareALink() {
   aCopyText(u);
 }
 /* ===== A 剪辑工作台（?a=1）：按「日期 + 内容形式 + 项目YH/XC + 挂链/不挂链 + 条数」逐条登记 ===== */
+/* 全局：判断是不是 A 端页面 */
+function aMode() { try { return /(?:^|[?&])a=1(?:&|$)/.test(location.search || ""); } catch (e) { return false; } }
 var KEY_A = "clipALogV1";
 function aStore() {
   try {
@@ -6551,10 +6554,14 @@ function aStore() {
     if (!o || typeof o !== "object") o = {};
     if (!o.items) o.items = [];
     if (!o.notes) o.notes = {};
+    if (!o.del) o.del = [];
     return o;
   } catch (e) { return { items: [], notes: {} }; }
 }
-function aSaveStore(o) { try { localStorage.setItem(KEY_A, JSON.stringify(o)); } catch (e) { } }
+function aSaveStore(o, noPush) {
+  try { localStorage.setItem(KEY_A, JSON.stringify(o)); } catch (e) { }
+  if (!noPush && aMode()) aPushCloud();
+}
 function aItemsOf(ws) {
   return aStore().items.filter(function (it) { return it.ws === ws; })
     .sort(function (a, b) { return (b.date > a.date) ? 1 : (b.date < a.date ? -1 : 0); });
@@ -6624,10 +6631,50 @@ function aAddEntry() {
 function aDelEntry(id) {
   var o = aStore();
   o.items = o.items.filter(function (it) { return String(it.id) !== String(id); });
+  o.del = o.del || []; if (o.del.indexOf(String(id)) < 0) o.del.push(String(id));
   aSaveStore(o);
   renderA();
 }
 function aSetNote(ws, v) { var o = aStore(); o.notes[ws] = v; aSaveStore(o); }
+
+/* ===== A 端免登录同步：A 写到一个公开小仓库，号主页面自动拉回来合并 ===== */
+var A_CLOUD_ID = "ff808181a09d98f701a215d13e7c4fba";
+var A_CLOUD_URL = "https://api.restful-api.dev/objects/" + A_CLOUD_ID;
+function aPushState(s) { try { var e = $("aSyncChip"); if (e) { e.textContent = s === "ok" ? "☁ A 的登记已同步给号主" : (s === "ing" ? "☁ 正在同步…" : "⚠ 没同步成功（网络问题，稍后再点一次登记）"); e.style.color = s === "ok" ? "#059669" : (s === "ing" ? "#2563eb" : "#b45309"); } } catch (e2) { } }
+function aPushCloud() {
+  try {
+    var o = aStore();
+    aPushState("ing");
+    fetch(A_CLOUD_URL, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "clipA", data: { items: o.items, notes: o.notes, del: o.del || [], updatedAt: new Date().toISOString() } })
+    }).then(function (r) { aPushState(r && r.ok ? "ok" : "fail"); }).catch(function () { aPushState("fail"); });
+  } catch (e) { }
+}
+function aPullCloud() {
+  if (aMode()) return;
+  fetch(A_CLOUD_URL, { headers: { "Accept": "application/json" } }).then(function (r) { return r.json(); }).then(function (j) {
+    var d = j && j.data; if (!d || (!d.items && !d.del)) return;
+    var o = aStore(), changed = false, i, k;
+    (d.del || []).forEach(function (id) {
+      var before = o.items.length;
+      o.items = o.items.filter(function (it) { return String(it.id) !== String(id); });
+      if (o.items.length !== before) changed = true;
+    });
+    (d.items || []).forEach(function (it) {
+      i = -1;
+      for (k = 0; k < o.items.length; k++) if (String(o.items[k].id) === String(it.id)) { i = k; break; }
+      if (i < 0) { o.items.push(it); changed = true; }
+      else if (String(it.at || "") > String(o.items[i].at || "")) { o.items[i] = it; changed = true; }
+    });
+    if (d.notes) { o.notes = o.notes || {}; for (k in d.notes) { if (o.notes[k] !== d.notes[k]) { o.notes[k] = d.notes[k]; changed = true; } } }
+    if (changed) {
+      aSaveStore(o, true);
+      try { renderSheetList(); renderWeekDone(); refreshProg(); } catch (e) { }
+      try { toast("已同步 A 剪辑交上来的登记"); } catch (e) { }
+    }
+  }).catch(function () { });
+}
 
 function renderA() {
   var body = $("aBody");
@@ -6655,7 +6702,7 @@ function renderA() {
   var pct = need > 0 ? Math.min(100, Math.round(done * 100 / need)) : 0;
   var lkTxt = rows.filter(function (x) { return x.sL > 0; }).map(function (x) { return x.r.t + " " + x.sL; }).join("、");
   var nlTxt = rows.filter(function (x) { return x.sN > 0; }).map(function (x) { return x.r.t + " " + x.sN; }).join("、");
-  var tip = aLoggedIn() ? "登录中：登记完自动同步给号主" : "没登录只能看，登记需要先登录（账号问号主要）";
+  var tip = "不用登录：登记完自动同步给号主";
   var nm = (p.rec && p.rec.name) ? ("｜" + p.rec.name) : "";
 
   var html = "";
@@ -6670,7 +6717,7 @@ function renderA() {
     + "<div><b>" + done + "</b><span>我已剪完</span></div>"
     + "<div><b>" + pct + "%</b><span>完成进度</span></div>"
     + "</div><div class=\"a-bar\"><i style=\"width:" + pct + "%\"></i></div>"
-    + '<div class="legend" style="margin:10px 0 0">' + tip + "</div>"
+    + '<div class="legend" style="margin:10px 0 0">' + tip + ' <span id="aSyncChip" style="color:#059669"></span>' + "</div>"
     + '<div class="a-kou" style="margin:10px 0 0;background:#f0f7ff;border:1px solid #cfe3ff;border-radius:8px;padding:9px 11px;font-size:13px;line-height:1.7">'
     + "<b>本周任务清单：</b>要剪 <b>" + need + "</b> 条 ＝ 挂链 <b>" + needL + "</b> 条"
     + (lkTxt ? "（" + lkTxt + "）" : "") + " ＋ 不挂链 <b>" + needN + "</b> 条"
@@ -6964,6 +7011,7 @@ window.addEventListener("load", function () {
   setTimeout(function () { try { renderA(); } catch (e) { } }, 900);
 });
 </script>
+<script>window.addEventListener('load',function(){try{if(!aMode()){setTimeout(aPullCloud,2500);setInterval(aPullCloud,60000);}}catch(e){}});</script>
 </body>
 </html>
 
