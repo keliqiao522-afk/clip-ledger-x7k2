@@ -809,7 +809,7 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
 </style>
 
 <style id="tgtModalCss">
-#tgtOverlay{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(15,23,42,.5);z-index:9990;display:none;overflow:auto;padding:18px 12px 40px;-webkit-overflow-scrolling:touch}
+#tgtOverlay{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(15,23,42,.5);z-index:99999;display:none;overflow:auto;padding:56px 12px 40px;-webkit-overflow-scrolling:touch}
 #mtBox.tgtModal{max-width:880px;margin:0 auto;background:#fff;border-radius:14px;position:relative;box-shadow:0 24px 60px rgba(0,0,0,.3)}
 #mtCloseBtn{position:absolute;right:10px;top:10px;z-index:2}
 </style></head>
@@ -1611,7 +1611,7 @@ function openTgtModal() {
   cb.style.display = "inline-block";
   try { renderMonthTgt(); } catch (e) { }
   document.body.style.overflow = "hidden";
-  if (ov.scrollTop === 0) ov.scrollTop = 0;
+  ov.scrollTop = 0;
 }
 function closeTgtModal() {
   var b = $("mtBox"), ov = $("tgtOverlay"), cb = $("mtCloseBtn");
