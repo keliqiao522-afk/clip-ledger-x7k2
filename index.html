@@ -4155,22 +4155,35 @@ function setWeekField(i, k, v) {
   if (k === "name" || k === "account" || k === "goal") renderWeekDoneLight();
 }
 /* 把卡片上正在显示的数字全部收回数据里（防止出现「看着改了、其实没存」） */
-function syncWeekInputs() {
+function syncWeekInputs(onlyId) {
+  /* 只把「当前这张卡」正在显示的数收回它自己那条记录里。
+     必须按卡片的 data-wid 找记录：只显示一周/按日期排序后，卡片顺序和数组顺序不一样，
+     用顺序号会把数写到隔壁周。 */
   var cards = document.querySelectorAll("#sheetList .wkcard");
   for (var i = 0; i < cards.length; i++) {
-    var rec = weekTables[i]; if (!rec) continue;
+    var wid = cards[i].getAttribute("data-wid");
+    if (onlyId !== undefined && onlyId !== null && String(wid) !== String(onlyId)) continue;
+    var rec = (wid && findWeekTableById(wid)) || weekTables[i];
+    if (!rec) continue;
     if (!rec.rows) rec.rows = {};
     var trs = cards[i].querySelectorAll("tbody tr");
     for (var ti = 0; ti < TYPES.length && ti < trs.length; ti++) {
       var t = TYPES[ti], ins = trs[ti].querySelectorAll("input");
       if (!rec.rows[t]) rec.rows[t] = { l: 0, n: 0, style: "", codes: [] };
-      if (ins[0]) rec.rows[t].l = num(ins[0].value);
-      if (ins[1]) rec.rows[t].n = num(ins[1].value);
+      /* 一行里 input 的顺序：挂链 / 挂链① / 不挂链 / 我 / 我·YH / 下属剪 / 下属·挂链 / 下属·YH */
+      var F = [["l", 0, 0], ["l1", 1, 1], ["n", 2, 0], ["me", 3, 1], ["meY", 4, 1], ["sub", 5, 1], ["subL", 6, 1], ["subY", 7, 1]];
+      for (var fi = 0; fi < F.length; fi++) {
+        var key = F[fi][0], idx = F[fi][1], nullable = F[fi][2], inp = ins[idx];
+        if (!inp) continue;
+        var sv = String(inp.value === null || inp.value === undefined ? "" : inp.value).replace(/\s+/g, "");
+        if (sv === "") rec.rows[t][key] = (nullable ? null : 0);
+        else rec.rows[t][key] = num(sv);
+      }
     }
   }
 }
 function saveWeekCard(i) {
-  syncWeekInputs();
+  syncWeekInputs(weekTables[i] && weekTables[i].id);
   saveWeekTables(true);
   renderSheetList();
   renderWeekDone();
@@ -4227,6 +4240,17 @@ function setWeekDate(i, v) {
   weekTables[i].ws = mondayOf(v);
   saveWeekTables(true);
   renderSheetList(); renderWeekDone();
+}
+function setWeekDayPick(i, v) {
+  var rec = weekTables[i];
+  if (!rec || !v) return;
+  var ws = mondayOf(v);
+  if (ws === rec.ws) { renderSheetList(); return; }
+  rec.ws = ws;
+  rec.name = "";               /* 名称不再录入，统一按周期显示 */
+  saveWeekTables(true);
+  renderSheetList(); renderWeekDone(); refreshProg();
+  toast("这一周改成了 " + mds(ws) + " ~ " + mds(weekEndOf(ws)));
 }
 function weekSubOf(rec, t) {
   var r = rec && rec.rows ? rec.rows[t] : null;
@@ -6372,7 +6396,7 @@ function renderOnlyWeekPicker() {
   });
   order.forEach(function (i) {
     var rec = weekTables[i];
-    var name = (rec.name || "").trim() || "未命名";
+    var name = (rec.name || "").trim() || (mds(rec.ws) + " ~ " + mds(weekEndOf(rec.ws)));
     var lab = rec.ws + " · " + name;
     opts.push('<option value="' + rec.id + '"' + (String(rec.id) === onlyWeekKey ? " selected" : "") + ">" + lab + "</option>");
   });
@@ -6412,11 +6436,11 @@ function renderSheetList() {
         + '<td class="subcell"><input type="number" min="0" style="width:40px" class="subin" id="rsuby' + i + "_" + ti + '" value="' + rowSubY(rec, t) + '" oninput="setRowSubY(' + i + ",'" + t + "',this.value)\"></td>"
         + '<td class="subcell" id="rsubx' + i + "_" + ti + '">' + rowSubX(rec, t) + "</td></tr>";
     });
-    html += '<div class="wkcard">'
+    html += '<div class="wkcard" data-wid="' + rec.id + '">'
       + '<div class="listhead">'
       + '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;font-size:12px;color:#6b7280">'
-      + '<div class="fld"><label>周次名称</label><input type="text" style="width:150px" value="' + esc(rec.name) + '" placeholder="例：11月第1周" oninput="setWeekField(' + i + ',\'name\',this.value)"></div>'
-      + '<div class="fld"><label>周一起</label><input type="date" value="' + rec.ws + '" onchange="setWeekDate(' + i + ',this.value)"></div>'
+      + '<div class="fld"><label>这一周（选里面任意一天就够）</label><input type="date" value="' + rec.ws + '" onchange="setWeekDayPick(' + i + ',this.value)"></div>'
+      + '<div class="fld"><label>周期</label><div style="padding:7px 0;font-size:13px;font-weight:700;color:#111827">' + mds(rec.ws) + ' ~ ' + mds(weekEndOf(rec.ws)) + '（' + weekLabel(rec.ws) + '）</div></div>'
       + '<div class="fld"><label>发布账号</label><input type="text" style="width:150px" value="' + esc(rec.account) + '" placeholder="例：GZX ZEROTOX" oninput="setWeekField(' + i + ',\'account\',this.value)"></div>'
       + '<div class="fld"><label>一周总量（条）</label><input type="number" min="0" style="width:96px" value="' + (rec.wtot || "") + '" placeholder="这一周要交几条" oninput="setWeekWtot(' + i + ',this.value)"></div>'
       + "</div>"
