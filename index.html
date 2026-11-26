@@ -1296,12 +1296,43 @@ body.mode-a h1 { font-size: 22px; }
   </div>
 
   <div class="box">
-    <div class="listhead"><h2>执行结果列表</h2><input id="rKw" placeholder="搜计划 / 复盘" oninput="renderResults()"></div>
+    <div class="listhead"><h2>执行结果列表</h2><div style="display:flex;gap:6px;align-items:center"><input id="rKw" placeholder="搜计划 / 复盘" oninput="renderResults()"><button class="mini blue" onclick="openStatImport()">📥 导入对标数据</button><button class="mini" onclick="openTrend()">📈 趋势与提醒</button></div></div>
     <div class="scroll">
       <table class="rec">
         <thead><tr><th>执行日期</th><th>关联计划</th><th>实际数量</th><th>成片链接</th><th>结果图</th><th>复盘</th><th>操作</th></tr></thead>
         <tbody id="resBody"></tbody>
       </table>
+    </div>
+  </div>
+</div>
+
+<!-- 导入对标数据 -->
+<div class="modal" id="statModal">
+  <div class="mbox">
+    <h3>📥 导入对标视频数据（千川 / 罗盘）</h3>
+    <p>把后台报表整块复制粘进来就行：第一行是表头（视频名称 / 作品ID / 消耗 / 成交金额 / ROI / 播放 / 完播率 这些列会自动认），下面的数据行会按 <b>作品ID → 作品链接 → 名称</b> 的顺序去找对应那条成片。<b>只有勾了「对标」的成片才会被挂数据</b>，普通成片不用管。</p>
+    <div class="flds" style="margin-bottom:8px">
+      <div class="fld"><label>这批数据是哪天的</label><input type="date" id="statDate"></div>
+      <div class="fld grow"><label>（可选）只挂到某一条执行结果</label><input type="text" id="statRes" placeholder="留空＝全部对标成片里自动找" readonly></div>
+    </div>
+    <textarea id="statText" placeholder="视频名称	作品ID	消耗	成交金额	ROI	播放量	完播率&#10;通勤针织衫	7345xxxxx	320.5	1260	3.93	15200	26%"></textarea>
+    <div id="statMsg" style="font-size:12px;color:#4b5563;margin-top:8px;line-height:1.6"></div>
+    <div class="mbtns">
+      <button class="add" onclick="doStatImport()">✅ 导入并保存</button>
+      <button class="ghost" onclick="closeStat()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 趋势与提醒 -->
+<div class="modal" id="trendModal">
+  <div class="mbox" style="max-width:760px">
+    <h3>📈 对标视频数据趋势与提醒</h3>
+    <p>只看勾了「对标」的成片。每天粘一次，就能看出钱花得值不值、要不要跟拍、要不要停。</p>
+    <div id="trendBody" style="max-height:60vh;overflow:auto"></div>
+    <div class="mbtns">
+      <button class="add" onclick="closeTrend();openStatImport()">📥 导入今天的数据</button>
+      <button class="ghost" onclick="closeTrend()">关闭</button>
     </div>
   </div>
 </div>
@@ -2703,7 +2734,7 @@ function saveResults() {
 
 /* ---- 多条目表单 ---- */
 function blankItem() { return { link: "", imgs: [], rows: [{ shot: "", line: "", dur: "", hl: true }] }; }
-function blankRes() { return { link: "", note: "", imgs: [] }; }
+function blankRes() { return { link: "", note: "", imgs: [], bg: false, vid: "", stats: {} }; }
 function itemsArr(kind) { var arr = (kind === "plan") ? planItems : resItems; return arr; }
 function itemsHost(kind) { return $(kind === "plan" ? "pItems" : "rItems"); }
 
@@ -2716,6 +2747,10 @@ function syncItems(kind) {
     var ta = b.querySelector("textarea");
     var ln = b.querySelector("input.i-link");
     var nt = b.querySelector("input.i-note");
+    var bgc = b.querySelector("input.i-bg");
+    var vd = b.querySelector("input.i-vid");
+    if (bgc) arr[idx].bg = bgc.checked;
+    if (vd) arr[idx].vid = vd.value;
     if (ta) arr[idx].copy = ta.value;
     if (ln) arr[idx].link = ln.value;
     if (nt) arr[idx].note = nt.value;
@@ -2807,7 +2842,9 @@ function renderItems(kind) {
     } else {
       html += '<div class="flds" style="margin-bottom:0">'
         + '<div class="fld grow"><label>成片链接</label><input type="text" class="i-link" value="' + esc(it.link) + '" placeholder="https://…"></div>'
-        + '<div class="fld grow"><label>这条的说明</label><input type="text" class="i-note" value="' + esc(it.note) + '" placeholder="例：通勤look 完播18%"></div>'
+        + '<div class="fld grow"><label>这条的说明（名称）</label><input type="text" class="i-note" value="' + esc(it.note) + '" placeholder="例：通勤look 完播18%"></div>'
+        + '<div style="flex:0 0 auto;display:flex;align-items:center;gap:5px;font-size:13px"><input type="checkbox" class="i-bg"' + (it.bg ? " checked" : "") + ' title="对标视频才需要挂千川/罗盘数据"><span>对标</span></div>'
+        + '<div class="fld grow"><label>作品ID / 作品链接（对标必填，用来对数据）</label><input type="text" class="i-vid" value="' + esc(it.vid || "") + '" placeholder="作品ID 或 v.douyin.com/xxxx"></div>'
         + "</div>";
     }
     html += '<div class="imgrow">';
@@ -3776,6 +3813,156 @@ function delResult(id) {
   if (resEditingId === id) resetResultForm(false);
   renderResults(); renderPlans();
 }
+/* ===== 对标视频：千川 / 罗盘数据导入 + 趋势 + 提醒 ===== */
+var KEY_STAT_DATE = "clipStatLastDate";
+var STAT_COLS = [
+  ["vid", ["作品id", "视频id", "item_id", "作品编号", "视频编号", "视频链接"]],
+  ["name", ["视频名称", "作品名称", "视频标题", "标题", "视频"]],
+  ["cost", ["消耗", "花费", "投放金额", "消耗金额", "直接消耗"]],
+  ["gmv", ["成交金额", "成交", "支付金额", "gmv", "销售额", "直接成交"]],
+  ["roi", ["roi", "投产", "投入产出", "支付roi", "整体roi"]],
+  ["play", ["播放量", "播放", "曝光量", "展现量"]],
+  ["finish", ["完播率", "完播"]],
+  ["ctr", ["点击率", "ctr"]]
+];
+function normK(s) { return String(s || "").toLowerCase().replace(/https?:\/\//g, "").replace(/[^\w\u4e00-\u9fa5]/g, ""); }
+function bgItems() {
+  var out = [];
+  results.forEach(function (r) { (r.items || []).forEach(function (it, i) { if (it.bg) out.push({ r: r, it: it, i: i }); }); });
+  return out;
+}
+function statDates(it) { var k = [], d; for (d in (it.stats || {})) { if (it.stats.hasOwnProperty(d)) k.push(d); } return k.sort(); }
+function statNum(v) {
+  var s = String(v == null ? "" : v).replace(/[￥$,，%％\s]/g, "").replace(/[^\d.\-]/g, "");
+  var n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+function openStatImport(resId) {
+  $("statRes").value = resId || "";
+  $("statDate").value = localStorage.getItem(KEY_STAT_DATE) || today();
+  $("statText").value = "";
+  $("statMsg").innerHTML = "把千川/罗盘后台那张表整块复制粘进来（一行一条视频，表头自动跳过）。只挂到「对标」并且作品ID/名称对得上的成片。";
+  $("statModal").style.display = "block";
+}
+function closeStat() { $("statModal").style.display = "none"; }
+function detectStatCols(head) {
+  var map = {};
+  for (var c = 0; c < head.length; c++) {
+    var h = normK(head[c]);
+    if (!h) continue;
+    for (var g = 0; g < STAT_COLS.length; g++) {
+      if (map[STAT_COLS[g][0]] !== undefined) continue;
+      var keys = STAT_COLS[g][1];
+      for (var k = 0; k < keys.length; k++) { if (h.indexOf(normK(keys[k])) >= 0) { map[STAT_COLS[g][0]] = c; break; } }
+    }
+  }
+  return map;
+}
+function findBgTarget(row) {
+  var cand = bgItems(), rv = normK(row.vid), rn = normK(row.name), i;
+  if (rv.length >= 6) {
+    for (i = 0; i < cand.length; i++) { var iv = normK(cand[i].it.vid); if (iv && (iv.indexOf(rv) >= 0 || rv.indexOf(iv) >= 0)) return cand[i]; }
+    for (i = 0; i < cand.length; i++) { if (normK(cand[i].it.link).indexOf(rv) >= 0) return cand[i]; }
+  }
+  if (rn.length >= 3) {
+    for (i = 0; i < cand.length; i++) {
+      var iname = normK(cand[i].it.note);
+      if (iname && (iname === rn || iname.indexOf(rn) >= 0 || rn.indexOf(iname) >= 0)) return cand[i];
+    }
+  }
+  return null;
+}
+function doStatImport() {
+  var txt = $("statText").value || "";
+  var lines = txt.split("\n").filter(function (x) { return String(x).trim(); });
+  if (!lines.length) { $("statMsg").innerHTML = '<b style="color:#dc2626">没有内容，先粘表格</b>'; return; }
+  var rows = lines.map(function (ln) { return ln.split("\t").map(function (c) { return c.trim(); }); });
+  var headIdx = -1, i;
+  for (i = 0; i < Math.min(3, rows.length); i++) {
+    var joined = normK(rows[i].join("|"));
+    if (joined.indexOf("作品") >= 0 || joined.indexOf("视频") >= 0 || joined.indexOf("消耗") >= 0 || joined.indexOf("roi") >= 0) { headIdx = i; break; }
+  }
+  var map = headIdx >= 0 ? detectStatCols(rows[headIdx]) : { name: 0 };
+  if (map.name === undefined && map.vid === undefined) { $("statMsg").innerHTML = '<b style="color:#dc2626">没认出「视频名称/作品ID」这一列，第一行要是表头</b>'; return; }
+  var date = $("statDate").value || today();
+  var okN = 0, missRows = [];
+  var start = headIdx >= 0 ? headIdx + 1 : 0;
+  for (i = start; i < rows.length; i++) {
+    var r = rows[i];
+    if (!r.length || !r.join("").trim()) continue;
+    var row = {
+      vid: map.vid !== undefined ? r[map.vid] : "",
+      name: map.name !== undefined ? r[map.name] : "",
+      cost: map.cost !== undefined ? statNum(r[map.cost]) : null,
+      gmv: map.gmv !== undefined ? statNum(r[map.gmv]) : null,
+      roi: map.roi !== undefined ? statNum(r[map.roi]) : null,
+      play: map.play !== undefined ? statNum(r[map.play]) : null,
+      finish: map.finish !== undefined ? statNum(r[map.finish]) : null,
+      ctr: map.ctr !== undefined ? statNum(r[map.ctr]) : null
+    };
+    if (!row.vid && !row.name) continue;
+    var tg = findBgTarget(row);
+    if (!tg) { missRows.push((row.name || row.vid)); continue; }
+    if (!tg.it.stats) tg.it.stats = {};
+    tg.it.stats[date] = { cost: row.cost, gmv: row.gmv, roi: row.roi, play: row.play, finish: row.finish, ctr: row.ctr };
+    okN++;
+  }
+  saveResults();
+  localStorage.setItem(KEY_STAT_DATE, date);
+  renderResults();
+  var html = '<b style="color:#16a34a">已导入 ' + okN + ' 条到 ' + date + '</b>';
+  if (missRows.length) html += '<div style="color:#b45309;margin-top:4px">没对上（这些视频还没勾「对标」或作品ID/名称不一致）：' + esc(missRows.slice(0, 8).join("、")) + (missRows.length > 8 ? " 等 " + missRows.length + " 条" : "") + "</div>";
+  $("statMsg").innerHTML = html;
+}
+function statAlerts(it) {
+  var ds = statDates(it), out = [];
+  if (!ds.length) return ["还没有数据"];
+  var last = it.stats[ds[ds.length - 1]], prev = ds.length > 1 ? it.stats[ds[ds.length - 2]] : null;
+  if (last.finish != null && last.finish < 20) out.push("完播 " + last.finish + "% 偏低");
+  if (last.roi != null && last.roi < 1) out.push("ROI " + last.roi + " 不到 1");
+  if (prev && prev.roi != null && last.roi != null && last.roi < prev.roi) out.push("ROI 比上次降");
+  if (prev && prev.cost != null && last.cost != null && last.cost >= prev.cost * 1.2 && (last.gmv == null || prev.gmv == null || last.gmv <= prev.gmv)) out.push("加钱没出单");
+  return out.length ? out : ["正常"];
+}
+function openTrend(resId) {
+  var list = bgItems();
+  if (resId) list = list.filter(function (x) { return x.r.id === resId; });
+  var html = "";
+  if (!list.length) html = '<div class="empty">还没有勾「对标」的成片。先去执行结果里把对标的视频勾上，并填作品ID。</div>';
+  list.forEach(function (x) {
+    var it = x.it, ds = statDates(it), al = statAlerts(it);
+    html += '<div style="border:1px solid #e5e7eb;border-radius:10px;padding:10px;margin-bottom:10px">'
+      + '<div style="font-weight:700;margin-bottom:6px">' + esc(it.note || "未命名") + ' <span class="wd">' + esc(it.vid || "没填作品ID") + "</span></div>";
+    if (!ds.length) { html += '<div class="wd">还没有数据，点「📥 导入对标数据」把后台表格粘进来</div></div>'; return; }
+    html += '<table class="rec" style="font-size:12px"><thead><tr><th>日期</th><th>消耗</th><th>成交</th><th>ROI</th><th>播放</th><th>完播</th></tr></thead><tbody>';
+    ds.slice(-5).forEach(function (d) {
+      var s = it.stats[d];
+      html += "<tr><td>" + d.slice(5) + "</td><td>" + (s.cost == null ? "—" : s.cost) + "</td><td>" + (s.gmv == null ? "—" : s.gmv)
+        + "</td><td>" + (s.roi == null ? "—" : s.roi) + "</td><td>" + (s.play == null ? "—" : s.play)
+        + "</td><td>" + (s.finish == null ? "—" : s.finish + "%") + "</td></tr>";
+    });
+    html += "</tbody></table>";
+    var tone = (al.length === 1 && al[0] === "正常") ? "#16a34a" : "#b45309";
+    html += '<div style="margin-top:6px;font-size:12px;color:' + tone + '">' + (al.length === 1 && al[0] === "正常" ? "✅ 正常" : "⚠ " + al.join(" · ")) + "</div></div>";
+  });
+  $("trendBody").innerHTML = html;
+  $("trendModal").style.display = "block";
+}
+function closeTrend() { $("trendModal").style.display = "none"; }
+function resCell(r) {
+  var html = linkCell(r.items);
+  var bgs = (r.items || []).filter(function (it) { return it.bg; });
+  if (bgs.length) {
+    html += '<div class="wd" style="margin-top:4px">';
+    bgs.forEach(function (it) {
+      var ds = statDates(it), last = ds.length ? ds[ds.length - 1] : "";
+      html += '<span style="display:inline-block;background:#eef2ff;color:#3730a3;border-radius:6px;padding:1px 6px;margin:2px 4px 0 0">对标·'
+        + esc(it.note || it.vid || "未命名") + (last ? "（" + last.slice(5) + " 有数据）" : "（无数据）") + "</span>";
+    });
+    html += "</div>";
+  }
+  return html;
+}
 function renderResults() {
   var kw = $("rKw").value.trim().toLowerCase();
   var list = results.filter(function (r) {
@@ -3793,10 +3980,11 @@ function renderResults() {
     return "<tr><td>" + r.date + wdHtml(r.date) + "</td>"
       + "<td>" + esc(planName(r.planId)) + "</td>"
       + "<td><b>" + (r.qty || 0) + "</b>" + (cnt > 1 ? '<div class="wd">' + cnt + " 条成片</div>" : "") + "</td>"
-      + "<td>" + linkCell(r.items) + "</td>"
+      + "<td>" + resCell(r) + "</td>"
       + "<td>" + imgCell(r.items, 3) + "</td>"
       + '<td class="copycell">' + (esc(r.review) || "—") + "</td>"
       + '<td><div class="ops"><button class="mini" onclick="editResult(' + r.id + ')">编辑</button>'
+      + '<button class="mini" onclick="openTrend(' + r.id + ')" title="看这条对标视频的每日数据与提醒">📈</button>'
       + '<button class="mini red" onclick="delResult(' + r.id + ')">删除</button></div></td></tr>';
   }).join("");
 }
