@@ -1103,9 +1103,9 @@ body.mode-a h1 { font-size: 22px; }
         <button class="mini green" onclick="exportCsv()">导出全部明细 CSV</button>
         <span style="display:inline-flex;align-items:center;gap:6px;padding-left:10px;border-left:1px solid #e5e7eb;flex-wrap:wrap">
           <span style="font-size:12px;color:#6b7280">按日期</span>
-          <input type="date" id="rgFrom" onchange="rangeHint()" style="padding:4px 6px;border:1px solid #dfe3e8;border-radius:6px;font-size:12px">
+          <input type="date" id="rgFrom" onchange="rangePick()" style="padding:4px 6px;border:1px solid #dfe3e8;border-radius:6px;font-size:12px">
           <span style="font-size:12px;color:#6b7280">到</span>
-          <input type="date" id="rgTo" onchange="rangeHint()" style="padding:4px 6px;border:1px solid #dfe3e8;border-radius:6px;font-size:12px">
+          <input type="date" id="rgTo" onchange="rangePick()" style="padding:4px 6px;border:1px solid #dfe3e8;border-radius:6px;font-size:12px">
           <button class="mini blue" onclick="exportRangeSum('img')">导出这段·图</button>
           <button class="mini" onclick="exportRangeSum('csv')">导出这段·CSV</button>
           <span id="rgHint" style="font-size:12px;color:#6b7280"></span>
@@ -1973,6 +1973,19 @@ function resetTargets() {
   localStorage.removeItem(KEY_SHOOT_TGT);
   targets = loadTargets(); shootTgt = loadShootTgt(); buildTargetForm(); render();
 }
+var SUM_CUSTOM = false;
+function sumRangeInputs() {
+  var a = $("rgFrom") ? $("rgFrom").value : "", b = $("rgTo") ? $("rgTo").value : "";
+  if (!a || !b) return null;
+  if (a > b) { var tmp = a; a = b; b = tmp; }
+  var s = new Date(a + "T00:00:00"), e = new Date(b + "T00:00:00");
+  return { start: a, end: b, label: (s.getFullYear() + "年" + (s.getMonth() + 1) + "月" + s.getDate() + "日 — " + (e.getMonth() + 1) + "月" + e.getDate() + "日") };
+}
+function rangePick() {
+  SUM_CUSTOM = true;
+  rangeHint();
+  renderLedgerSum();
+}
 function currentRange() {
   var now = new Date(), y = now.getFullYear(), m = now.getMonth(), day = now.getDate();
   if (mode === "cycle") {
@@ -1985,6 +1998,8 @@ function currentRange() {
 }
 function setMode(m) {
   mode = m; offset = 0; progOffset = 0;
+  SUM_CUSTOM = false;
+  try { var rg0 = currentRange(); if ($("rgFrom")) $("rgFrom").value = rg0.start; if ($("rgTo")) $("rgTo").value = rg0.end; rangeHint(); } catch (e) { }
   if ($("segCycle")) $("segCycle").className = m === "cycle" ? "on" : "";
   if ($("segMonth")) $("segMonth").className = m === "month" ? "on" : "";
   render();
@@ -2177,7 +2192,7 @@ function renderAccList() {
   dl.innerHTML = list.map(function (a) { return '<option value="' + esc(a) + '">'; }).join("");
 }
 function ledgerSumData() {
-  var rg = currentRange();
+  var rg = (SUM_CUSTOM && sumRangeInputs()) || currentRange();
   var out = {}, days = {}, accMap = {}, codeMap = {};
   TYPES.forEach(function (t) { out[t] = { all: 0, me: 0, sub: 0, l: 0, n: 0 }; });
   data.forEach(function (r) {
@@ -2221,9 +2236,9 @@ function ledgerSumData() {
 function renderLedgerSum() {
   var d = ledgerSumData();
   if ($("lgRange")) $("lgRange").textContent = d.rg.label;
-  if ($("lgScope")) $("lgScope").textContent = (mode === "month" ? "自然月" : "本期");
-  if ($("lgSegCycle")) $("lgSegCycle").className = (mode === "cycle" ? "mini blue" : "mini");
-  if ($("lgSegMonth")) $("lgSegMonth").className = (mode === "month" ? "mini blue" : "mini");
+  if ($("lgScope")) $("lgScope").textContent = SUM_CUSTOM ? "所选区间" : (mode === "month" ? "自然月" : "本期");
+  if ($("lgSegCycle")) $("lgSegCycle").className = (!SUM_CUSTOM && mode === "cycle" ? "mini blue" : "mini");
+  if ($("lgSegMonth")) $("lgSegMonth").className = (!SUM_CUSTOM && mode === "month" ? "mini blue" : "mini");
   var all = 0, me = 0, sub = 0, l = 0, n = 0, html = "";
   TYPES.forEach(function (t) {
     var o = d.rows[t];
@@ -2270,10 +2285,29 @@ function rangeInit() {
     rangeHint();
   } catch (e) { }
 }
+/* 兜底绑定：不管 inline onclick 有没有被拦住，这两个按钮和日期框都走程序绑定 */
+document.addEventListener("click", function (e) {
+  try {
+    var el = (e.target && e.target.closest) ? e.target.closest("#lgSegCycle,#lgSegMonth") : null;
+    if (!el) return;
+    var want = (el.id === "lgSegMonth") ? "month" : "cycle";
+    SUM_CUSTOM = false;
+    var rg0 = currentRange();
+    if ($("rgFrom")) $("rgFrom").value = rg0.start;
+    if ($("rgTo")) $("rgTo").value = rg0.end;
+    rangeHint();
+    renderLedgerSum();
+    try { if (typeof setMode === "function") setMode(want); else { mode = want; } } catch (e2) { }
+    try { if (typeof renderProg === "function") renderProg(); } catch (e3) { }
+  } catch (e4) { }
+}, true);
+document.addEventListener("change", function (e) {
+  try { var id = e.target && e.target.id; if (id === "rgFrom" || id === "rgTo") rangePick(); } catch (e5) { }
+}, true);
 function exportSumCsv() {
   rangeInit();
   var d = ledgerSumData();
-  var head = [d.rg.label + (mode === "month" ? "（自然月）" : "（本期）"), "", "", "", "", ""];
+  var head = [d.rg.label + (SUM_CUSTOM ? "（所选区间）" : (mode === "month" ? "（自然月）" : "（本期）")), "", "", "", "", ""];
   var rows = [["内容类型", "总数", "我剪", "下属剪", "挂链", "不挂链"]];
   var all = 0, me = 0, sub = 0, l = 0, n = 0;
   TYPES.forEach(function (t) {
