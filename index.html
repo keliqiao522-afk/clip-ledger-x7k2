@@ -4331,12 +4331,16 @@ function weekSubOf(rec, t) {
   if (r.sub === undefined || r.sub === null || r.sub === "") return null;
   return num(r.sub);
 }
+function ltVal(v) {
+  if (v === undefined || v === null || v === "") return null;
+  var raw = String(v).trim();
+  if (raw === "") return null;
+  var n = parseInt(raw, 10);
+  if (isNaN(n) || n < 0) return null;
+  return n;
+}
 function weekLinkTgtOf(rec) {
-  var y = null, x = null;
-  if (rec) {
-    if (!(rec.ltY === undefined || rec.ltY === null || rec.ltY === "" || num(rec.ltY) < 0)) y = Math.max(0, Math.round(num(rec.ltY)));
-    if (!(rec.ltX === undefined || rec.ltX === null || rec.ltX === "" || num(rec.ltX) < 0)) x = Math.max(0, Math.round(num(rec.ltX)));
-  }
+  var y = rec ? ltVal(rec.ltY) : null, x = rec ? ltVal(rec.ltX) : null;
   var has = (y !== null || x !== null);
   var total = (y || 0) + (x || 0);
   return {
