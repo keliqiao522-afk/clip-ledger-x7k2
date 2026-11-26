@@ -1628,8 +1628,9 @@ function monthTgtCurKey() {
 function monthTgtData(k) {
   var all = monthTgtAll(), m = all[k], obj = {};
   for (var i = 0; i < TYPES.length; i++) {
-    /* 只认这套周期自己存的值；没存过就是 0，不再借用旧「本期目标」的数字 */
-    var t = TYPES[i], s = m && m.types && m.types[t], d = { tLink: 0, tNoLink: 0, tShoot: 0, tSub: 0 };
+    /* 本周期没存过数据时：半月期就显示 0（不借用旧「本期目标」的数字）；自然月保持原来的取值习惯 */
+    var t = TYPES[i], s = m && m.types && m.types[t];
+    var d = (mtMode() === "half" && !(m && m.types)) ? { tLink: 0, tNoLink: 0, tShoot: 0, tSub: 0 } : (targets[t] || { tLink: 0, tNoLink: 0, tShoot: 0, tSub: 0 });
     obj[t] = {
       shoot: SHOOT_TYPES.indexOf(t) === -1 ? 0 : (s && typeof s.shoot === "number" ? s.shoot : num(d.tShoot)),
       link: s && typeof s.link === "number" ? s.link : num(d.tLink),
