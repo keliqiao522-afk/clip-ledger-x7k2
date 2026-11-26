@@ -808,7 +808,11 @@ body.ro a[href],body.ro .linkcell,body.ro .urlnk,body.ro .tab,body.ro .period bu
 #cloudToast.show{opacity:.94;transform:translateX(-50%) translateY(0)}
 </style>
 
-</head>
+<style id="tgtModalCss">
+#tgtOverlay{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(15,23,42,.5);z-index:9990;display:none;overflow:auto;padding:18px 12px 40px;-webkit-overflow-scrolling:touch}
+#mtBox.tgtModal{max-width:880px;margin:0 auto;background:#fff;border-radius:14px;position:relative;box-shadow:0 24px 60px rgba(0,0,0,.3)}
+#mtCloseBtn{position:absolute;right:10px;top:10px;z-index:2}
+</style></head>
 <body>
 <script>
 (function () {
@@ -878,7 +882,7 @@ body.mode-a h1 { font-size: 22px; }
         <button onclick="shiftProg(1)">下一页 ›</button>
         <button class="mini" onclick="resetProg()">回到本期</button>
       </div>
-      <div class="ops"><span class="legend" style="margin:0">目标统一在「月度目标」里改</span></div>
+      <div class="ops"><button class="mini blue" id="btnSetTgt" onclick="openTgtModal()">⚙ 设定目标</button></div>
     </div>
     <p class="legend" style="margin:-6px 0 10px">口径：<b>本期＝每月 15 日～次月 14 日（半个月）</b>，上面「‹ 上一期 / 下一期 ›」翻的也是这半个月，不是自然月。</p>
     <div class="stats">
@@ -945,9 +949,9 @@ body.mode-a h1 { font-size: 22px; }
     <p class="legend">周目标＝「月度目标」按当月天数摊到这一周（跨月就把两段加起来），四舍五入取整；今日目标＝本周目标÷7。完成量按台账登记的真实条数算。</p>
   </div>
 
-<div class="box">
+<div class="box" id="mtBox">
     <div class="listhead">
-      <h2>月度目标（<span id="mtRangeLabel">自然月 1 日～月底</span> · 单独一套 · 可导出）</h2>
+      <h2>目标设定（<span id="mtRangeLabel">自然月 1 日～月底</span> · 单独一套 · 可导出）</h2>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <input type="month" id="mtMonth" onchange="renderMonthTgt()" style="padding:6px 8px;font-size:13px;border:1px solid #dfe3e8;border-radius:8px">
         <select id="mtMode" onchange="mtSetMode(this.value)" style="padding:6px 8px;font-size:13px;border:1px solid #dfe3e8;border-radius:8px;background:#fff">
@@ -1593,7 +1597,29 @@ function mtSetMode(v) {
   try { renderWeekDone(); } catch (e) { }
   try { renderSheetList(); } catch (e) { }
 }
-function pad2(n) { return (n < 10 ? "0" : "") + n; }
+/* ---- 左上角「⚙ 设定目标」弹窗：把目标设定块拿出来当弹层 ---- */
+function openTgtModal() {
+  var b = $("mtBox"); if (!b) return;
+  if (!b._home) b._home = { p: b.parentNode, n: b.nextSibling };
+  var ov = $("tgtOverlay");
+  if (!ov) { ov = document.createElement("div"); ov.id = "tgtOverlay"; ov.onclick = function (e) { if (e.target === ov) closeTgtModal(); }; document.body.appendChild(ov); }
+  ov.style.display = "block";
+  if (b.parentNode !== ov) ov.appendChild(b);
+  b.classList.add("tgtModal");
+  var cb = $("mtCloseBtn");
+  if (!cb) { cb = document.createElement("button"); cb.id = "mtCloseBtn"; cb.className = "mini"; cb.textContent = "关闭 ✕"; cb.onclick = closeTgtModal; b.appendChild(cb); }
+  cb.style.display = "inline-block";
+  try { renderMonthTgt(); } catch (e) { }
+  document.body.style.overflow = "hidden";
+  if (ov.scrollTop === 0) ov.scrollTop = 0;
+}
+function closeTgtModal() {
+  var b = $("mtBox"), ov = $("tgtOverlay"), cb = $("mtCloseBtn");
+  if (b) { b.classList.remove("tgtModal"); if (b._home && b._home.p) b._home.p.insertBefore(b, b._home.n); }
+  if (cb) cb.style.display = "none";
+  if (ov) ov.style.display = "none";
+  document.body.style.overflow = "";
+}function pad2(n) { return (n < 10 ? "0" : "") + n; }
 /* 把 "2026-11" 换成当前口径下的存储键：自然月=2026-11，半月期=H2026-11（表示 11-15 起） */
 function mtKeyOf(v) { return mtMode() === "half" ? "H" + v : v; }
 function mtBaseOf(k) { return k && k.charAt(0) === "H" ? k.slice(1) : (k || ""); }
