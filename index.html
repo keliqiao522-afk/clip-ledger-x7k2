@@ -1126,7 +1126,7 @@ body.mode-a h1 { font-size: 22px; }
     </div>
     <div class="scroll" style="margin-top:10px">
       <table class="sum">
-        <thead><tr><th>按账号</th><th>总数</th><th>我剪</th><th>下属剪</th><th>款号数</th></tr></thead>
+        <thead><tr><th>按项目（＝账号）</th><th>总数</th><th>我剪</th><th>下属剪</th><th>款号数</th></tr></thead>
         <tbody id="lgAccBody"><tr><td colspan="5" class="legend" style="margin:0">登记时填了账号才会出现在这里</td></tr></tbody>
       </table>
     </div>
@@ -2195,15 +2195,20 @@ function ledgerSumData() {
     TYPES.forEach(function (t) {
       var it = r.items[t]; if (!it) return;
       var o = out[t];
-      var l = num(it.link), n = num(it.nolink);
-      o.all += l + n; o.l += l; o.n += n;
-      if (isSub) o.sub += l + n; else o.me += l + n;
-      accMap[a].all += l + n;
-      if (isSub) accMap[a].sub += l + n; else accMap[a].me += l + n;
+      var l = num(it.link), n = num(it.nolink), qd = l + n;
+      if (!qd) return;
+      o.all += qd; o.l += l; o.n += n;
+      if (isSub) o.sub += qd; else o.me += qd;
+      projectParts(r, it, qd).forEach(function (p) {
+        var key = p.key;
+        if (!accMap[key]) accMap[key] = { acc: key, all: 0, me: 0, sub: 0, codes: {} };
+        accMap[key].all += p.q;
+        if (isSub) accMap[key].sub += p.q; else accMap[key].me += p.q;
+      });
     });
   });
   var accRows = Object.keys(accMap).map(function (k) { return accMap[k]; })
-    .filter(function (x) { return x.acc !== "未填账号" || x.all > 0 || Object.keys(x.codes).length; })
+    .filter(function (x) { return x.all > 0 || Object.keys(x.codes).length || x.acc === "未填账号"; })
     .sort(function (x, y) {
       if (x.acc === "未填账号") return 1;
       if (y.acc === "未填账号") return -1;
@@ -2278,7 +2283,7 @@ function exportSumCsv() {
   });
   rows.push(["合计", all, me, sub, l, n]);
   rows.push([]);
-  rows.push(["按账号", "总数", "我剪", "下属剪", "款号数", ""]);
+  rows.push(["按项目（＝账号）", "总数", "我剪", "下属剪", "款号数", ""]);
   if (d.accRows.length) {
     d.accRows.forEach(function (x) { rows.push([x.acc, x.all, x.me, x.sub, Object.keys(x.codes).length, ""]); });
   } else { rows.push(["（本期还没有填账号的记录）", "", "", "", "", ""]); }
@@ -6811,10 +6816,13 @@ function aMergeIntoData() {
   (o.items || []).forEach(function (it) {
     if (!it || !it.date || !it.t) return;
     if (!byDate[it.date]) byDate[it.date] = {};
-    if (!byDate[it.date][it.t]) byDate[it.date][it.t] = { link: 0, nolink: 0 };
+    if (!byDate[it.date][it.t]) byDate[it.date][it.t] = { link: 0, nolink: 0, yh: 0, xc: 0 };
     var q = num(it.n);
     if (q <= 0) return;
     if (it.link) byDate[it.date][it.t].link += q; else byDate[it.date][it.t].nolink += q;
+    var pp = String(it.p || "").toUpperCase();
+    if (pp === "YH") byDate[it.date][it.t].yh += q;
+    else if (pp === "XC") byDate[it.date][it.t].xc += q;
   });
   var keep = {};
   Object.keys(byDate).forEach(function (k) { keep[k] = 1; });
@@ -6830,10 +6838,10 @@ function aMergeIntoData() {
       changed = true;
     }
     TYPES.forEach(function (t) {
-      var w = want[t] || { link: 0, nolink: 0 };
+      var w = want[t] || { link: 0, nolink: 0, yh: 0, xc: 0 };
       var cur = rec.items[t] || { link: 0, nolink: 0 };
-      if (num(cur.link) !== w.link || num(cur.nolink) !== w.nolink) {
-        rec.items[t] = { link: w.link, nolink: w.nolink, detail: "A 端登记" };
+      if (num(cur.link) !== w.link || num(cur.nolink) !== w.nolink || num(cur.yh) !== (w.yh || 0) || num(cur.xc) !== (w.xc || 0)) {
+        rec.items[t] = { link: w.link, nolink: w.nolink, yh: w.yh || 0, xc: w.xc || 0, detail: "A 端登记" };
         changed = true;
       }
     });
@@ -7021,6 +7029,23 @@ function weekPlanPayload(ws, idOpt) {
   return { rec: rec, ws: ws, we: weekEndOf(ws), rows: rows, tot: tot, wtot: num(rec.wtot) };
 }
 /* ===== 按日期范围导出剪辑量（表格样式跟周计划表导出的一致） ===== */
+/* 按项目（＝账号）拆：YH / XC；A 端登记的行按 A 端自己选的 YH/XC 拆 */
+function projectParts(r, it, qd) {
+  var out = [], acc = String((r && r.account) || "").trim(), up = acc.toUpperCase();
+  var y = num(it && it.yh), x = num(it && it.xc);
+  function isYH(s) { return s === "YH" || /(^|[^A-Z])YH([^A-Z]|$)/.test(s); }
+  function isXC(s) { return s === "XC" || /(^|[^A-Z])XC([^A-Z]|$)/.test(s); }
+  if (r && r.aDate !== undefined && (y + x) > 0) {
+    if (y > 0) out.push({ key: "YH", q: y });
+    if (x > 0) out.push({ key: "XC", q: x });
+    if (qd - y - x > 0) out.push({ key: acc || "未填账号", q: qd - y - x });
+    return out;
+  }
+  if (isYH(up)) { out.push({ key: "YH", q: qd }); return out; }
+  if (isXC(up)) { out.push({ key: "XC", q: qd }); return out; }
+  out.push({ key: acc || "未填账号", q: qd });
+  return out;
+}
 function rangeSumData(a, b) {
   var rows = {}, tot = { l: 0, n: 0, all: 0, yh: 0, xc: 0 }, wkName = {}, wkGoal = {}, days = {};
   TYPES.forEach(function (t) { rows[t] = { t: t, l: 0, n: 0, all: 0, yh: 0, xc: 0 }; });
@@ -7035,14 +7060,20 @@ function rangeSumData(a, b) {
       if (!qd) return;
       var o = rows[t];
       o.l += l; o.n += n; o.all += qd;
-      var share = 0.5;
-      if (wrec) { var pq = rowQ(wrec, t); if (pq > 0) share = Math.max(0, Math.min(1, rowYh(wrec, t) / pq)); }
-      o.yh += Math.round(qd * share);
+      projectParts(r, it, qd).forEach(function (p) {
+        if (p.key === "YH") o.yh += p.q;
+        else if (p.key === "XC") o.xc += p.q;
+        else {
+          var share = 0.5;
+          if (wrec) { var pq = rowQ(wrec, t); if (pq > 0) share = Math.max(0, Math.min(1, rowYh(wrec, t) / pq)); }
+          var hy = Math.round(p.q * share);
+          o.yh += hy; o.xc += (p.q - hy);
+        }
+      });
     });
   });
   TYPES.forEach(function (t) {
     var o = rows[t];
-    o.xc = Math.max(0, o.all - o.yh);
     tot.l += o.l; tot.n += o.n; tot.all += o.all; tot.yh += o.yh; tot.xc += o.xc;
   });
   var nameTxt = Object.keys(wkName).join("、"), goalTxt = Object.keys(wkGoal).join("、");
