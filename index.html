@@ -1101,6 +1101,15 @@ body.mode-a h1 { font-size: 22px; }
         <button class="mini" id="lgSegMonth" onclick="setMode('month')">自然月</button>
         <button class="mini blue" onclick="exportSumCsv()">导出汇总 CSV</button>
         <button class="mini green" onclick="exportCsv()">导出全部明细 CSV</button>
+        <span style="display:inline-flex;align-items:center;gap:6px;padding-left:10px;border-left:1px solid #e5e7eb;flex-wrap:wrap">
+          <span style="font-size:12px;color:#6b7280">按日期</span>
+          <input type="date" id="rgFrom" onchange="rangeHint()" style="padding:4px 6px;border:1px solid #dfe3e8;border-radius:6px;font-size:12px">
+          <span style="font-size:12px;color:#6b7280">到</span>
+          <input type="date" id="rgTo" onchange="rangeHint()" style="padding:4px 6px;border:1px solid #dfe3e8;border-radius:6px;font-size:12px">
+          <button class="mini blue" onclick="exportRangeSum('img')">导出这段·图</button>
+          <button class="mini" onclick="exportRangeSum('csv')">导出这段·CSV</button>
+          <span id="rgHint" style="font-size:12px;color:#6b7280"></span>
+        </span>
       </div>
     </div>
     <div class="stats" style="margin-bottom:10px">
@@ -2119,6 +2128,7 @@ function render() {
   renderRecords();
   renderWeekDone();
   renderLedgerSum();
+  try { rangeInit(); } catch (e8) { }
   refreshProg();
 }
 function refreshProg() {
@@ -2240,7 +2250,24 @@ function renderLedgerSum() {
       : '<tr><td colspan="2" class="legend" style="margin:0">登记时填了款号才会出现在这里</td></tr>';
   }
 }
+function rangeHint() {
+  try {
+    var a = $("rgFrom") ? $("rgFrom").value : "", b = $("rgTo") ? $("rgTo").value : "";
+    if (!a || !b || !$("rgHint")) return;
+    if (a > b) { var tmp = a; a = b; b = tmp; }
+    var d = rangeSumData(a, b);
+    $("rgHint").textContent = "这段共 " + d.tot.all + " 条（" + mds(a) + "~" + mds(b) + "）";
+  } catch (e) { }
+}
+function rangeInit() {
+  try {
+    if (!$("rgFrom") || !$("rgTo")) return;
+    if (!$("rgFrom").value) { var t0 = today(); $("rgFrom").value = mondayOf(t0); $("rgTo").value = weekEndOf(t0); }
+    rangeHint();
+  } catch (e) { }
+}
 function exportSumCsv() {
+  rangeInit();
   var d = ledgerSumData();
   var head = [d.rg.label + (mode === "month" ? "（自然月）" : "（本期）"), "", "", "", "", ""];
   var rows = [["内容类型", "总数", "我剪", "下属剪", "挂链", "不挂链"]];
@@ -6884,6 +6911,131 @@ function weekPlanPayload(ws, idOpt) {
     for (var k in tot) { tot[k] += o[k]; }
   });
   return { rec: rec, ws: ws, we: weekEndOf(ws), rows: rows, tot: tot, wtot: num(rec.wtot) };
+}
+/* ===== 按日期范围导出剪辑量（表格样式跟周计划表导出的一致） ===== */
+function rangeSumData(a, b) {
+  var rows = {}, tot = { l: 0, n: 0, all: 0, yh: 0, xc: 0 }, wkName = {}, wkGoal = {}, days = {};
+  TYPES.forEach(function (t) { rows[t] = { t: t, l: 0, n: 0, all: 0, yh: 0, xc: 0 }; });
+  data.forEach(function (r) {
+    if (!r || !r.date || r.date < a || r.date > b) return;
+    days[r.date] = 1;
+    var mon = mondayOf(r.date), wrec = findWeekTable(mon);
+    if (wrec) { if ((wrec.name || "").trim()) wkName[(wrec.name || "").trim()] = 1; if ((wrec.goal || "").trim()) wkGoal[(wrec.goal || "").trim()] = 1; }
+    TYPES.forEach(function (t) {
+      var it = (r.items || {})[t] || {};
+      var l = num(it.link), n = num(it.nolink), qd = l + n;
+      if (!qd) return;
+      var o = rows[t];
+      o.l += l; o.n += n; o.all += qd;
+      var share = 0.5;
+      if (wrec) { var pq = rowQ(wrec, t); if (pq > 0) share = Math.max(0, Math.min(1, rowYh(wrec, t) / pq)); }
+      o.yh += Math.round(qd * share);
+    });
+  });
+  TYPES.forEach(function (t) {
+    var o = rows[t];
+    o.xc = Math.max(0, o.all - o.yh);
+    tot.l += o.l; tot.n += o.n; tot.all += o.all; tot.yh += o.yh; tot.xc += o.xc;
+  });
+  var nameTxt = Object.keys(wkName).join("、"), goalTxt = Object.keys(wkGoal).join("、");
+  return { rows: rows, tot: tot, name: nameTxt, goal: goalTxt, days: Object.keys(days).length, a: a, b: b };
+}
+function exportRangeSum(fmt) {
+  var a = $("rgFrom") ? $("rgFrom").value : "", b = $("rgTo") ? $("rgTo").value : "";
+  if (!a || !b) { alert("先选「从哪天」和「到哪天」"); return; }
+  if (a > b) { var tmp = a; a = b; b = tmp; }
+  var d = rangeSumData(a, b);
+  var period = mds(d.a) + " ~ " + mds(d.b);
+  var periodTxt = period + " ｜ 共 " + d.tot.all + " 条";
+  var vals = [{ k: "l", w: 128, t: "挂链（条）" }, { k: "n", w: 142, t: "不挂链（条）" }, { k: "all", w: 130, t: "合计（条）" }, { k: "yh", w: 105, t: "YH（条）" }, { k: "xc", w: 105, t: "XC（条）" }];
+  var title = "剪辑量_" + d.a + "_" + d.b;
+  if (fmt === "csv") {
+    var out = [["周期 / 周次", "主推品 / 活动", "周主目标", "内容形式", "挂链（条）", "不挂链（条）", "合计（条）", "YH（条）", "XC（条）"]];
+    TYPES.forEach(function (t) {
+      var o = d.rows[t];
+      out.push([periodTxt, d.name || "—", d.goal || "—", t, o.l, o.n, o.all, o.yh, o.xc]);
+    });
+    out.push([periodTxt, d.name || "—", d.goal || "—", "合计（这段）", d.tot.l, d.tot.n, d.tot.all, d.tot.yh, d.tot.xc]);
+    csvDownload(out, title + ".csv");
+    return;
+  }
+  var FONT = "'Microsoft YaHei','PingFang SC','Hiragino Sans GB',sans-serif";
+  var cols = [{ w: 320, t: "周期 / 周次" }, { w: 230, t: "主推品 / 活动" }, { w: 240, t: "周主目标" }, { w: 175, t: "内容形式" }].concat(vals);
+  var W = 0; cols.forEach(function (c) { W += c.w; });
+  var nRows = TYPES.length, HDR = 88, RH = 74, TOTR = 80, H = HDR + RH * nRows + TOTR, S = 2;
+  var cv = document.createElement("canvas");
+  cv.width = W * S; cv.height = H * S;
+  var ctx = cv.getContext("2d");
+  ctx.scale(S, S);
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
+  ctx.textBaseline = "middle"; ctx.textAlign = "center";
+  var mc = document.createElement("canvas").getContext("2d");
+  function wrapText(text, size, bold, maxW) {
+    mc.font = (bold ? "bold " : "") + size + "px " + FONT;
+    var outt = [], cur = "", str = String(text == null ? "" : text);
+    for (var i = 0; i < str.length; i++) {
+      var t = cur + str.charAt(i);
+      if (mc.measureText(t).width > maxW && cur) { outt.push(cur); cur = str.charAt(i); } else cur = t;
+    }
+    outt.push(cur); return outt;
+  }
+  function cell(text, w, x, y, h, size, bold, color, maxLines) {
+    ctx.font = (bold ? "bold " : "") + size + "px " + FONT;
+    ctx.fillStyle = color;
+    var lines = wrapText(text, size, bold, w - 16);
+    if (maxLines && lines.length > maxLines) { lines = lines.slice(0, maxLines); lines[maxLines - 1] = lines[maxLines - 1].slice(0, -1) + "…"; }
+    var lh = size * 1.32, start = y + h / 2 - (lines.length - 1) * lh / 2;
+    lines.forEach(function (ln, i) { ctx.fillText(ln, x + w / 2, start + i * lh); });
+  }
+  ctx.fillStyle = "#0f1720"; ctx.fillRect(0, 0, W, HDR);
+  var hx = 0;
+  cols.forEach(function (c) {
+    ctx.font = "bold 21px " + FONT; ctx.fillStyle = "#ffffff";
+    var lines = wrapText(c.t, 21, true, c.w - 10);
+    var lh = 27, start = HDR / 2 - (lines.length - 1) * lh / 2;
+    lines.forEach(function (ln, i) { ctx.fillText(ln, hx + c.w / 2, start + i * lh); });
+    hx += c.w;
+  });
+  var lead = cols.length - vals.length;
+  var leadW = 0; for (var lq = 0; lq < lead; lq++) leadW += cols[lq].w;
+  var c0 = cols[0].w, c1 = cols[1].w, c2 = cols[2].w, c3 = cols[3].w;
+  var tX = leadW - c3;
+  var bodyH = RH * nRows, y = HDR;
+  ctx.strokeStyle = "#222"; ctx.lineWidth = 1;
+  TYPES.forEach(function (t) {
+    var o = d.rows[t];
+    ctx.fillStyle = "#f3f4f6"; ctx.fillRect(tX, y, c3, RH);
+    cell(t, c3, tX, y, RH, 22, false, "#111827", 1);
+    var nx = tX + c3;
+    vals.forEach(function (v, ci) {
+      ctx.font = "bold 22px " + FONT; ctx.fillStyle = "#111827";
+      ctx.fillText(String(o[v.k]), nx + cols[lead + ci].w / 2, y + RH / 2);
+      nx += cols[lead + ci].w;
+    });
+    ctx.beginPath(); ctx.moveTo(tX, y); ctx.lineTo(W, y); ctx.stroke();
+    y += RH;
+  });
+  ctx.beginPath(); ctx.moveTo(tX, y); ctx.lineTo(W, y); ctx.stroke();
+  cell(periodTxt, c0, 0, HDR, bodyH, 17, false, "#111827", 8);
+  cell(d.name || "—", c1, c0, HDR, bodyH, 20, false, "#111827", 8);
+  cell(d.goal || "—", c2, c0 + c1, HDR, bodyH, 20, false, "#111827", 8);
+  var bx = 0;
+  cols.forEach(function (c) { ctx.beginPath(); ctx.moveTo(bx, 0); ctx.lineTo(bx, H); ctx.stroke(); bx += c.w; });
+  ctx.fillStyle = "#374151"; ctx.fillRect(0, y, W, TOTR);
+  ctx.fillStyle = "#ffffff"; ctx.font = "bold 24px " + FONT;
+  ctx.fillText("合计（这段）", tX / 2, y + TOTR / 2);
+  cell(TYPES.length + " 类内容形式", c3, tX, y, TOTR, 22, true, "#ffffff", 1);
+  var nx2 = tX + c3;
+  vals.forEach(function (v, ci) {
+    ctx.fillText(String(d.tot[v.k]), nx2 + cols[lead + ci].w / 2, y + TOTR / 2);
+    nx2 += cols[lead + ci].w;
+  });
+  ctx.strokeStyle = "#0f1720"; ctx.lineWidth = 2;
+  ctx.strokeRect(1, 1, W - 2, H - 2);
+  var a2 = document.createElement("a");
+  a2.href = cv.toDataURL("image/png");
+  a2.download = title + ".png";
+  document.body.appendChild(a2); a2.click(); document.body.removeChild(a2);
 }
 function expCard(mode, fmt, i, V) {
   /* 按卡片序号取记录，避免同一周有重复记录时读到旧副本 */
