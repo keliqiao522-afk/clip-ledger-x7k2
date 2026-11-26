@@ -306,7 +306,12 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
       for (var c = 0; c < localStorage.length; c++) { var k1 = localStorage.key(c); if (synced(k1) && !(k1 in cloud)) dels.push(k1); }
       for (var d = 0; d < dels.length; d++) localStorage.removeItem(dels[d]);
     }
-    for (var key in cloud) { if (Object.prototype.hasOwnProperty.call(cloud, key)) localStorage.setItem(key, cloud[key]); }
+    for (var key in cloud) {
+      if (!Object.prototype.hasOwnProperty.call(cloud, key)) continue;
+      /* 周表不整张盖：交给下面的逐条/逐格合并，谁后改听谁的 */
+      if (key === "clipWeekTablesV1" && !forcePull && prevWkRaw) continue;
+      localStorage.setItem(key, cloud[key]);
+    }
     /* 拉下来的云端数据如果缺你手填的「我 / 我·YH / A·YH」，用本机上一份补回去再推上去，免得一刷新就没了 */
     if (!forcePull && prevWkRaw) {
       try {
@@ -343,6 +348,11 @@ tr.detail td{background:#fbfcfd;text-align:left;font-size:12px;color:#6b7280;pad
         });
         if (uniq.length !== nowB.length) mergedWk = true;
         nowB = uniq;
+        /* 本机这份再跟云端那份按记录合并：改得晚的赢，空的格子用另一份补 */
+        try {
+          var cloudB = JSON.parse(cloud["clipWeekTablesV1"] || "[]") || [];
+          if (cloudB.length && typeof wkMerge === "function") { nowB = wkMerge(nowB, cloudB); mergedWk = true; }
+        } catch (e03) { }
         try {
           var po = prevA.map(function (w) { return String(w && w.id); }).join(",");
           var no = nowB.map(function (w) { return String(w && w.id); }).join(",");
@@ -3829,7 +3839,21 @@ function saveWeekTables(now) {
   clearTimeout(wkTimer);
   keepHandFilled();
   /* 每条记录盖一个改动时间戳：多台电脑合并时谁后改听谁的 */
-  try { weekTables.forEach(function (r) { if (r) { r.upd = Date.now(); r.dev = (typeof DEVNAME !== "undefined" ? DEVNAME : ""); } }); } catch (e) { }
+  try {
+    var prevArr = [];
+    try { prevArr = JSON.parse(localStorage.getItem(KEY_WK) || "[]") || []; } catch (e01) { prevArr = []; }
+    var prevBy = {};
+    prevArr.forEach(function (r) { if (r && (r.id || r.ws)) prevBy[String(r.id || r.ws)] = r; });
+    var nowStamp = Date.now();
+    weekTables.forEach(function (r) {
+      if (!r) return;
+      var kk = String(r.id || r.ws);
+      var pv = prevBy[kk];
+      var flat = function (o) { var c = JSON.parse(JSON.stringify(o || {})); delete c.upd; delete c.dev; return JSON.stringify(c); };
+      /* 没改的记录不许冒领新时间，否则旧标签页一存就把别人的新数据盖掉 */
+      if (!pv || flat(pv) !== flat(r)) { r.upd = nowStamp; r.dev = (typeof DEVNAME !== "undefined" ? DEVNAME : ""); }
+    });
+  } catch (e02) { }
   refreshProg();
   if (now) {
     try { weekBakKeep(localStorage.getItem(KEY_WK) || ""); } catch (e) { }
