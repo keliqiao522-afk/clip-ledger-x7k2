@@ -878,7 +878,7 @@ body.mode-a h1 { font-size: 22px; }
         <button onclick="shiftProg(1)">下一页 ›</button>
         <button class="mini" onclick="resetProg()">回到本期</button>
       </div>
-      <div class="ops"><button class="mini" onclick="toggleTargetPanel()" id="tgtBtn">⚙ 修改目标</button></div>
+      <div class="ops"><span class="legend" style="margin:0">目标统一在「月度目标」里改</span></div>
     </div>
     <p class="legend" style="margin:-6px 0 10px">口径：<b>本期＝每月 15 日～次月 14 日（半个月）</b>，上面「‹ 上一期 / 下一期 ›」翻的也是这半个月，不是自然月。</p>
     <div class="stats">
@@ -894,7 +894,7 @@ body.mode-a h1 { font-size: 22px; }
         <tbody id="progBody"></tbody>
       </table>
     </div>
-    <p class="legend">目标来自「⚙ 修改目标」：我剪目标＝挂链＋不挂链，下属剪目标＝总剪辑目标−我剪。「我已剪 / 下属已剪」按剪辑登记里的「谁剪」分开算，不再混在一起。</p>
+    <p class="legend">目标来自「月度目标」：我剪目标＝挂链＋不挂链，下属剪目标＝总剪辑目标−我剪。「我已剪 / 下属已剪」按剪辑登记里的「谁剪」分开算，不再混在一起。</p>
 
     <h2 style="margin:18px 0 10px">拍摄量 / 剪辑量（整期总账）</h2>
     <div class="scroll">
@@ -903,7 +903,7 @@ body.mode-a h1 { font-size: 22px; }
         <tbody id="progBody2"></tbody>
       </table>
     </div>
-    <p class="legend">拍摄：只算我拍的，已完成按执行结果里登记的已拍量。剪辑：按剪辑登记里「谁剪」分别算我剪 / 下属剪，目标在「⚙ 修改目标」里分别填。</p>
+    <p class="legend">拍摄：只算我拍的，已完成按执行结果里登记的已拍量。剪辑：按剪辑登记里「谁剪」分别算我剪 / 下属剪，目标在「月度目标」里分别填。</p>
   </div>
 
     <div class="box">
@@ -947,18 +947,22 @@ body.mode-a h1 { font-size: 22px; }
 
 <div class="box">
     <div class="listhead">
-      <h2>月度目标（自然月 1 日～月底 · 单独一套 · 可导出）</h2>
+      <h2>月度目标（<span id="mtRangeLabel">自然月 1 日～月底</span> · 单独一套 · 可导出）</h2>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <input type="month" id="mtMonth" onchange="renderMonthTgt()" style="padding:6px 8px;font-size:13px;border:1px solid #dfe3e8;border-radius:8px">
+        <select id="mtMode" onchange="mtSetMode(this.value)" style="padding:6px 8px;font-size:13px;border:1px solid #dfe3e8;border-radius:8px;background:#fff">
+          <option value="cal">口径：自然月（1日～月底）</option>
+          <option value="half">口径：半月期（15日～次月14日）</option>
+        </select>
         <button class="mini blue" onclick="exportMonthTgtImage()">导出月目标图片</button>
         <button class="mini" onclick="exportMonthTgtCsv()">导出CSV</button>
       </div>
     </div>
     <div class="stats" style="margin-bottom:10px">
-      <div class="card"><div class="k">本月拍摄目标</div><div class="v" id="mtShootVal">0<small>条</small></div></div>
-      <div class="card"><div class="k">本月我剪目标</div><div class="v" id="mtEditMeVal">0<small>条</small></div></div>
-      <div class="card"><div class="k">本月下属剪目标</div><div class="v" id="mtEditSubVal">0<small>条</small></div></div>
-      <div class="card"><div class="k">本月剪辑合计</div><div class="v" id="mtTotalVal">0<small>条</small></div></div>
+      <div class="card"><div class="k">拍摄目标（我拍）</div><div class="v" id="mtShootVal">0<small>条</small></div></div>
+      <div class="card"><div class="k">我剪目标</div><div class="v" id="mtEditMeVal">0<small>条</small></div></div>
+      <div class="card"><div class="k">下属剪目标</div><div class="v" id="mtEditSubVal">0<small>条</small></div></div>
+      <div class="card"><div class="k">剪辑合计</div><div class="v" id="mtTotalVal">0<small>条</small></div></div>
     </div>
     <div class="scroll">
       <table class="sum">
@@ -969,10 +973,10 @@ body.mode-a h1 { font-size: 22px; }
     </div>
     <div class="btns" style="margin-top:10px">
       <button class="add" onclick="saveMonthTgt()">保存本月目标</button>
-      <button class="ghost" onclick="copyMonthTgtFromPeriod()">用本期目标填本月</button>
+
       <button class="ghost" onclick="copyMonthTgtPrev()">复制上月目标</button>
     </div>
-    <p class="legend">一个月一套自己的目标，和上面「本期（15日～次月14日）」的目标互不影响；拍摄列只有真会拍的类型能填，切片 / 混剪属于剪辑形式，这里固定不参与拍摄。</p>
+    <p class="legend">一个月一套目标：口径选「自然月」就按 1 日～月底算，选「半月期」就按 15 日～次月 14 日算，日期框选哪个月，就是该口径下的那一期；周目标会按这个口径自动摊到每周。拍摄列只有真会拍的类型能填，切片 / 混剪属于剪辑形式，这里固定不参与拍摄。</p>
   </div>
   <div class="box" id="targetPanel" style="display:none">
     <div class="listhead"><h2>目标设置 · 本期目标（<span id="tgtPeriod">—</span>）</h2><span class="legend">改完点保存，统计即刻按新目标计算</span></div>
@@ -1576,10 +1580,50 @@ function calcTargets() {
 function monthTgtAll() {
   try { return JSON.parse(localStorage.getItem(KEY_MONTH_TGT) || "{}") || {}; } catch (e) { return {}; }
 }
+/* ---- 月度口径：自然月（1日~月底）/ 半月期（15日~次月14日） ---- */
+var MT_MODE_K = "clipMtModeV1";
+function mtMode() {
+  try { var v = localStorage.getItem(MT_MODE_K); return v === "half" ? "half" : "cal"; } catch (e) { return "cal"; }
+}
+function mtSetMode(v) {
+  try { localStorage.setItem(MT_MODE_K, v === "half" ? "half" : "cal"); } catch (e) { }
+  if ($("mtMode")) $("mtMode").value = mtMode();
+  renderMonthTgt();
+  try { refreshProg(); } catch (e) { }
+  try { renderWeekDone(); } catch (e) { }
+  try { renderSheetList(); } catch (e) { }
+}
+function pad2(n) { return (n < 10 ? "0" : "") + n; }
+/* 把 "2026-11" 换成当前口径下的存储键：自然月=2026-11，半月期=H2026-11（表示 11-15 起） */
+function mtKeyOf(v) { return mtMode() === "half" ? "H" + v : v; }
+function mtBaseOf(k) { return k && k.charAt(0) === "H" ? k.slice(1) : (k || ""); }
+/* 周期起止（ymd） */
+function mtRangeOf(k) {
+  var base = mtBaseOf(k), y = num(base.slice(0, 4)), m = num(base.slice(5, 7));
+  if (!k || k.charAt(0) !== "H") return [base + "-01", base + "-" + pad2(daysInMonthOf(y, m))];
+  var ny = y, nm = m + 1;
+  if (nm > 12) { nm = 1; ny++; }
+  return [base + "-15", ny + "-" + pad2(nm) + "-14"];
+}
+function mtRangeLabelOf(k) {
+  var r = mtRangeOf(k), base = mtBaseOf(k);
+  return (k && k.charAt(0) === "H" ? "半月期 " : "自然月 ") + base.slice(0, 4) + "." + base.slice(5, 7) + "（" + r[0].slice(5) + " ~ " + r[1].slice(5) + "）";
+}
+/* 某一日属于哪个周期键；周期共几天（用来摊周目标） */
+function periodKeyOfDate(ds) {
+  if (mtMode() !== "half") return ds.slice(0, 7);
+  var y = num(ds.slice(0, 4)), m = num(ds.slice(5, 7)), d = num(ds.slice(8, 10));
+  if (d < 15) { m--; if (m < 1) { m = 12; y--; } }
+  return "H" + y + "-" + pad2(m);
+}
+function periodDaysOf(k) {
+  var base = mtBaseOf(k);
+  return daysInMonthOf(num(base.slice(0, 4)), num(base.slice(5, 7)));
+}
 function monthTgtCurKey() {
   var v = $("mtMonth") ? $("mtMonth").value : "";
   if (!v) { var n = new Date(); v = n.getFullYear() + "-" + (n.getMonth() + 1 < 10 ? "0" : "") + (n.getMonth() + 1); }
-  return v;
+  return mtKeyOf(v);
 }
 function monthTgtData(k) {
   var all = monthTgtAll(), m = all[k], obj = {};
@@ -1596,11 +1640,13 @@ function monthTgtData(k) {
 }
 function renderMonthTgt() {
   if (!$("mtBody")) return;
+  if ($("mtMode")) $("mtMode").value = mtMode();
   if (!$("mtMonth").value) {
     var n = new Date();
     $("mtMonth").value = n.getFullYear() + "-" + (n.getMonth() + 1 < 10 ? "0" : "") + (n.getMonth() + 1);
   }
   var k = monthTgtCurKey(), d = monthTgtData(k), html = "";
+  if ($("mtRangeLabel")) $("mtRangeLabel").textContent = mtRangeLabelOf(k);
   for (var i = 0; i < TYPES.length; i++) {
     var t = TYPES[i], r = d[t];
     html += "<tr><td>" + t + "</td>"
@@ -1650,7 +1696,7 @@ function saveMonthTgt() {
   all[k] = { types: types, shoot: sh, editMe: me, editSub: sb, edit: me + sb, savedAt: new Date().toISOString() };
   localStorage.setItem(KEY_MONTH_TGT, JSON.stringify(all));
   autoBackup();
-  alert("已保存 " + k + " 的月度目标：\n拍摄（我）" + sh + " 条 ｜ 我剪 " + me + " 条 ｜ 下属剪 " + sb + " 条\n合计剪辑 " + (me + sb) + " 条");
+  alert("已保存 " + (mtRangeLabelOf(k)) + " 的目标：\n拍摄（我）" + sh + " 条 ｜ 我剪 " + me + " 条 ｜ 下属剪 " + sb + " 条\n合计剪辑 " + (me + sb) + " 条");
   renderMonthTgt();
 }
 function copyMonthTgtFromPeriod() {
@@ -1667,10 +1713,10 @@ function copyMonthTgtFromPeriod() {
   alert("已用「本期目标」填好本月，检查后点「保存本月目标」才会存下来。");
 }
 function copyMonthTgtPrev() {
-  var k = monthTgtCurKey(), y = num(k.slice(0, 4)), mm = num(k.slice(5, 7));
+  var k = monthTgtCurKey(), base = mtBaseOf(k), y = num(base.slice(0, 4)), mm = num(base.slice(5, 7));
   var py = y, pm2 = mm - 1;
   if (pm2 < 1) { pm2 = 12; py = y - 1; }
-  var pk = py + "-" + (pm2 < 10 ? "0" : "") + pm2;
+  var pk = (mtMode() === "half" ? "H" : "") + py + "-" + (pm2 < 10 ? "0" : "") + pm2;
   var all = monthTgtAll();
   if (!all[pk]) { alert("没有 " + pk + " 的月度目标，先用「用本期目标填本月」或手动填。"); return; }
   var d = monthTgtData(pk);
@@ -1686,15 +1732,15 @@ function copyMonthTgtPrev() {
 }
 function exportMonthTgtCsv() {
   var k = monthTgtCurKey(), d = monthTgtData(k);
-  var rows = [["月份", "内容类型", "拍摄目标（我拍）", "挂链（我剪）", "不挂链（我剪）", "我剪小计", "下属剪", "合计"]];
+  var rows = [["周期", "内容类型", "拍摄目标（我拍）", "挂链（我剪）", "不挂链（我剪）", "我剪小计", "下属剪", "合计"]];
   var sh = 0, l = 0, n = 0, sb = 0;
   TYPES.forEach(function (t) {
     var r = d[t], sub = r.link + r.nolink + r.sub;
     sh += r.shoot; l += r.link; n += r.nolink; sb += r.sub;
-    rows.push([k, t, r.shoot, r.link, r.nolink, r.link + r.nolink, r.sub, sub]);
+    rows.push([mtRangeLabelOf(k), t, r.shoot, r.link, r.nolink, r.link + r.nolink, r.sub, sub]);
   });
-  rows.push([k, "合计", sh, l, n, l + n, sb, l + n + sb]);
-  csvDownload(rows, "月度目标_" + k + ".csv");
+  rows.push([mtRangeLabelOf(k), "合计", sh, l, n, l + n, sb, l + n + sb]);
+  csvDownload(rows, "月度目标_" + mtBaseOf(k) + (mtMode() === "half" ? "_半月" : "") + ".csv");
 }
 function exportMonthTgtImage() {
   var k = monthTgtCurKey(), d = monthTgtData(k);
@@ -1716,7 +1762,7 @@ function exportMonthTgtImage() {
   ctx.textBaseline = "middle"; ctx.textAlign = "center";
   ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = "#111827"; ctx.font = "bold 26px " + FONT; ctx.textAlign = "left";
-  ctx.fillText("月度目标 · " + k.slice(0, 4) + "年" + k.slice(5, 7) + "月", 14, TOP / 2);
+  ctx.fillText("月度目标 · " + mtRangeLabelOf(k), 14, TOP / 2);
   var y = TOP, xs = [], acc = 0;
   cols.forEach(function (c) { xs.push(acc); acc += c; });
   ctx.fillStyle = "#111827"; ctx.fillRect(0, y, W, HDR);
@@ -1746,7 +1792,7 @@ function exportMonthTgtImage() {
   ctx.beginPath(); ctx.moveTo(0, TOP + HDR); ctx.lineTo(W, TOP + HDR); ctx.stroke();
   var a = document.createElement("a");
   a.href = cv.toDataURL("image/png");
-  a.download = "月度目标_" + k + "_" + today() + ".png";
+  a.download = "月度目标_" + mtBaseOf(k) + (mtMode() === "half" ? "_半月" : "") + "_" + today() + ".png";
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 /* ---- 按人 / 按周期目标（我·下属 × 日·周·月 × 6 类） ---- */
@@ -1854,7 +1900,7 @@ function saveTargets() {
   alert("已保存分类目标：\n拍摄（我）" + sh + " 条 ｜ 剪辑我剪 " + me + " 条 ｜ 剪辑下属剪 " + sb + " 条"
     + "\n合计剪辑 " + (me + sb) + " 条；挂链 " + g.link + " / 不挂链 " + g.noLink);
   $("targetPanel").style.display = "none";
-  $("tgtBtn").textContent = "⚙ 修改目标";
+  if ($("tgtBtn")) $("tgtBtn").textContent = "⚙ 修改目标";
   render();
   refreshProg();
   if ($("sheetList")) renderSheetList();
@@ -3913,7 +3959,7 @@ function weekTargetOf(ws) {
   for (var guard = 0; guard < 40; guard++) {
     var ds = ymd(d);
     if (ds > we) break;
-    var k = ds.slice(0, 7), mt = monthTgtData(k), dim = daysInMonthOf(+k.slice(0, 4), +k.slice(5, 7));
+    var k = periodKeyOfDate(ds), mt = monthTgtData(k), dim = periodDaysOf(k);
     TYPES.forEach(function (t) {
       var s = mt[t] || {};
       ["shoot", "link", "nolink", "sub"].forEach(function (f) { acc[t][f] += (num(s[f]) || 0) / dim; });
@@ -5761,8 +5807,8 @@ function paintPeriodLabels() {
   if ($("kDays")) $("kDays").textContent = pf + "已登记天数";
   if ($("ledgerHint")) {
     $("ledgerHint").innerHTML = isMonth
-      ? '当前口径：<b>自然月（1 日～月底）</b>；「本期」是另一套（15 日～次月 14 日，半个月）。改目标点右上「⚙ 修改目标」。'
-      : '当前口径：<b>本期＝15 日～次月 14 日（半个月）</b>；自然月＝1 日～月底。改目标点右上「⚙ 修改目标」。';
+      ? '当前口径：<b>自然月（1 日～月底）</b>。改目标去「月度目标」，那里可以切自然月 / 半月期。'
+      : '当前口径：<b>本期＝15 日～次月 14 日（半个月）</b>。改目标去「月度目标」，那里可以切自然月 / 半月期。';
   }
 }
 
