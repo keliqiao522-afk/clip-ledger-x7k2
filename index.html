@@ -1628,7 +1628,8 @@ function monthTgtCurKey() {
 function monthTgtData(k) {
   var all = monthTgtAll(), m = all[k], obj = {};
   for (var i = 0; i < TYPES.length; i++) {
-    var t = TYPES[i], s = m && m.types && m.types[t], d = targets[t] || { tLink: 0, tNoLink: 0, tShoot: 0, tSub: 0 };
+    /* 只认这套周期自己存的值；没存过就是 0，不再借用旧「本期目标」的数字 */
+    var t = TYPES[i], s = m && m.types && m.types[t], d = { tLink: 0, tNoLink: 0, tShoot: 0, tSub: 0 };
     obj[t] = {
       shoot: SHOOT_TYPES.indexOf(t) === -1 ? 0 : (s && typeof s.shoot === "number" ? s.shoot : num(d.tShoot)),
       link: s && typeof s.link === "number" ? s.link : num(d.tLink),
@@ -1659,6 +1660,10 @@ function renderMonthTgt() {
       + '<td><input type="number" min="0" step="1" id="mtSub' + i + '" value="' + (r.sub || "") + '" oninput="calcMonthTgt()"></td></tr>';
   }
   $("mtBody").innerHTML = html;
+  var tbl = $("mtBody").parentNode, hint = $("mtEmptyHint");
+  if (!hint) { hint = document.createElement("div"); hint.id = "mtEmptyHint"; hint.className = "legend"; hint.style.margin = "8px 0 0"; if (tbl && tbl.parentNode) tbl.parentNode.insertBefore(hint, tbl.nextSibling); }
+  var rec = monthTgtAll()[k];
+  hint.textContent = rec && rec.types ? "" : "这套周期（" + mtRangeLabelOf(k) + "）还没填过目标，表格是空的，直接在上面填数字再保存就行。";
   calcMonthTgt();
 }
 function calcMonthTgt() {
