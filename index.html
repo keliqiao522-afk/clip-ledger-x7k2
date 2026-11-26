@@ -2162,8 +2162,7 @@ function renderRecords() {
     }).join("");
     return "<tr><td>" + r.date + wdHtml(r.date) + '<div class="wktag">' + weekLabel(r.date) + "</div></td><td>" + (esc(r.account) || '<span class="zero">—</span>') + "</td><td>" + (r.owner === "sub" ? "下属" : "我") + "</td>" + cells + "<td><b>" + sum + '</b></td><td class="prepcell">' + (logCodesText(r.codes) || '<span class="zero">—</span>') + '</td><td class="note">' + (esc(r.note) || "—") + "</td>"
       + '<td><div class="ops">' + (hasDetail ? '<button class="mini blue" onclick="toggleDetail(' + r.id + ')">明细</button>' : "")
-      + '<button class="mini" onclick="editRec(' + r.id + ')">编辑</button>'
-      + '<button class="mini red" onclick="delRec(' + r.id + ')">删除</button></div></td></tr>'
+      + (r.aDate ? '<span style="font-size:12px;color:#059669">A 自己改</span></div></td></tr>' : '<button class="mini" onclick="editRec(' + r.id + ')">编辑</button>' + '<button class="mini red" onclick="delRec(' + r.id + ')">删除</button></div></td></tr>')
       + '<tr class="detail" id="d' + r.id + '" style="display:none"><td colspan="' + (TYPES.length + 7) + '">' + (dets.join(" ｜ ") || "无素材备注") + (logCodesText(r.codes) ? " ｜ 款号：" + logCodesText(r.codes) : "") + "</td></tr>";
   }).join("");
 }
@@ -6738,6 +6737,49 @@ function aPushCloud() {
     }).catch(function () { aPushState("fail"); });
   } catch (e) { }
 }
+/* 把 A 端登记自动并进「剪辑登记」：按日期合并成一条（谁剪=剪辑、账号=A剪辑） */
+function aMergeIntoData() {
+  if (aMode()) return false;
+  var o = null;
+  try { o = JSON.parse(localStorage.getItem("clipALogV1") || "null"); } catch (e) { o = null; }
+  if (!o || !o.items) return false;
+  var byDate = {};
+  (o.items || []).forEach(function (it) {
+    if (!it || !it.date || !it.t) return;
+    if (!byDate[it.date]) byDate[it.date] = {};
+    if (!byDate[it.date][it.t]) byDate[it.date][it.t] = { link: 0, nolink: 0 };
+    var q = num(it.n);
+    if (q <= 0) return;
+    if (it.link) byDate[it.date][it.t].link += q; else byDate[it.date][it.t].nolink += q;
+  });
+  var keep = {};
+  Object.keys(byDate).forEach(function (k) { keep[k] = 1; });
+  var changed = false, before = data.length;
+  data = data.filter(function (r) { return r.aDate === undefined || keep[r.aDate]; });
+  if (data.length !== before) changed = true;
+  Object.keys(byDate).forEach(function (dt) {
+    var want = byDate[dt], rec = null;
+    for (var i = 0; i < data.length; i++) if (data[i].aDate === dt) { rec = data[i]; break; }
+    if (!rec) {
+      rec = { id: Date.now() + Math.floor(Math.random() * 1000), aDate: dt, date: dt, note: "A 端登记（自动同步）", owner: "sub", account: "A剪辑", codes: [], items: {} };
+      data.push(rec);
+      changed = true;
+    }
+    TYPES.forEach(function (t) {
+      var w = want[t] || { link: 0, nolink: 0 };
+      var cur = rec.items[t] || { link: 0, nolink: 0 };
+      if (num(cur.link) !== w.link || num(cur.nolink) !== w.nolink) {
+        rec.items[t] = { link: w.link, nolink: w.nolink, detail: "A 端登记" };
+        changed = true;
+      }
+    });
+  });
+  if (changed) {
+    try { localStorage.setItem(KEY_DATA, JSON.stringify(data)); } catch (e2) { }
+    try { render(); } catch (e3) { }
+  }
+  return changed;
+}
 function aPullCloud() {
   if (aMode()) return;
   fetch(A_RELAY + "/json?poll=1&since=all").then(function (r) { return r.text(); }).then(function (txt) {
@@ -6762,6 +6804,8 @@ function aPullCloud() {
       else if (String(it.at || "") > String(o.items[i].at || "")) { o.items[i] = it; changed = true; }
     });
     if (d.notes) { o.notes = o.notes || {}; for (k in d.notes) { if (o.notes[k] !== d.notes[k]) { o.notes[k] = d.notes[k]; changed = true; } } }
+    var dataChanged = false;
+    try { dataChanged = aMergeIntoData(); } catch (e9) { }
     if (changed) {
       aSaveStore(o, true);
       try { renderSheetList(); renderWeekDone(); refreshProg(); } catch (e) { }
@@ -7230,7 +7274,7 @@ window.addEventListener("load", function () {
   setTimeout(function () { try { renderA(); } catch (e) { } }, 900);
 });
 </script>
-<script>window.addEventListener('load',function(){try{if(!aMode()){setTimeout(aPullCloud,2500);setInterval(aPullCloud,60000);}else{setTimeout(function(){try{var o=aStore();if(o.items&&o.items.length)aPushCloud();}catch(e3){}},1500);}}catch(e){}});</script>
+<script>window.addEventListener('load',function(){try{if(!aMode()){setTimeout(aPullCloud,2500);setInterval(aPullCloud,60000);setTimeout(function(){try{aMergeIntoData();}catch(e4){}},1200);}else{setTimeout(function(){try{var o=aStore();if(o.items&&o.items.length)aPushCloud();}catch(e3){}},1500);}}catch(e){}});</script>
 </body>
 </html>
 
