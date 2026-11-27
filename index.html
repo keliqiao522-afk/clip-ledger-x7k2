@@ -4017,7 +4017,7 @@ function renderResults() {
   $("resBody").innerHTML = list.map(function (r) {
     var cnt = (r.items || []).length;
     return "<tr><td>" + r.date + wdHtml(r.date) + "</td>"
-      + "<td>" + esc(planName(r.planId)) + (r.autoDone ? '<div class="wd">计划已完成·自动同步</div>' : "") + "</td>"
+      + "<td>" + esc(planName(r.planId)) + "</td>"
       + "<td><b>" + (r.qty || 0) + "</b>" + (cnt > 1 ? '<div class="wd">' + cnt + " 条成片</div>" : "") + "</td>"
       + "<td>" + resCell(r) + "</td>"
       + "<td>" + imgCell(r.items, 3) + "</td>"
