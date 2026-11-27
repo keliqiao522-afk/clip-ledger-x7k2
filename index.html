@@ -2607,6 +2607,12 @@ results.forEach(function (r) {
     r.items = [{ link: r.link || "", note: "", imgs: (r.img ? [r.img] : []) }];
   }
 });
+/* 早期自动同步记录的长备注，统一换成短的，别把表格撑歪 */
+var resFixed = false;
+results.forEach(function (r) {
+  if (r.autoDone && r.review && r.review.indexOf("计划点「已完成」") > -1) { r.review = "自动同步"; resFixed = true; }
+});
+if (resFixed) setTimeout(function () { try { localStorage.setItem(KEY_RES, JSON.stringify(results)); } catch (e) { } }, 1200);
 
 var planItems = [{ link: "", imgs: [], rows: [{ shot: "", line: "", dur: "" }] }];
 var resItems = [{ link: "", note: "", imgs: [] }];
