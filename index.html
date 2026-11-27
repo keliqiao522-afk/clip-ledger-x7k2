@@ -3023,6 +3023,7 @@ function savePlan() {
   if (!savePlans()) return;
   resetPlanForm(false);
   renderPlans();
+  try { syncDoneAll(); } catch (eSync) { }
   alert("已保存：" + name + "（" + items.length + " 条内容）");
 }
 function resetPlanForm(all) {
@@ -3467,6 +3468,7 @@ function batchSetStatus() {
   undoSnapshot("批量改状态");
   ps.forEach(function (p) { p.status = v; });
   savePlans(); renderPlans();
+  try { syncDoneAll(); } catch (eSync) { }
   try { toast("已把 " + ps.length + " 条改成「" + v + "」"); } catch (e) { }
 }
 function batchSetType() {
@@ -3949,6 +3951,37 @@ function openTrend(resId) {
   $("trendModal").style.display = "block";
 }
 function closeTrend() { $("trendModal").style.display = "none"; }
+/* ===== 计划点「已完成」→ 自动同步出一条执行结果 ===== */
+function resultOfPlan(pid) {
+  for (var i = 0; i < results.length; i++) if (String(results[i].planId) === String(pid)) return results[i];
+  return null;
+}
+function autoResultOf(p) {
+  if (!p || p.status !== "已完成") return null;
+  if (resultOfPlan(p.id)) return null;
+  var rec = { id: Date.now() + Math.floor(Math.random() * 997), date: p.date, planId: p.id, qty: p.qty || 1,
+    review: "（计划点「已完成」自动同步，实际条数和成片链接在这条上改就行）", items: [blankRes()], autoDone: 1 };
+  results.push(rec);
+  return rec;
+}
+function dropAutoResult(p) {
+  if (!p) return false;
+  var r = resultOfPlan(p.id);
+  if (!r || !r.autoDone) return false;
+  var has = (r.items || []).some(function (it) { return (it.link || "").trim() || (it.imgs || []).length || (it.note || "").trim(); });
+  if (has) return false;
+  results = results.filter(function (x) { return x.id !== r.id; });
+  return true;
+}
+function syncDoneAll() {
+  var added = 0, removed = 0;
+  plans.forEach(function (p) {
+    if (p.status === "已完成") { if (autoResultOf(p)) added++; }
+    else if (dropAutoResult(p)) removed++;
+  });
+  if (added || removed) { saveResults(); renderResults(); renderPlans(); }
+  return added;
+}
 function resCell(r) {
   var html = linkCell(r.items);
   var bgs = (r.items || []).filter(function (it) { return it.bg; });
@@ -6599,6 +6632,7 @@ fillResShots({});
 renderItems("result");
 renderPlans();
 renderResults();
+try { syncDoneAll(); } catch (eSync2) { }
 renderSheetList();
 renderShootPlan();
 renderProg();
