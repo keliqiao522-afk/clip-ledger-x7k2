@@ -904,10 +904,24 @@ body.mode-a h1 { font-size: 22px; }
       </div>
       <div class="ops"><button class="mini blue" id="btnSetTgt" onclick="openTgtModal()">⚙ 设定目标</button></div>
     </div>
+    <div class="nav" style="gap:8px;margin:-4px 0 10px;flex-wrap:wrap;background:#f8fafc;border:1px solid #eef1f6;border-radius:10px;padding:8px 10px">
+      <span style="font-size:12px;color:#374151;font-weight:600">自己选时段看进度</span>
+      <input type="date" id="pgFrom" style="padding:4px 6px;border:1px solid #dfe3e8;border-radius:6px;font-size:12px">
+      <span style="font-size:12px;color:#6b7280">~</span>
+      <input type="date" id="pgTo" style="padding:4px 6px;border:1px solid #dfe3e8;border-radius:6px;font-size:12px">
+      <button class="mini blue" onclick="pgCustomPick()">用这段</button>
+      <span style="font-size:12px;color:#6b7280">这段目标：我剪</span>
+      <input type="number" min="0" id="pgTgtMe" placeholder="0" style="width:64px;padding:4px 6px;border:1px solid #dfe3e8;border-radius:6px;font-size:12px">
+      <span style="font-size:12px;color:#6b7280">下属剪</span>
+      <input type="number" min="0" id="pgTgtSub" placeholder="0" style="width:64px;padding:4px 6px;border:1px solid #dfe3e8;border-radius:6px;font-size:12px">
+      <button class="mini green" onclick="pgSaveTgt()">保存这段目标</button>
+      <button class="mini" onclick="pgResetCustom()">退出自定义</button>
+      <span id="pgCustomHint" style="font-size:12px;color:#6b7280"></span>
+    </div>
     <p class="legend" style="margin:-6px 0 10px">口径：<b>本期＝每月 15 日～次月 14 日（半个月）</b>，上面「‹ 上一期 / 下一期 ›」翻的也是这半个月，不是自然月。</p>
     <div class="stats">
-      <div class="card"><div class="k">本期剪辑目标（我剪＋下属剪）</div><div class="v" id="pgAim">0<small>条</small></div><div class="wd" id="pgAimSub">—</div></div>
-      <div class="card"><div class="k">本期已剪（我剪＋下属剪）</div><div class="v" id="pgDone">0<small>条</small></div><div class="wd" id="pgDoneSub">—</div><div class="bar"><i class="g" id="pgBar" style="width:0"></i></div></div>
+      <div class="card"><div class="k" id="pgAimK">本期剪辑目标（我剪＋下属剪）</div><div class="v" id="pgAim">0<small>条</small></div><div class="wd" id="pgAimSub">—</div></div>
+      <div class="card"><div class="k" id="pgDoneK">本期已剪（我剪＋下属剪）</div><div class="v" id="pgDone">0<small>条</small></div><div class="wd" id="pgDoneSub">—</div><div class="bar"><i class="g" id="pgBar" style="width:0"></i></div></div>
       <div class="card"><div class="k">还差多少</div><div class="v" id="pgGap">0<small>条</small></div></div>
       <div class="card"><div class="k">完成率</div><div class="v" id="pgRate">0<small>%</small></div></div>
     </div>
@@ -2048,7 +2062,7 @@ function currentRange() {
   return { start: ymd(s2), end: ymd(e2), label: (s2.getFullYear() + "年" + (s2.getMonth() + 1) + "月1日 — " + (e2.getMonth() + 1) + "月" + e2.getDate() + "日") };
 }
 function setMode(m) {
-  mode = m; offset = 0; progOffset = 0;
+  mode = m; offset = 0; progOffset = 0; PROG_CUSTOM = null;
   SUM_CUSTOM = false;
   try { var rg0 = currentRange(); if ($("rgFrom")) $("rgFrom").value = rg0.start; if ($("rgTo")) $("rgTo").value = rg0.end; rangeHint(); } catch (e) { }
   if ($("segCycle")) $("segCycle").className = m === "cycle" ? "on" : "";
@@ -6536,9 +6550,49 @@ function paintPeriodLabels() {
 
 /* ================= 进度总览 ================= */
 var progOffset = 0;
-function progRange() { return currentRange(); }
-function shiftProg(d) { offset += d; progOffset = offset; render(); renderProg(); }
-function resetProg() { offset = 0; progOffset = 0; render(); renderProg(); }
+/* ===== 进度总览：自定义时段 + 这段自己的目标 ===== */
+var KEY_RTGT = "clipRangeTgtsV1";
+var rangeTgts = JSON.parse(localStorage.getItem(KEY_RTGT) || "[]");
+var PROG_CUSTOM = null;
+function findRangeTgt(a, b) {
+  for (var i = 0; i < rangeTgts.length; i++) if (rangeTgts[i].start === a && rangeTgts[i].end === b) return rangeTgts[i];
+  return null;
+}
+function pgCustomPick() {
+  var a = $("pgFrom") ? $("pgFrom").value : "", b = $("pgTo") ? $("pgTo").value : "";
+  if (!a || !b) { alert("先选「从哪天」和「到哪天」"); return; }
+  if (a > b) { var t = a; a = b; b = t; $("pgFrom").value = a; $("pgTo").value = b; }
+  PROG_CUSTOM = { start: a, end: b };
+  var rec = findRangeTgt(a, b);
+  if ($("pgTgtMe")) $("pgTgtMe").value = rec ? (rec.me || 0) : "";
+  if ($("pgTgtSub")) $("pgTgtSub").value = rec ? (rec.sub || 0) : "";
+  if ($("pgCustomHint")) $("pgCustomHint").textContent = rec ? "这段已存过目标，已经按它算" : "这段还没存目标：填右边两个数，点「保存这段目标」";
+  renderProg();
+  try { if (typeof renderRangeBlock === "function") { $("rgFrom").value = a; $("rgTo").value = b; rangeHint(); } } catch (e) { }
+}
+function pgSaveTgt() {
+  if (!PROG_CUSTOM) { alert("先用日期选一段（点「用这段」）"); return; }
+  var me = num($("pgTgtMe") ? $("pgTgtMe").value : 0), sub = num($("pgTgtSub") ? $("pgTgtSub").value : 0);
+  var rec = findRangeTgt(PROG_CUSTOM.start, PROG_CUSTOM.end);
+  if (rec) { rec.me = me; rec.sub = sub; }
+  else rangeTgts.push({ start: PROG_CUSTOM.start, end: PROG_CUSTOM.end, me: me, sub: sub, at: Date.now() });
+  try { localStorage.setItem(KEY_RTGT, JSON.stringify(rangeTgts)); } catch (e) { }
+  if ($("pgCustomHint")) $("pgCustomHint").textContent = "已保存：我剪 " + me + " 条 / 下属剪 " + sub + " 条，进度按这个算";
+  renderProg();
+}
+function pgResetCustom() {
+  PROG_CUSTOM = null;
+  if ($("pgTgtMe")) $("pgTgtMe").value = "";
+  if ($("pgTgtSub")) $("pgTgtSub").value = "";
+  if ($("pgCustomHint")) $("pgCustomHint").textContent = "";
+  renderProg();
+}
+function progRange() {
+  if (PROG_CUSTOM) return { start: PROG_CUSTOM.start, end: PROG_CUSTOM.end, label: mds(PROG_CUSTOM.start) + " — " + mds(PROG_CUSTOM.end) + "（自定义时段）" };
+  return currentRange();
+}
+function shiftProg(d) { PROG_CUSTOM = null; offset += d; progOffset = offset; render(); renderProg(); }
+function resetProg() { PROG_CUSTOM = null; offset = 0; progOffset = 0; render(); renderProg(); }
 function renderProg() {
   var rg = progRange();
   if ($("progRange")) $("progRange").textContent = rg.label;
@@ -6561,15 +6615,24 @@ function renderProg() {
     }
   });
 
+  var custom = !!PROG_CUSTOM;
+  if ($("pgAimK")) $("pgAimK").textContent = (custom ? "这段" : "本期") + "剪辑目标（我剪＋下属剪）";
+  if ($("pgDoneK")) $("pgDoneK").textContent = (custom ? "这段" : "本期") + "已剪（我剪＋下属剪）";
+  var rTgt = custom ? (findRangeTgt(PROG_CUSTOM.start, PROG_CUSTOM.end) || { me: 0, sub: 0 }) : null;
   var meAim = 0, subAim = 0, meDone = 0, subDone = 0;
-  TYPES.forEach(function (t) {
-    var g = targets[t] || {};
-    var a = num(g.tLink) + num(g.tNoLink);
-    meAim += a;
-    subAim += Math.max(0, num(g.tTot) - a);
-    meDone += byMe[t].l + byMe[t].n;
-    subDone += bySub[t].l + bySub[t].n;
-  });
+  if (custom) {
+    meAim = num(rTgt.me); subAim = num(rTgt.sub);
+    TYPES.forEach(function (t) { meDone += byMe[t].l + byMe[t].n; subDone += bySub[t].l + bySub[t].n; });
+  } else {
+    TYPES.forEach(function (t) {
+      var g = targets[t] || {};
+      var a = num(g.tLink) + num(g.tNoLink);
+      meAim += a;
+      subAim += Math.max(0, num(g.tTot) - a);
+      meDone += byMe[t].l + byMe[t].n;
+      subDone += bySub[t].l + bySub[t].n;
+    });
+  }
   var aim = meAim + subAim, dn = meDone + subDone;
   var gap = Math.max(0, aim - dn);
   var rate = aim > 0 ? Math.min(100, Math.round(dn / aim * 100)) : 0;
@@ -6583,10 +6646,16 @@ function renderProg() {
 
   var html = "";
   TYPES.forEach(function (t) {
+    var md = byMe[t].l + byMe[t].n, sd = bySub[t].l + bySub[t].n;
+    if (custom) {
+      html += "<tr><td>" + t + "</td><td>—</td><td>" + md + '<div class="wd">挂 ' + byMe[t].l + " / 不挂 " + byMe[t].n + "</div></td>"
+        + "<td>—</td><td>" + sd + '<div class="wd">挂 ' + bySub[t].l + " / 不挂 " + bySub[t].n + "</div></td>"
+        + "<td><b>" + (md + sd) + "</b></td><td>—</td></tr>";
+      return;
+    }
     var g = targets[t] || {};
     var ta = num(g.tLink) + num(g.tNoLink);
     var sa = Math.max(0, num(g.tTot) - ta);
-    var md = byMe[t].l + byMe[t].n, sd = bySub[t].l + bySub[t].n;
     var tg = Math.max(0, ta + sa - md - sd);
     html += "<tr><td>" + t + "</td>"
       + "<td><b>" + ta + '</b><div class="wd">挂 ' + num(g.tLink) + " / 不挂 " + num(g.tNoLink) + "</div></td>"
