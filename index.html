@@ -1112,6 +1112,26 @@ body.mode-a h1 { font-size: 22px; }
         </span>
       </div>
     </div>
+    <!-- 所选日期范围的剪辑数量（独立一块，不受「本期/自然月」影响） -->
+    <div class="box" style="padding:12px 14px;margin-bottom:10px" id="rgBox">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+        <h2 style="margin:0">所选这一段的剪辑数量 <span id="rgScopeLabel" style="font-size:12px;color:#2563eb;font-weight:600"></span></h2>
+        <span style="font-size:12px;color:#6b7280">改上面的日期就跟着变；这块只算你选的日期范围，不动下面的本期/自然月</span>
+      </div>
+      <div id="rgCards" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px"></div>
+      <div class="scroll">
+        <table class="sum">
+          <thead><tr><th>内容类型</th><th>总数</th><th>我剪</th><th>下属剪</th><th>挂链</th><th>不挂链</th><th>YH</th><th>XC</th></tr></thead>
+          <tbody id="rgTypeBody"></tbody>
+        </table>
+      </div>
+      <div class="scroll" style="margin-top:8px">
+        <table class="sum">
+          <thead><tr><th>按项目（=账号）</th><th>总数</th><th>我剪</th><th>下属剪</th></tr></thead>
+          <tbody id="rgAccBody"></tbody>
+        </table>
+      </div>
+    </div>
     <div class="stats" style="margin-bottom:10px">
       <div class="card"><div class="k">总剪辑量</div><div class="v" id="lgAll">0<small>条</small></div></div>
       <div class="card"><div class="k">我剪</div><div class="v" id="lgMe">0<small>条</small></div></div>
@@ -2265,6 +2285,7 @@ function ledgerSumData() {
   return { rows: out, rg: rg, days: Object.keys(days).length, accRows: accRows, codeRows: codeRows };
 }
 function renderLedgerSum() {
+  renderRangeBlock();
   var d = ledgerSumData();
   if ($("lgRange")) $("lgRange").textContent = d.rg.label;
   if ($("lgScope")) $("lgScope").textContent = SUM_CUSTOM ? "所选区间" : (mode === "month" ? "自然月" : "本期");
@@ -2300,6 +2321,77 @@ function renderLedgerSum() {
       : '<tr><td colspan="2" class="legend" style="margin:0">登记时填了款号才会出现在这里</td></tr>';
   }
 }
+/* ===== 所选日期范围的剪辑数量（独立一块） ===== */
+function rgBlockData(a, b) {
+  var out = {}, days = {}, accMap = {};
+  TYPES.forEach(function (t) { out[t] = { all: 0, me: 0, sub: 0, l: 0, n: 0, yh: 0, xc: 0 }; });
+  data.forEach(function (r) {
+    if (!r || !r.date || r.date < a || r.date > b) return;
+    days[r.date] = 1;
+    var isSub = (r.owner === "sub");
+    var acc = String(r.account || "").trim() || "未填账号";
+    if (!accMap[acc]) accMap[acc] = { acc: acc, all: 0, me: 0, sub: 0 };
+    TYPES.forEach(function (t) {
+      var it = (r.items || {})[t]; if (!it) return;
+      var l = num(it.link), n = num(it.nolink), qd = l + n;
+      if (!qd) return;
+      var o = out[t]; o.l += l; o.n += n; o.all += qd;
+      if (isSub) o.sub += qd; else o.me += qd;
+      projectParts(r, it, qd).forEach(function (p) {
+        if (p.key === "YH") o.yh += p.q;
+        else if (p.key === "XC") o.xc += p.q;
+        else { o.yh += p.q * 0.5; o.xc += p.q * 0.5; }
+        var kk = p.key || acc;
+        if (!accMap[kk]) accMap[kk] = { acc: kk, all: 0, me: 0, sub: 0 };
+        accMap[kk].all += p.q;
+        if (isSub) accMap[kk].sub += p.q; else accMap[kk].me += p.q;
+      });
+    });
+  });
+  var tot = { all: 0, me: 0, sub: 0, l: 0, n: 0, yh: 0, xc: 0 };
+  TYPES.forEach(function (t) {
+    var o = out[t];
+    tot.all += o.all; tot.me += o.me; tot.sub += o.sub; tot.l += o.l; tot.n += o.n; tot.yh += o.yh; tot.xc += o.xc;
+  });
+  var accRows = Object.keys(accMap).map(function (k) { return accMap[k]; }).filter(function (x) { return x.all > 0; });
+  accRows.sort(function (x, y) {
+    if (x.acc === "YH") return -1; if (y.acc === "YH") return 1;
+    if (x.acc === "XC") return -1; if (y.acc === "XC") return 1;
+    return y.all - x.all;
+  });
+  return { rows: out, tot: tot, accRows: accRows, days: Object.keys(days).length };
+}
+function renderRangeBlock() {
+  try {
+    if (!$("rgTypeBody") || !$("rgFrom") || !$("rgTo")) return;
+    var a = $("rgFrom").value, b = $("rgTo").value;
+    if (!a || !b) return;
+    if (a > b) { var tmp = a; a = b; b = tmp; }
+    var d = rgBlockData(a, b), tot = d.tot;
+    var lbl = $("rgScopeLabel");
+    if (lbl) lbl.textContent = mds(a) + " ~ " + mds(b) + "（" + d.days + " 天）";
+    var cards = [
+      { k: "这段剪辑总量", v: tot.all, s: "条" },
+      { k: "我剪", v: tot.me, s: "条" },
+      { k: "下属剪（A）", v: tot.sub, s: "条" },
+      { k: "挂链", v: tot.l, s: "条" },
+      { k: "不挂链", v: tot.n, s: "条" }
+    ];
+    $("rgCards").innerHTML = cards.map(function (c) {
+      return '<div class="card" style="min-width:120px"><div class="k">' + c.k + '</div><div class="v">' + c.v + "<small>" + c.s + "</small></div></div>";
+    }).join("");
+    var html = "";
+    TYPES.forEach(function (t) {
+      var o = d.rows[t];
+      html += "<tr><td>" + t + "</td><td><b>" + o.all + "</b></td><td>" + o.me + "</td><td>" + o.sub + "</td><td>" + o.l + "</td><td>" + o.n + "</td><td>" + Math.round(o.yh) + "</td><td>" + Math.round(o.xc) + "</td></tr>";
+    });
+    html += '<tr class="tot"><td>合计</td><td>' + tot.all + "</td><td>" + tot.me + "</td><td>" + tot.sub + "</td><td>" + tot.l + "</td><td>" + tot.n + "</td><td>" + Math.round(tot.yh) + "</td><td>" + Math.round(tot.xc) + "</td></tr>";
+    $("rgTypeBody").innerHTML = html;
+    $("rgAccBody").innerHTML = d.accRows.length
+      ? d.accRows.map(function (x) { return "<tr><td>" + esc(x.acc) + "</td><td><b>" + x.all + "</b></td><td>" + x.me + "</td><td>" + x.sub + "</td></tr>"; }).join("")
+      : '<tr><td colspan="4" style="color:#9ca3af">这段还没有登记</td></tr>';
+  } catch (e) { }
+}
 function rangeHint() {
   try {
     var a = $("rgFrom") ? $("rgFrom").value : "", b = $("rgTo") ? $("rgTo").value : "";
@@ -2307,6 +2399,7 @@ function rangeHint() {
     if (a > b) { var tmp = a; a = b; b = tmp; }
     var d = rangeSumData(a, b);
     $("rgHint").textContent = "这段共 " + d.tot.all + " 条（" + mds(a) + "~" + mds(b) + "）";
+    renderRangeBlock();
   } catch (e) { }
 }
 function rangeInit() {
