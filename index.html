@@ -1000,15 +1000,16 @@ body.mode-a h1 { font-size: 22px; }
       <div class="card"><div class="k">拍摄目标（我拍）</div><div class="v" id="mtShootVal">0<small>条</small></div></div>
       <div class="card"><div class="k">我剪目标</div><div class="v" id="mtEditMeVal">0<small>条</small></div></div>
       <div class="card"><div class="k">下属剪目标</div><div class="v" id="mtEditSubVal">0<small>条</small></div></div>
-      <div class="card"><div class="k">剪辑合计</div><div class="v" id="mtTotalVal">0<small>条</small></div></div>
+      <div class="card"><div class="k">剪辑合计</div><div class="v" id="mtTotalVal">0<small>条</small></div><div class="wd" id="mtYHXCCard">—</div></div>
     </div>
     <div class="scroll">
       <table class="sum">
-        <thead><tr><th>内容类型</th><th style="width:118px">拍摄目标<br><span class="tgt" style="font-weight:400">（我拍）</span></th><th style="width:112px">挂链<br><span class="tgt" style="font-weight:400">（我剪）</span></th><th style="width:112px">不挂链<br><span class="tgt" style="font-weight:400">（我剪）</span></th><th style="width:100px">我剪小计</th><th style="width:118px">剪辑目标<br><span class="tgt" style="font-weight:400">（下属剪）</span></th></tr></thead>
+        <thead><tr><th>内容类型</th><th style="width:118px">拍摄目标<br><span class="tgt" style="font-weight:400">（我拍）</span></th><th style="width:112px">挂链<br><span class="tgt" style="font-weight:400">（我剪）</span></th><th style="width:112px">不挂链<br><span class="tgt" style="font-weight:400">（我剪）</span></th><th style="width:100px">我剪小计</th><th style="width:118px">剪辑目标<br><span class="tgt" style="font-weight:400">（下属剪）</span></th><th style="width:104px">YH 目标<br><span class="tgt" style="font-weight:400">（我剪＋下属）</span></th><th style="width:104px">XC 目标<br><span class="tgt" style="font-weight:400">（我剪＋下属）</span></th></tr></thead>
         <tbody id="mtBody"></tbody>
-        <tr class="tot"><td>合计</td><td id="mtShootT">0</td><td id="mtL">0</td><td id="mtN">0</td><td id="mtT">0</td><td id="mtSubT">0</td></tr>
+        <tr class="tot"><td>合计</td><td id="mtShootT">0</td><td id="mtL">0</td><td id="mtN">0</td><td id="mtT">0</td><td id="mtSubT">0</td><td id="mtYHT">0</td><td id="mtXCT">0</td></tr>
       </table>
     </div>
+    <p class="legend" id="mtSplitHint" style="margin:8px 0 0">YH / XC 两列填两个项目分别要做多少条，两者加起来对得上「我剪小计＋下属剪」就行。</p>
     <div class="btns" style="margin-top:10px">
       <button class="add" onclick="saveMonthTgt()">保存本月目标</button>
 
@@ -1755,7 +1756,9 @@ function monthTgtData(k) {
       shoot: SHOOT_TYPES.indexOf(t) === -1 ? 0 : (s && typeof s.shoot === "number" ? s.shoot : num(d.tShoot)),
       link: s && typeof s.link === "number" ? s.link : num(d.tLink),
       nolink: s && typeof s.nolink === "number" ? s.nolink : num(d.tNoLink),
-      sub: s && typeof s.sub === "number" ? s.sub : num(d.tSub)
+      sub: s && typeof s.sub === "number" ? s.sub : num(d.tSub),
+      yh: s && typeof s.yh === "number" ? s.yh : num((targets[t] || {}).yh),
+      xc: s && typeof s.xc === "number" ? s.xc : num((targets[t] || {}).xc)
     };
   }
   return obj;
@@ -1778,7 +1781,9 @@ function renderMonthTgt() {
       + '<td><input type="number" min="0" step="1" id="mtL' + i + '" value="' + (r.link || "") + '" oninput="calcMonthTgt()"></td>'
       + '<td><input type="number" min="0" step="1" id="mtN' + i + '" value="' + (r.nolink || "") + '" oninput="calcMonthTgt()"></td>'
       + '<td id="mtS' + i + '">' + (r.link + r.nolink) + "</td>"
-      + '<td><input type="number" min="0" step="1" id="mtSub' + i + '" value="' + (r.sub || "") + '" oninput="calcMonthTgt()"></td></tr>';
+      + '<td><input type="number" min="0" step="1" id="mtSub' + i + '" value="' + (r.sub || "") + '" oninput="calcMonthTgt()"></td>'
+      + '<td><input type="number" min="0" step="1" id="mtYH' + i + '" value="' + (r.yh || "") + '" oninput="calcMonthTgt()" placeholder="YH"></td>'
+      + '<td><input type="number" min="0" step="1" id="mtXC' + i + '" value="' + (r.xc || "") + '" oninput="calcMonthTgt()" placeholder="XC"></td></tr>';
   }
   $("mtBody").innerHTML = html;
   var tbl = $("mtBody").parentNode, hint = $("mtEmptyHint");
@@ -1796,8 +1801,24 @@ function calcMonthTgt() {
     $("mtS" + i).textContent = a + b;
     sh += s1; l += a; n += b; sb += s2;
   }
+  var yh = 0, xc = 0;
+  for (var j = 0; j < TYPES.length; j++) {
+    var ey = $("mtYH" + j), ex = $("mtXC" + j);
+    yh += ey ? num(ey.value) : 0;
+    xc += ex ? num(ex.value) : 0;
+  }
   $("mtShootT").textContent = sh; $("mtL").textContent = l; $("mtN").textContent = n;
   $("mtT").textContent = l + n; $("mtSubT").textContent = sb;
+  if ($("mtYHT")) $("mtYHT").textContent = yh;
+  if ($("mtXCT")) $("mtXCT").textContent = xc;
+  var splitTot = l + n + sb;
+  if ($("mtSplitHint")) {
+    var diff = splitTot - (yh + xc);
+    $("mtSplitHint").style.color = (yh + xc > 0 && diff !== 0) ? "#dc2626" : "#6b7280";
+    $("mtSplitHint").textContent = "YH " + yh + " ＋ XC " + xc + " ＝ " + (yh + xc) + " 条（剪辑合计 " + splitTot + " 条"
+      + (yh + xc > 0 && diff !== 0 ? "，两边加起来差 " + diff + " 条，记得对上" : "") + "）";
+  }
+  if ($("mtYHXCCard")) $("mtYHXCCard").textContent = "YH " + yh + " · XC " + xc;
   if ($("mtShootVal")) $("mtShootVal").textContent = sh;
   if ($("mtEditMeVal")) $("mtEditMeVal").textContent = l + n;
   if ($("mtEditSubVal")) $("mtEditSubVal").textContent = sb;
@@ -1808,7 +1829,7 @@ function readMonthTgtForm() {
   for (var i = 0; i < TYPES.length; i++) {
     var a = num($("mtL" + i).value), b = num($("mtN" + i).value);
     var sel = $("mtSh" + i);
-    obj[TYPES[i]] = { shoot: sel ? num(sel.value) : 0, link: a, nolink: b, sub: num($("mtSub" + i).value) };
+    obj[TYPES[i]] = { shoot: sel ? num(sel.value) : 0, link: a, nolink: b, sub: num($("mtSub" + i).value), yh: num($("mtYH" + i) ? $("mtYH" + i).value : 0), xc: num($("mtXC" + i) ? $("mtXC" + i).value : 0) };
   }
   return obj;
 }
@@ -1818,8 +1839,10 @@ function saveMonthTgt() {
   for (var i = 0; i < TYPES.length; i++) {
     var t = TYPES[i]; sh += types[t].shoot; me += types[t].link + types[t].nolink; sb += types[t].sub;
   }
+  var yh = 0, xc = 0;
+  for (var q = 0; q < TYPES.length; q++) { yh += types[TYPES[q]].yh || 0; xc += types[TYPES[q]].xc || 0; }
   var all = monthTgtAll();
-  all[k] = { types: types, shoot: sh, editMe: me, editSub: sb, edit: me + sb, savedAt: new Date().toISOString() };
+  all[k] = { types: types, shoot: sh, editMe: me, editSub: sb, edit: me + sb, yh: yh, xc: xc, savedAt: new Date().toISOString() };
   localStorage.setItem(KEY_MONTH_TGT, JSON.stringify(all));
   autoBackup();
   alert("已保存 " + (mtRangeLabelOf(k)) + " 的目标：\n拍摄（我）" + sh + " 条 ｜ 我剪 " + me + " 条 ｜ 下属剪 " + sb + " 条\n合计剪辑 " + (me + sb) + " 条");
