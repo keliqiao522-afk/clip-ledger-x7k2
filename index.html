@@ -6564,14 +6564,18 @@ function pgCustomPick() {
   if (a > b) { var t = a; a = b; b = t; $("pgFrom").value = a; $("pgTo").value = b; }
   PROG_CUSTOM = { start: a, end: b };
   var rec = findRangeTgt(a, b);
-  if ($("pgTgtMe")) $("pgTgtMe").value = rec ? (rec.me || 0) : "";
-  if ($("pgTgtSub")) $("pgTgtSub").value = rec ? (rec.sub || 0) : "";
+  if (rec) { if ($("pgTgtMe")) $("pgTgtMe").value = rec.me || 0; if ($("pgTgtSub")) $("pgTgtSub").value = rec.sub || 0; }
   if ($("pgCustomHint")) $("pgCustomHint").textContent = rec ? "这段已存过目标，已经按它算" : "这段还没存目标：填右边两个数，点「保存这段目标」";
   renderProg();
   try { if (typeof renderRangeBlock === "function") { $("rgFrom").value = a; $("rgTo").value = b; rangeHint(); } } catch (e) { }
 }
 function pgSaveTgt() {
-  if (!PROG_CUSTOM) { alert("先用日期选一段（点「用这段」）"); return; }
+  if (!PROG_CUSTOM) {
+    var a0 = $("pgFrom") ? $("pgFrom").value : "", b0 = $("pgTo") ? $("pgTo").value : "";
+    if (!a0 || !b0) { alert("先选「从哪天」和「到哪天」"); return; }
+    if (a0 > b0) { var t0 = a0; a0 = b0; b0 = t0; }
+    PROG_CUSTOM = { start: a0, end: b0 };
+  }
   var me = num($("pgTgtMe") ? $("pgTgtMe").value : 0), sub = num($("pgTgtSub") ? $("pgTgtSub").value : 0);
   var rec = findRangeTgt(PROG_CUSTOM.start, PROG_CUSTOM.end);
   if (rec) { rec.me = me; rec.sub = sub; }
